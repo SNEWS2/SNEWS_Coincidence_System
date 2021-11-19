@@ -56,30 +56,6 @@ class TimeStuff:
         """ string to datetime hour object """
         return datetime.strptime(nu_time, fmt)
 
-# # TODO: do not need
-# def set_topic_state(which_topic, env_path=None):
-#     """ Set the topic path based on which_topic
-#
-#     Parameters
-#     ----------
-#     which_topic : `str`
-#         single-letter string indicating the topic [O/H/A]
-#         If an environment was defined, it uses the topics
-#         specified in that environment. If not, it looks
-#         for the env_path parameter
-#     env_path : `str`
-#         The path to the environment configuration file
-#
-#     """
-#     if os.getenv("ALERT_TOPIC") == None: set_env(env_path)
-#     Topics = namedtuple('Topics', ['topic_name', 'topic_broker'])
-#     topics = {
-#         'A': Topics('ALERT', os.getenv("ALERT_TOPIC")),
-#         'O': Topics('OBSERVATION', os.getenv("OBSERVATION_TOPIC")),
-#         'H': Topics('HEARTBEAT', os.getenv("OBSERVATION_TOPIC"))
-#     }
-#     return topics[which_topic.upper()]
-#
 # # TODO: Retrive is not needed
 # def retrieve_detectors(detectors_path=os.path.dirname(__file__) + "/auxiliary/detector_properties.json"):
 #     ''' Retrieve the name-ID-location of the participating detectors.
@@ -129,43 +105,6 @@ def get_detector(detector, detectors_path=os.path.dirname(__file__) +
         except KeyError:
             print(f'{detector} is not a valid detector!')
             return detectors['TEST']
-
-# #  TODO: dump
-# def summarize(detector, topic_type_, env_path=None):
-#     """ Summarize the current configuration (DEPRECATED)
-#
-#     Parameters
-#     ----------
-#     detector : `str`
-#         name of the detector
-#     topic_type : `str`
-#         The topic that is subscribed
-#
-#     Returns
-#     -------
-#
-#     .. note:: Deprecated
-#
-#     """
-#     import hop, snews, sys
-#     set_env()
-#     broker = os.getenv("HOP_BROKER")
-#     observation_topic = os.getenv("OBSERVATION_TOPIC")
-#     heartbeat_topic = os.getenv("OBSERVATION_TOPIC")
-#     alert_topic = os.getenv("ALERT_TOPIC")
-#     topic_type = f"Publish SNEWS {topic_type_} Messages"
-#     print(
-#         '#'.center(50, '#') +
-#         f'\n# {topic_type:^46} #\n'
-#         f'#{detector.name:_^48}#\n'
-#         f'#{str(detector.id) + "-" + detector.location:_^48}#\n' +
-#         '#'.center(50, '#') +
-#         f'\nYour Python version:\n {sys.version}\n'
-#         f'Current hop-client version:{hop.__version__}\n'
-#         f'             snews version:{snews.__version__}\n\n'
-#         f'Publishing to {broker}\n'
-#         f'Observation Topic:\n==> {observation_topic}\n'
-#         f'Heartbeat Topic:\n==> {heartbeat_topic}\n\n')
 
 
 def isnotebook():
