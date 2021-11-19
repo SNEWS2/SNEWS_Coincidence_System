@@ -1,0 +1,16 @@
+# build artifacts
+build/
+.eggs/
+tests/.eggs/
+*.egg-info/
+dist/
+__pycache__/
+doc/_build/
+*.pyc
+.coverage
+*test*.ipynb
+*.env
+*.ipynb_checkpoints/*
+*.log
+/snews_cs/hop_sub.py
+/snews_cs/slack_alert.py
