@@ -53,7 +53,7 @@ extras_require = {
 }
 
 setup(
-    name='hop_comms',
+    name='snews_cs',
     version=version,
     description='An alert application for observing supernovas.',
     long_description=long_description,
