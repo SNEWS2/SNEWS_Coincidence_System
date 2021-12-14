@@ -23,7 +23,7 @@ class CoincDecider:
     def __init__(self, env_path=None, use_local=False, hype_mode_ON=True):
         snews_utils.set_env(env_path)
         self.hype_mode_ON = hype_mode_ON
-        self.storage = Storage(drop_db=False, use_local=use_local)
+        self.storage = Storage(drop_db=False, use_local_db=use_local)
         self.topic_type = "CoincidenceTierAlert"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.mgs_expiration = 300

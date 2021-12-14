@@ -17,7 +17,7 @@ class Retraction:
     def __init__(self, env_path=None, use_local=False):
         """ Constructor method
         """
-        self.storage = Storage(drop_db=False, use_local=use_local)
+        self.storage = Storage(drop_db=False, use_local_db=use_local)
         self.false_coll = self.storage.false_warnings
         self.db_coll = self.storage.coll_list
         self.pub = Publish_Alert(env_path=env_path, use_local=use_local)

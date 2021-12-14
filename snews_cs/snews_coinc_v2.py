@@ -22,7 +22,6 @@ from hop import Stream
 #  0.0-1.0 and if above c_l ignore bs signals
 
 
-
 class CoincDecider:
     """ CoincDecider class for Supernova alerts (Coincidence Tier)
         
@@ -34,10 +33,10 @@ class CoincDecider:
     
     """
 
-    def __init__(self, env_path=None, use_local=False, hype_mode_ON=True):
+    def __init__(self, env_path=None, use_local_db=False, hype_mode_ON=True):
         snews_utils.set_env(env_path)
         self.hype_mode_ON = hype_mode_ON
-        self.storage = Storage(drop_db=False, use_local=use_local)
+        self.storage = Storage(drop_db=False,use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.mgs_expiration = 300
@@ -304,8 +303,7 @@ class CoincDecider:
         ''' Main body of the class.
 
         '''
-        #  Pipeline: sub->Mongo->coinc->alert-> :)
-        #  New Pipeline: sub->coinc->(DB stash)->alert
+
         stream = Stream(persist=True)
         with stream.open(self.observation_topic, "r") as s:
             print('Nothing here, please wait...')

@@ -33,7 +33,7 @@ class Publish_Alert:
         self.alert_topic = os.getenv("ALERT_TOPIC")
         self.times = snews_utils.TimeStuff(env_path)
         self.time_str = lambda: self.times.get_snews_time()
-        self.storage = Storage(drop_db=False, use_local=use_local)
+        self.storage = Storage(drop_db=False, use_local_db=use_local)
 
     # decider should call this
     def publish(self, msg_type, data):

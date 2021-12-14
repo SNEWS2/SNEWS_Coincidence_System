@@ -31,7 +31,7 @@ class Message_Schema:
             
         """
         date_time = self.times.get_snews_time(fmt="%y/%m/%d_%H:%M:%S:%f")
-            return f'SNEWS_ALERT_{date_time}'
+        return f'SNEWS_ALERT_{date_time}'
 
     def get_alert_schema(self, msg_type, sent_time, data):
         """ Create a message schema for given topic type.
