@@ -4,12 +4,12 @@
  - Running coincidence logic in the background
  - Simulate data
  - iniate slack bot
-"""
 
-## TO-DO
-## Allow Heartbeat command to accept external detector status info
-## Allow Publish observation to accept a json file
-## Prevent unauthorized to publish alert topics? (likely not needed)
+ TODO:
+ -> Storage will change, and tools will need to be updated
+ -> Allow Heartbeat command to accept external detector status info
+ ->
+"""
 
 # https://click.palletsprojects.com/en/8.0.x/utils/
 import click
