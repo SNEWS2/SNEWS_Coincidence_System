@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+"""
+ The command line tool for
+ - Running coincidence logic in the background
+ - Simulate data
+ - iniate slack bot
+"""
 
 ## TO-DO
 ## Allow Heartbeat command to accept external detector status info
@@ -8,8 +14,7 @@
 # https://click.palletsprojects.com/en/8.0.x/utils/
 import click
 from . import __version__
-from . import hop_pub
-import sys
+import sys, os
 sys.path.append('../../SNEWS_Publishing_Tools/')
 from SNEWS_PT import snews_pt_utils
 from SNEWS_PT.snews_pub import Publisher, CoincidenceTier
@@ -17,12 +22,6 @@ from . import snews_utils
 from . import snews_coinc_v2 as snews_coinc
 from .simulate import randomly_select_detector
 
-
-def set_topic(topic, env):
-    if len(topic)>1 : topic=topic[0]
-    topic_tuple = snews_utils.set_topic_state(topic, env)
-    topic_broker = topic_tuple.topic_broker
-    return topic_broker
 
 @click.group(invoke_without_command=True)
 @click.version_option(__version__)
@@ -50,26 +49,13 @@ def run_coincidence(local, hype):
 
 
 @main.command()
-@click.argument('topic', default='A', nargs=1)
-@click.option('--broker','-b', type=str, default='None', show_default='from env variables', help='Selected kafka topic')
-@click.option('--env', default=None, show_default='test-config.env', help='environment file containing the configurations')
-@click.option('--verbose/--no-verbose', default=True, help='verbose output')
-@click.option('--local/--no-local', default=True, show_default='True', help='Whether to use local database server or take from the env file')
-def subscribe(topic, broker, env, verbose, local):
-    """ subscribe to a topic
-        If a broker
+@click.option('--test/--no-test', default=True, show_default='True', help='should the bot tag the channel')
+def run_slack_bot(test):
     """
-    click.clear()
-    sub = hop_sub.HopSubscribe(use_local=local)
-    # if no explicit broker is given, set topic with env
-    # if env is also None, this uses default env.
-    if broker == 'None': _ = set_topic(topic, env)
-    # if a broker is also given, overwrite and use the given broker
-    if broker != 'None': topic = broker    
-    # click.secho(f'You are subscribing to '+click.style(top, fg='white', bg='bright_blue', bold=True))
-    try: sub.subscribe(which_topic=topic, verbose=verbose)
-    except KeyboardInterrupt:  pass
-    finally: click.secho(f'\n{"="*30}DONE{"="*30}', fg='white', bg='green')
+    """
+    test = 1 if test else 0
+    os.system(f'python3 snews_bot.py {test}')
+
 
 @main.command()
 @click.option('--rate','-r', default=1, nargs=1, help='rate to send observation messages in sec')

@@ -3,11 +3,7 @@ Example initial dosctring
 """
 from dotenv import load_dotenv
 from datetime import datetime
-
-import os, json
-from pathlib import Path
-import sys
-
+import os
 
 def set_env(env_path=None):
     """ Set environment parameters
@@ -25,20 +21,10 @@ def set_env(env_path=None):
     load_dotenv(env)
 
 
-# this is same as os.makedirs(path, exist_ok=True) # Also, not used
-# def make_dir(path):
-#     """ make a directory in a given path """
-#     if Path(path).is_dir():
-#         pass
-#     else:
-#         os.makedirs(path)
-
-
 class TimeStuff:
     ''' SNEWS format datetime objects
 
     '''
-
     def __init__(self, env_path=None):
         set_env(env_path)
         self.snews_t_format = os.getenv("TIME_STRING_FORMAT")

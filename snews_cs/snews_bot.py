@@ -38,12 +38,19 @@ pl = \
         }
 	]
 
+import sys
+if len(sys.argv) > 1:
+    test = False
+else:
+    test = bool(sys.argv[1])
+
 def format_messages(message):
-    msg = f"\n\t\t *SUPERNOVA ALERT* <!here>\n" \
-    f">- The Alert ID: {message['_id']}\n" \
-    f">- :satellite_antenna: Detector Events {', '.join([i for i in message['detector_events']])}\n" \
-    f">- :clock8: Sent Time `{message['sent_time']}`\n"\
-    f">- :boom: Neutrino times `{'`, `'.join([i for i in message['neutrino_times']])}`"
+    tag = '<!here>' if not test else ' '
+    msg = f"\n\t\t *SUPERNOVA ALERT* {tag}\n" \
+          f">- The Alert ID: {message['_id']}\n" \
+          f">- :satellite_antenna: Detector Events {', '.join([i for i in message['detector_events']])}\n" \
+          f">- :clock8: Sent Time `{message['sent_time']}`\n"\
+          f">- :boom: Neutrino times `{'`, `'.join([i for i in message['neutrino_times']])}`"
     return msg
 
 
