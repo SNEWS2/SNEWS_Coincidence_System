@@ -3,7 +3,7 @@ Example initial dosctring
 """
 from dotenv import load_dotenv
 from datetime import datetime
-from collections import namedtuple
+
 import os, json
 from pathlib import Path
 import sys
@@ -25,12 +25,13 @@ def set_env(env_path=None):
     load_dotenv(env)
 
 
-def make_dir(path):
-    """ make a directory in a given path """
-    if Path(path).is_dir():
-        pass
-    else:
-        os.makedirs(path)
+# this is same as os.makedirs(path, exist_ok=True) # Also, not used
+# def make_dir(path):
+#     """ make a directory in a given path """
+#     if Path(path).is_dir():
+#         pass
+#     else:
+#         os.makedirs(path)
 
 
 class TimeStuff:
@@ -55,57 +56,6 @@ class TimeStuff:
     def str_to_hr(self, nu_time, fmt='%H:%M:%S:%f'):
         """ string to datetime hour object """
         return datetime.strptime(nu_time, fmt)
-
-# # TODO: Retrive is not needed
-# def retrieve_detectors(detectors_path=os.path.dirname(__file__) + "/auxiliary/detector_properties.json"):
-#     ''' Retrieve the name-ID-location of the participating detectors.
-#
-#         Parameters
-#         ----------
-#         detectors_path : `str`, optional
-#             path to detector proporties. File needs to be
-#             in JSON format
-#
-#         Returns
-#         -------
-#         None
-#
-#     '''
-#     if not os.path.isfile(detectors_path):
-#         os.system(f'python {os.path.dirname(__file__)}/auxiliary/make_detector_file.py')
-#
-#     with open(detectors_path) as json_file:
-#         detectors = json.load(json_file)
-#
-#     # make a namedtuple
-#     Detector = namedtuple("Detector", ["name", "id", "location"])
-#     for k, v in detectors.items():
-#         detectors[k] = Detector(v[0], v[1], v[2])
-#     return detectors
-
-
-def get_detector(detector, detectors_path=os.path.dirname(__file__) +
-                                          "/auxiliary/detector_properties.json"):
-    """ Return the selected detector properties
-
-    Parameters
-    ----------
-    detector : `str`
-        The name of the detector. Should be one of the predetermined detectors.
-        If the name is not in that list, returns TEST detector.
-
-    """
-    Detector = namedtuple("Detector", ["name", "id", "location"])
-    if isinstance(detector, Detector): return detector  # not needed?
-    # search for the detector name in `detectors`
-    detectors = retrieve_detectors(detectors_path)
-    if isinstance(detector, str):
-        try:
-            return detectors[detector]
-        except KeyError:
-            print(f'{detector} is not a valid detector!')
-            return detectors['TEST']
-
 
 def isnotebook():
     """ Tell if the script is running on a notebook
@@ -189,23 +139,3 @@ def data_alert(p_vals=None, detector_events=None, t_series=None, nu_times=None,
     values = [p_vals, detector_events, t_series, nu_times, ids, locs, status, machine_times]
     return dict(zip(keys, values))
 
-# Note from from Seb: :(
-## Not working properly
-# def run_parallel(nparallel=2):
-#     """ Run publish & subscribe methods in parallel
-#         Only works for notebooks. Requires ipyparallel
-#         Arguments
-#         ---------
-#         nparallel : int
-#             number of cells to run in parallel
-#     """
-#     if not isnotebook():
-#         import sys
-#         sys.exit('Cannot run processes in parallel')
-#     # enable the extension in the current environment
-#     os.system('ipcluster nbextension enable --user')
-#     os.system(f'ipcluster start -n {nparallel}')
-#     from ipyparallel import Client
-#     rc = Client()
-#     print("Run `%%px -a -t 0` magic command on the notebook!")
-#     return None
