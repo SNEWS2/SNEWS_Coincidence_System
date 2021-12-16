@@ -149,11 +149,8 @@ class CoincDecider:
         """
         if self.hype_mode_ON and n_old_unique_count < len(np.unique(self.detectors)):
             click.secho(f'{"=" * 57}', fg='bright_red')
-            alert_data = snews_utils.data_alert(detector_events=self.detector_events,
-                                                ids=self.ids,
-                                                p_vals=self.p_vals,
-                                                nu_times=self.nu_times,
-                                                machine_times=self.machine_times)
+            alert_data = snews_utils.data_cs_alert(p_vals=self.p_vals, nu_times=self.nu_times, ids=self.ids,
+                                                   machine_times=self.machine_times)
             self.alert.publish(msg_type=self.topic_type, data=alert_data)
             click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
             click.secho(f'{"=" * 57}', fg='bright_red')
@@ -313,11 +310,8 @@ class CoincDecider:
         """
         if self.coinc_broken and len(self.detector_events.keys()) > 1:
             click.secho(f'{"=" * 57}', fg='bright_red')
-            alert_data = snews_utils.data_alert(detector_events=self.detector_events,
-                                                ids=self.ids,
-                                                p_vals=self.p_vals,
-                                                nu_times=self.nu_times,
-                                                machine_times=self.machine_times)
+            alert_data = snews_utils.data_cs_alert(p_vals=self.p_vals, nu_times=self.nu_times, ids=self.ids,
+                                                   machine_times=self.machine_times)
             self.alert.publish(msg_type=self.topic_type, data=alert_data)
             click.secho('Published an Alert!!!'.upper(), bg='bright_green', fg='red')
             click.secho(f'{"=" * 57}', fg='bright_red')

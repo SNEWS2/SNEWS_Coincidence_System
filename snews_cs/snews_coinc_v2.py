@@ -36,16 +36,14 @@ class CoincDecider:
     def __init__(self, env_path=None, use_local_db=False, hype_mode_ON=True):
         snews_utils.set_env(env_path)
         self.hype_mode_ON = hype_mode_ON
-        self.storage = Storage(drop_db=False,use_local_db=use_local_db)
+        self.storage = Storage(drop_db=False, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
-        self.mgs_expiration = 300
+        self.cache_expiration = 86400
         self.coinc_cache = self.storage.coincidence_tier_cache
         self.alert = Publish_Alert(use_local=True)
         self.times = snews_utils.TimeStuff(env_path)
         self.observation_topic = os.getenv("OBSERVATION_TOPIC")
-
-        self.message_counter = 0
 
         self.n_unique_detectors = 0
 
@@ -53,11 +51,11 @@ class CoincDecider:
         self.curr_nu_time = None
         self.delta_t = None
 
-        self.cache_df = pd.DataFrame(
-            columns=['_id', 'detector_name', 'sent_time', 'machine_time', 'neutrino_time', 'p_value', 'nu_delta_t'])
+        self.cache_df = pd.DataFrame()
 
         self.coinc_broken = False
         self.cache_reset = False
+        self.initial_set = False
 
     def append_df(self, mgs):
         """ Appends cache df when there is a coincident signal
@@ -68,11 +66,12 @@ class CoincDecider:
             dictionary of the SNEWS message
 
         """
-        self.cache_df.append(mgs)
-        if self.counter == 0:
-            self.cache_df.at[self.counter, 'nu_delta_t'] = 0
-        elif self.counter != 0:
-            self.cache_df.at[self.counter, 'nu_delta_t'] = self.delta_t
+        self.cache_df = self.cache_df.append(mgs, ignore_index=True)
+        df_len = len(self.cache_df.index)
+        if df_len == 1:
+            self.cache_df.at[df_len - 1, 'nu_delta_t'] = 0
+        elif df_len > 1:
+            self.cache_df.at[df_len - 1, 'nu_delta_t'] = self.delta_t
 
     def reset_df(self):
         """ Resets coincidence arrays if coincidence is broken
@@ -80,8 +79,7 @@ class CoincDecider:
         """
         if self.coinc_broken:
             del self.cache_df
-            self.cache_df = pd.DataFrame(
-                columns=['_id', 'detector_name', 'sent_time', 'machine_time', 'neutrino_time', 'p_value', 'nu_delta_t'])
+            self.cache_df = pd.DataFrame()
         else:
             pass
 
@@ -94,12 +92,13 @@ class CoincDecider:
             dictionary of the SNEWS message
 
         """
-        if self.counter == 0:
+        if len(self.cache_df.index) == 0:
             print('Setting initial values')
             self.initial_nu_time = self.times.str_to_hr(mgs['neutrino_time'])
             self.append_df(mgs)
             self.coinc_broken = False
             self.cache_reset = False
+            self.initial_set = True
         else:
             pass
 
@@ -108,7 +107,6 @@ class CoincDecider:
 
         """
         if self.coinc_broken:
-            self.counter = 0
             self.reset_df()
             # self.storage.purge_cache(coll='CoincidenceTier')
             self.coinc_broken = False
@@ -116,28 +114,6 @@ class CoincDecider:
             self.cache_reset = True
         else:
             pass
-
-    def hype_mode_publish(self, n_old_unique_count):
-        """ This method will publish an alert every time a new detector
-            submits an observation message
-
-            Parameters
-            ----------
-            n_old_unique_count : `int`
-                the least number of detectors required for the hype publish
-        """
-        # TODO: change alert pub to SNEWS_PT like
-        # TODO: can use set()
-        if self.hype_mode_ON and n_old_unique_count < len(np.unique(self.detectors)):
-            click.secho(f'{"=" * 57}', fg='bright_red')
-            alert_data = snews_utils.data_alert(detector_events=self.detector_events,
-                                                ids=self.cache_df['_id'].to_list(),
-                                                p_vals=self.cache_df['p_value'].to_list(),
-                                                nu_times=self.self.cache_df['neutrino_time'].to_list(),
-                                                machine_times=self.self.cache_df['machine_time'].to_list())
-            self.alert.publish(msg_type=self.topic_type, data=alert_data)
-            click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
-            click.secho(f'{"=" * 57}', fg='bright_red')
 
     def check_for_coinc(self, mgs):
         """ 
@@ -153,17 +129,15 @@ class CoincDecider:
             dictionary of the SNEWS message
 
         """
-        if self.cache_reset:
-            pass
 
-        if self.counter != 0:
+        if len(self.cache_df.index) >= 1:
             self.curr_nu_time = self.times.str_to_hr(mgs['neutrino_time'])
             self.delta_t = (self.curr_nu_time - self.initial_nu_time).total_seconds()
-
+            print(self.delta_t)
             if self.delta_t <= self.coinc_threshold:
                 self.append_df(mgs)
                 click.secho('got something'.upper(), fg='white', bg='red')
-                # self.counter += 1
+
 
             # the conditional below, repeats itself
             elif self.delta_t > self.coinc_threshold:
@@ -177,54 +151,18 @@ class CoincDecider:
                 # self.storage.coincidence_tier_cache.insert_one(mgs)
                 # Start recursion
                 click.secho('Starting new stream..'.upper(), bold=True, fg='bright_white', underline=True)
-                self.counter += 1
                 self.run_coincidence()
         else:
             pass
 
-    # def waited_long_enough(self):
-    #     """
-    #     Waits for a new message, if a new message does not come
-    #     in before 120sec then coincidence is broken.
-    #     Publishing method is called and then the stream and cache are reset
-    #
-    #     """
-    #     curr_cache_len = self.storage.coincidence_tier_cache.count()
-    #     stagnant_cache = True
-    #     t0 = time.time()
-    #     click.secho('waiting..'.upper(), fg='cyan', bold=True, )
-    #     while stagnant_cache:
-    #         t1 = time.time()
-    #         delta_t = t1 - t0
-    #         self.in_cache_retract()  # first, check for false messages and clean
-    #         if self.storage.coincidence_tier_cache.count() > curr_cache_len and delta_t < self.mgs_expiration:
-    #             self.counter += 1
-    #             break
-    #         # for every 2 minutes
-    #         if np.round(delta_t) > 10 and delta_t % 120.0 == 0.0:
-    #             click.secho(
-    #                 f'Here is the current coincident list\n',
-    #                 fg='magenta', bold=True, )
-    #             click.secho(
-    #                 f'Total Number of detectors: {np.unique(self.detectors)} \n',
-    #                 fg='magenta', bold=True, )
-    #             click.secho(
-    #                 f'Total number of coincident events: {len(self.ids)}\n',
-    #                 fg='magenta', bold=True, )
-    #         elif delta_t > self.mgs_expiration:
-    #             click.secho('\nWaited too long !!'.upper(), fg='cyan', bold=True)
-    #             self.coinc_broken = True
-    #             self.pub_alert()
-    #             print('\nResetting cache')
-    #             self.reset_cache()
-    #             # Run recursion
-    #             click.secho('\n\nStarting new stream..\n\n'.upper(), bold=True, fg='bright_white', underline=True)
-    #             self.run_coincidence()
-    #         if self.storage.coincidence_tier_cache.count() == 0:
-    #             self.run_coincidence()
+    def display_table(self):
+        click.secho(
+            f'Here is the current coincident table\n',
+            fg='magenta', bold=True, )
+        print(self.cache_df.to_markdown())
 
     # Needs df update
-    def in_cache_retract(self, retrc_message):
+    def retract_from_cache(self, retrc_message):
         """ 
         loops through false warnings collection looks for 
         coincidence tier false warnings, if a warning is found,
@@ -233,22 +171,11 @@ class CoincDecider:
         from the coincidence arrays.
 
         """
-        if self.storage.empty_false_warnings():
-            # print('No false messages...yet')
-            pass
-
-        if len(self.ids) == 0:
-            # print('cache is empty')
-            pass
-
-        if retrc_message['N_retract_latest'] != 0 and (
-                retrc_message['which_tier'] == 'CoincidenceTier' or retrc_message['which_tier'] == 'ALL'):
-
+        if retrc_message['N_retract_latest'] != 0:
             drop_detector = retrc_message['detector_name']
             delete_n_many = retrc_message['N_retract_latest']
             if retrc_message['N_retract_latest'] == 'ALL':
-                delete_n_many = self.detector_events = self.cache_df['detector_name'].value_counts().to_dict()[
-                    'drop_detector']
+                delete_n_many = self.cache_df.groupby(by='detector_name').size().to_dict()[drop_detector]
                 print(f'\nDropping latest message(s) from {drop_detector}\nRetracting: {delete_n_many} messages')
             for i in self.cache_df.index:
                 if delete_n_many > 0 and self.cache_df.loc[i, 'detector_name'] == drop_detector:
@@ -263,20 +190,24 @@ class CoincDecider:
                 if self.cache_df.loc[i, '_id'] == false_id:
                     self.cache_df.drop(index=i, inplace=True)
 
-    def count_detector_events(self, detector_name, add_or_pop):
-        """ Count the events from detectors.
-            If no events exists, remove the detector from dict.
+    def hype_mode_publish(self, n_old_unique_count):
+        """ This method will publish an alert every time a new detector
+            submits an observation message
 
+            Parameters
+            ----------
+            n_old_unique_count : `int`
+                the least number of detectors required for the hype publish
         """
-        self.detector_events = self.cache_df['detector_name'].value_counts().to_dict()
 
-        for detector_name in self.detector_events.keys():
-            if detector_name in self.detector_events.keys():
-                self.detector_events[detector_name] += add_or_pop
-            else:
-                self.detector_events[detector_name] = 1
-        if self.detector_events[detector_name] == 0:
-            self.detector_events.pop(detector_name, None)
+        if self.hype_mode_ON and n_old_unique_count < self.cache_df['detector_name'].nunique():
+            click.secho(f'{"=" * 57}', fg='bright_red')
+            p_vals = self.cache_df['p_value'].to_list()
+            nu_times = self.cache_df['neutrino_time'].to_list()
+            alert_data = snews_utils.data_cs_alert(p_vals=p_vals, nu_times=nu_times)
+            self.alert.publish(msg_type=self.topic_type, data=alert_data)
+            click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
+            click.secho(f'{"=" * 57}', fg='bright_red')
 
     # TODO: df update
     def pub_alert(self):
@@ -285,13 +216,11 @@ class CoincDecider:
             given coincidence window
 
         """
-        if self.coinc_broken and len(self.detector_events.keys()) > 1:
+        if self.coinc_broken and self.cache_df['detector_name'].nunique() > 1:
             click.secho(f'{"=" * 57}', fg='bright_red')
-            alert_data = snews_utils.data_alert(detector_events=self.detector_events,
-                                                ids=self.ids,
-                                                p_vals=self.p_vals,
-                                                nu_times=self.nu_times,
-                                                machine_times=self.machine_times)
+            p_vals = self.cache_df['p_value'].to_list()
+            nu_times = self.cache_df['neutrino_time'].to_list()
+            alert_data = snews_utils.data_cs_alert(p_vals=p_vals, nu_times=nu_times, ids=None)
             self.alert.publish(msg_type=self.topic_type, data=alert_data)
             click.secho('Published an Alert!!!'.upper(), bg='bright_green', fg='red')
             click.secho(f'{"=" * 57}', fg='bright_red')
@@ -312,16 +241,22 @@ class CoincDecider:
                 if snews_message['_id'].split('_')[1] == self.topic_type:
                     click.secho(f'{"-" * 57}', fg='bright_blue')
                     click.secho('Incoming message !!!'.upper(), bold=True, fg='red')
-                    self.set_initial_signal(snews_message)
-                    self.check_for_coinc(snews_message)  # adds +1 detector
+                    if not self.initial_set:
+                        self.set_initial_signal(snews_message)
+                        continue
+                    self.check_for_coinc(snews_message)
                     self.n_unique_detectors = self.cache_df['detector_name'].nunique()
                     self.hype_mode_publish(n_old_unique_count=self.n_unique_detectors)
-                    # self.waited_long_enough()
-                    self.counter += 1
+
                 # Check for Retraction (NEEDS WORK)
                 if snews_message['_id'].split('_')[1] == 'FalseOBS':
-                    if snews_message['which_tier'] == 'CoincidenceTier':
+                    if snews_message['which_tier'] == 'CoincidenceTier' or snews_message['which_tier'] == 'ALL':
+                        self.retract_from_cache(snews_message)
+                    else:
                         pass
+
+                print(self.display_table())
+
         #
         # with self.coinc_cache.watch() as stream:
         #     # should it be: for mgs in stream ?

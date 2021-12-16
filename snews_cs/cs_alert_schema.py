@@ -3,7 +3,7 @@ from . import snews_utils
 from .snews_utils import TimeStuff
 import sys
 
-class Message_Schema:
+class CoincidenceTier_Alert:
     """ The Message scheme for the alert and observations
 
     Parameters
@@ -31,9 +31,9 @@ class Message_Schema:
             
         """
         date_time = self.times.get_snews_time(fmt="%y/%m/%d_%H:%M:%S:%f")
-        return f'SNEWS_ALERT_{date_time}'
+        return f'SNEWS_Coincidence_System_ALERT_{date_time}'
 
-    def get_alert_schema(self, msg_type, sent_time, data):
+    def get_cs_alert_schema(self, msg_type, sent_time, data):
         """ Create a message schema for given topic type.
             Internally called in hop_pub
         
@@ -56,11 +56,9 @@ class Message_Schema:
 
         """
         base = {"_id": self.id_format("ALERT", f'{msg_type}'),
-                "detector_events": data['detector_events'],
                 "ids": data['ids'],
                 "sent_time": sent_time,
                 "neutrino_times": data['neutrino_times'],
-                "machine_times": data['machine_times'],
                 }
 
         messages = {}

@@ -14,7 +14,7 @@ from datetime import datetime
 from collections import namedtuple
 from dotenv import load_dotenv
 from . import snews_utils
-from .hop_mgs_schema import Message_Schema
+from .cs_alert_schema import Alert_Schema
 from .snews_db import Storage
 
 
@@ -51,9 +51,9 @@ class Publish_Alert:
             Data dictionary received from snews_utils.data_alert()
 
         """
-        schema = Message_Schema(self.env)
+        schema = Alert_Schema(self.env)
         sent_time = self.times.get_snews_time()
-        alert_schema = schema.get_alert_schema(msg_type=msg_type, sent_time=sent_time, data=data)
+        alert_schema = schema.get_cs_alert_schema(msg_type=msg_type, sent_time=sent_time, data=data)
 
         stream = Stream(persist=False)
         with stream.open(self.alert_topic, "w") as s:

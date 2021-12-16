@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 import os
 
+
 def set_env(env_path=None):
     """ Set environment parameters
 
@@ -25,6 +26,7 @@ class TimeStuff:
     ''' SNEWS format datetime objects
 
     '''
+
     def __init__(self, env_path=None):
         set_env(env_path)
         self.snews_t_format = os.getenv("TIME_STRING_FORMAT")
@@ -43,6 +45,7 @@ class TimeStuff:
         """ string to datetime hour object """
         return datetime.strptime(nu_time, fmt)
 
+
 def isnotebook():
     """ Tell if the script is running on a notebook
 
@@ -57,6 +60,7 @@ def isnotebook():
             return False  # Other type (?)
     except NameError:
         return False  # Probably standard Python interpreter
+
 
 # TODO: needs work
 def get_logger(scriptname, logfile_name):
@@ -92,28 +96,18 @@ def display_gif():
 
 
 # TODO: Change to SNEWS_PT struc
-def data_alert(p_vals=None, detector_events=None, t_series=None, nu_times=None,
-               ids=None, locs=None, status=None, machine_times=None):
+def data_cs_alert(p_vals=None, nu_times=None,
+                  ids=None, ):
     """ Default alert message data
         
         Parameters
         ----------
         p_vals : `list`
             list with p-values of the observations involved in the alert
-        detectors_events : `dict`
-            dict of detectors and their number of events involved in the alert
-        t_series : `list`
-            list of timeseries (if applicable)
         nu_time : `list`
             list of neutrino arrival times
         ids : `list`
             list of ids of the detectors involved in the alert
-        locs : `list`
-            list of locations of the experiments involved in the alert
-        status : `list`
-            Depracted?              
-        machine_times : `list`
-            The machine times of the experiments involved in the alert
 
         Returns        
         -------
@@ -121,7 +115,6 @@ def data_alert(p_vals=None, detector_events=None, t_series=None, nu_times=None,
                 dictionary of the complete alert data
 
     """
-    keys = ['p_vals', 'detector_events', 't_series', 'neutrino_times', 'ids', 'locs', 'status', 'machine_times']
-    values = [p_vals, detector_events, t_series, nu_times, ids, locs, status, machine_times]
+    keys = ['p_vals', 'neutrino_times', 'ids']
+    values = [p_vals, nu_times, ids, ]
     return dict(zip(keys, values))
-
