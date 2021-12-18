@@ -14,7 +14,7 @@ from datetime import datetime
 from collections import namedtuple
 from dotenv import load_dotenv
 from . import snews_utils
-from .cs_alert_schema import Alert_Schema
+from .cs_alert_schema import CoincidenceTier_Alert
 from .snews_db import Storage
 
 
@@ -51,14 +51,14 @@ class Publish_Alert:
             Data dictionary received from snews_utils.data_alert()
 
         """
-        schema = Alert_Schema(self.env)
+        schema = CoincidenceTier_Alert(self.env)
         sent_time = self.times.get_snews_time()
         alert_schema = schema.get_cs_alert_schema(msg_type=msg_type, sent_time=sent_time, data=data)
 
         stream = Stream(persist=False)
         with stream.open(self.alert_topic, "w") as s:
             s.write(alert_schema)
-            self.storage.insert_mgs(alert_schema)
+            # self.storage.insert_mgs(alert_schema)
         # for k, v in alert_schema.items():
         #     print(f'{k:<20s}:{v}')
 

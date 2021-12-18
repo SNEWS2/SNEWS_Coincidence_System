@@ -133,7 +133,6 @@ class CoincDecider:
         if len(self.cache_df.index) >= 1:
             self.curr_nu_time = self.times.str_to_hr(mgs['neutrino_time'])
             self.delta_t = (self.curr_nu_time - self.initial_nu_time).total_seconds()
-            print(self.delta_t)
             if self.delta_t <= self.coinc_threshold:
                 self.append_df(mgs)
                 click.secho('got something'.upper(), fg='white', bg='red')
@@ -245,8 +244,10 @@ class CoincDecider:
                         self.set_initial_signal(snews_message)
                         continue
                     self.check_for_coinc(snews_message)
+                    if len(self.cache_df.index) > 1:
+                        self.hype_mode_publish(n_old_unique_count=self.n_unique_detectors)
                     self.n_unique_detectors = self.cache_df['detector_name'].nunique()
-                    self.hype_mode_publish(n_old_unique_count=self.n_unique_detectors)
+                    print(self.display_table())
 
                 # Check for Retraction (NEEDS WORK)
                 if snews_message['_id'].split('_')[1] == 'FalseOBS':
@@ -255,7 +256,7 @@ class CoincDecider:
                     else:
                         pass
 
-                print(self.display_table())
+
 
         #
         # with self.coinc_cache.watch() as stream:

@@ -3,6 +3,7 @@ from . import snews_utils
 from .snews_utils import TimeStuff
 import sys
 
+
 class CoincidenceTier_Alert:
     """ The Message scheme for the alert and observations
 
@@ -55,15 +56,9 @@ class CoincidenceTier_Alert:
                     message with the correct scheme 
 
         """
-        base = {"_id": self.id_format("ALERT", f'{msg_type}'),
+        return {"_id": self.id_format(),
                 "ids": data['ids'],
                 "sent_time": sent_time,
+                "p_values": data['p_vals'],
                 "neutrino_times": data['neutrino_times'],
                 }
-
-        messages = {}
-        messages['CoincidenceTierAlert'] = base.copy()
-        messages['SigTierAlert'] = base.copy()
-        messages['TimeTierAlert'] = base.copy()
-        messages['TimeTierAlert']['timing_series'] = data['t_series']
-        return messages[msg_type]
