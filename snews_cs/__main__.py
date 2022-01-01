@@ -26,13 +26,18 @@ from .simulate import randomly_select_detector
 @click.group(invoke_without_command=True)
 @click.version_option(__version__)
 @click.option('--env', type=str,
-    default='./SNEWS_PT/auxiliary/test-config.env',
+    default='/auxiliary/test-config.env',
     show_default='auxiliary/test-config.env',
     help='environment file containing the configurations')
-def main(env):
+@click.pass_context
+def main(ctx, env):
     """ User interface for snews_pt tools
     """
-    snews_utils.set_env(env)
+    base = os.path.dirname(os.path.realpath(__file__))
+    env_path = base + env
+    ctx.ensure_object(dict)
+    snews_pt_utils.set_env(env_path)
+    ctx.obj['env'] = env
 
 @main.command()
 @click.option('--local/--no-local', default=True, show_default='True', help='Whether to use local database server or take from the env file')
