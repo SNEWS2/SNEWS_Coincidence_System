@@ -58,7 +58,7 @@ def call_slack(p):
     pl[2]['text']['text'] = p
     client.chat_postMessage(channel=slack_channel_id, blocks=pl)
 
-stream = Stream(persist=True)
+stream = Stream(until_eos=False)
 with stream.open(alert_topic, "r") as s:
     for message in s:
         fmt_msg = format_messages(message)

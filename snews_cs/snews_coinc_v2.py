@@ -232,7 +232,7 @@ class CoincDecider:
 
         '''
 
-        stream = Stream(persist=True)
+        stream = Stream(until_eos=False)
         with stream.open(self.observation_topic, "r") as s:
             print('Nothing here, please wait...')
             for snews_message in s:

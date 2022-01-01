@@ -55,7 +55,7 @@ class Publish_Alert:
         sent_time = self.times.get_snews_time()
         alert_schema = schema.get_cs_alert_schema(msg_type=msg_type, sent_time=sent_time, data=data)
 
-        stream = Stream(persist=False)
+        stream = Stream(until_eos=True)
         with stream.open(self.alert_topic, "w") as s:
             s.write(alert_schema)
             # self.storage.insert_mgs(alert_schema)
@@ -71,6 +71,6 @@ class Publish_Alert:
         retracted_mgs: 'dict'
             Retracted alert message
         """
-        stream = Stream(persist=False)
+        stream = Stream(until_eos=True)
         with stream.open(self.alert_topic, "w") as s:
             s.write(retracted_mgs)
