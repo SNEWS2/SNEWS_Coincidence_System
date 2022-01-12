@@ -71,6 +71,7 @@ def simulate(ctx, rate, alert_probability):
     """
     import numpy as np
     import time
+    times = snews_pt_utils.TimeStuff()
     click.secho(f'Simulating observation messages every {rate} sec\n\
         with a {alert_probability*100}% alert probability ', fg='blue', bg='white', bold=True)
     try:
@@ -79,6 +80,7 @@ def simulate(ctx, rate, alert_probability):
             if np.random.random() < alert_probability:
                 data = snews_pt_utils.coincidence_tier_data()
                 data['detector_name'] = detector
+                data['neutrino_time'] = times.get_snews_time('%H:%M:%S:%f')
                 message = CoincidenceTier(**data).message()
                 pub = ctx.with_resource(Publisher(verbose=True))
                 pub.send(message)

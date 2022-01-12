@@ -136,6 +136,8 @@ class CoincDecider:
             if self.delta_t <= self.coinc_threshold:
                 self.append_df(mgs)
                 click.secho('got something'.upper(), fg='white', bg='red')
+                self.coinc_broken = True
+                self.pub_alert() # why it was not publishing alert?
 
 
             # the conditional below, repeats itself
