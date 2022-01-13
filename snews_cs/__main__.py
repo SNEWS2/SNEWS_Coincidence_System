@@ -19,7 +19,7 @@ sys.path.append('../../SNEWS_Publishing_Tools/')
 from SNEWS_PT import snews_pt_utils
 from SNEWS_PT.snews_pub import Publisher, CoincidenceTier
 from . import snews_utils
-from . import snews_coinc_v2 as snews_coinc
+from . import snews_coinc
 from .simulate import randomly_select_detector
 
 
