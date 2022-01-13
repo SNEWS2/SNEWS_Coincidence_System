@@ -5,7 +5,7 @@
 
 from slack_sdk import WebClient
 import os
-import snews_utils
+from . import snews_utils
 from hop import Stream
 # import hop_sub
 snews_utils.set_env()
@@ -64,3 +64,6 @@ with stream.open(alert_topic, "r") as s:
         fmt_msg = format_messages(message)
         print(fmt_msg)
         call_slack(fmt_msg)
+
+def send_table(table):
+    client.chat_postMessage(channel=slack_channel_id, text=table)

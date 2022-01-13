@@ -7,7 +7,7 @@ from .hop_pub import Publish_Alert
 import numpy as np
 import pandas as pd
 from hop import Stream
-
+# from . import snews_bot
 
 # TODO: Implement confidence level on coincidence list.
 # TODO: Archive old cache and parse it
@@ -136,8 +136,8 @@ class CoincDecider:
             if self.delta_t <= self.coinc_threshold:
                 self.append_df(mgs)
                 click.secho('got something'.upper(), fg='white', bg='red')
-                self.coinc_broken = True
-                self.pub_alert() # why it was not publishing alert?
+                # self.coinc_broken = True
+                # self.pub_alert()  # why it was not publishing alert?
 
 
             # the conditional below, repeats itself
@@ -205,12 +205,13 @@ class CoincDecider:
             click.secho(f'{"=" * 57}', fg='bright_red')
             p_vals = self.cache_df['p_value'].to_list()
             nu_times = self.cache_df['neutrino_time'].to_list()
-            alert_data = snews_utils.data_cs_alert(p_vals=p_vals, nu_times=nu_times)
+            detector_names = self.cache_df['detector_name'].to_list()
+            alert_data = snews_utils.data_cs_alert(p_vals=p_vals, nu_times=nu_times, detector_names=detector_names, )
             self.alert.publish(msg_type=self.topic_type, data=alert_data)
+            click.secho(f'{"Hype Mode: NEW COINCIDENT DETECTOR.. ".upper():^100}\n', bg='bright_green', fg='red')
             click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
             click.secho(f'{"=" * 57}', fg='bright_red')
 
-    
     def pub_alert(self):
         """ When the coincidence is broken publish alert
             if there were more than 1 detectors in the 
@@ -224,7 +225,7 @@ class CoincDecider:
             detector_names = self.cache_df['detector_name'].to_list()
             alert_data = snews_utils.data_cs_alert(p_vals=p_vals, nu_times=nu_times, detector_names=detector_names, )
             self.alert.publish(msg_type=self.topic_type, data=alert_data)
-            click.secho('Published an Alert!!!'.upper(), bg='bright_green', fg='red')
+            click.secho('Published an Alert using pub_alert!!!'.upper(), bg='bright_green', fg='red')
             click.secho(f'{"=" * 57}', fg='bright_red')
         else:
             print('Nothing to send :(')
@@ -245,12 +246,13 @@ class CoincDecider:
                     click.secho('Incoming message !!!'.upper(), bold=True, fg='red')
                     if not self.initial_set:
                         self.set_initial_signal(snews_message)
+                        print(self.display_table())
                         continue
                     self.check_for_coinc(snews_message)
                     if len(self.cache_df.index) > 1:
                         self.hype_mode_publish(n_old_unique_count=self.n_unique_detectors)
                     self.n_unique_detectors = self.cache_df['detector_name'].nunique()
-                    print(self.display_table())
+                    # print(self.display_table())
 
                 # Check for Retraction (NEEDS WORK)
                 if snews_message['_id'].split('_')[1] == 'FalseOBS':
