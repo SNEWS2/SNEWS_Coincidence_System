@@ -97,7 +97,7 @@ def display_gif():
 
 # TODO: Change to SNEWS_PT struc
 def data_cs_alert(p_vals=None, nu_times=None,
-                  ids=None, ):
+                  detector_names=None, ):
     """ Default alert message data
         
         Parameters
