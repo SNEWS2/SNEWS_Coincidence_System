@@ -57,7 +57,7 @@ class CoincidenceTier_Alert:
 
         """
         return {"_id": self.id_format(),
-                "ids": data['ids'],
+                "detector_names": data['detector_names'],
                 "sent_time": sent_time,
                 "p_values": data['p_vals'],
                 "neutrino_times": data['neutrino_times'],

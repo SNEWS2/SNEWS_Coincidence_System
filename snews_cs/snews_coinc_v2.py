@@ -210,7 +210,7 @@ class CoincDecider:
             click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
             click.secho(f'{"=" * 57}', fg='bright_red')
 
-    # TODO: df update
+    
     def pub_alert(self):
         """ When the coincidence is broken publish alert
             if there were more than 1 detectors in the 
