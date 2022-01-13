@@ -15,7 +15,7 @@ version = version_match.group(1)
 
 # requirements
 install_requires = [
-    "hop-client >= 0.3",
+    "hop-client >= 0.5.0",
     "hop-plugin-snews",
     "jsonschema",
     "numpy",
@@ -53,7 +53,7 @@ extras_require = {
 }
 
 setup(
-    name='snews_cs',
+    name='SNEWS_CS',
     version=version,
     description='An alert application for observing supernovas.',
     long_description=long_description,

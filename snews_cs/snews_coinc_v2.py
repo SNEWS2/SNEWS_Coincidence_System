@@ -257,25 +257,3 @@ class CoincDecider:
                         self.retract_from_cache(snews_message)
                     else:
                         pass
-
-
-
-        #
-        # with self.coinc_cache.watch() as stream:
-        #     # should it be: for mgs in stream ?
-        #     if self.storage.empty_coinc_cache():
-        #         # click.secho(f'{"-" * 57}', fg='bright_blue')
-        #
-        #
-        #
-        #     for doc in stream:
-        #         if 'fullDocument' not in doc.keys():
-        #             self.run_coincidence()
-        #         snews_message = doc['fullDocument']
-        #
-        #         click.secho(f'{snews_message["_id"]}'.upper(), fg='bright_green')
-        #         n_unique_detectors = len(np.unique(self.detectors))
-        #         self.set_initial_signal(snews_message)
-        #         self.check_for_coinc(snews_message)  # adds +1 detector
-        #         self.hype_mode_publish(n_old_unique_count=n_unique_detectors)
-        #         self.waited_long_enough()
