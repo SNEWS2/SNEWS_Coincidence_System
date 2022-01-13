@@ -218,10 +218,11 @@ class CoincDecider:
 
         """
         if self.coinc_broken and self.cache_df['detector_name'].nunique() > 1:
-            click.secho(f'{"=" * 57}', fg='bright_red')
+            # click.secho(f'{"=" * 57}', fg='bright_red')
             p_vals = self.cache_df['p_value'].to_list()
             nu_times = self.cache_df['neutrino_time'].to_list()
-            alert_data = snews_utils.data_cs_alert(p_vals=p_vals, nu_times=nu_times, ids=None)
+            detector_names = self.cache_df['detector_name'].to_list()
+            alert_data = snews_utils.data_cs_alert(p_vals=p_vals, nu_times=nu_times, detector_names=detector_names, )
             self.alert.publish(msg_type=self.topic_type, data=alert_data)
             click.secho('Published an Alert!!!'.upper(), bg='bright_green', fg='red')
             click.secho(f'{"=" * 57}', fg='bright_red')
