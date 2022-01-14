@@ -246,14 +246,14 @@ class CoincDecider:
                     click.secho('Incoming message !!!'.upper(), bold=True, fg='red')
                     if not self.initial_set:
                         self.set_initial_signal(snews_message)
-                        print(self.display_table())
+                        self.display_table()
                         continue
                     self.check_for_coinc(snews_message)
                     if len(self.cache_df.index) > 1:
                         self.hype_mode_publish(n_old_unique_count=self.n_unique_detectors)
                     self.n_unique_detectors = self.cache_df['detector_name'].nunique()
-                    # print(self.display_table())
-                    snews_bot.send_table()
+                    self.display_table()
+                    snews_bot.send_table(self.cache_df)
 
                 # Check for Retraction (NEEDS WORK)
                 if snews_message['_id'].split('_')[1] == 'FalseOBS':

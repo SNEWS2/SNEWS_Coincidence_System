@@ -7,6 +7,8 @@ from slack_sdk import WebClient
 import os
 from . import snews_utils
 from hop import Stream
+import tabulate
+import json
 
 # import hop_sub
 snews_utils.set_env()
@@ -71,5 +73,6 @@ def send_alert():
             call_slack(fmt_msg)
 
 
-def send_table(table):
-    client.chat_postMessage(channel=slack_channel_id, text=table)
+def send_table(df):
+    table = df.to_markdown(tablefmt="grid")
+    client.chat_postMessage(channel=slack_channel_id, text=f'```{table}```')
