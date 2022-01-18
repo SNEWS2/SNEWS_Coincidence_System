@@ -104,6 +104,9 @@ class CoincDecider:
             pass
 
     def message_out_of_order(self):
+        """ This method will reorder the cache if a coincident message arrives
+        with a nu time earlier than the set initial time.
+        """
         self.cache_df['neutrino_time'] = pd.to_datetime(self.cache_df.neutrino_time)
         self.cache_df.sort_values(by='neutrino_time', inplace=True)
         self.cache_df.reset_index(inplace=True)
@@ -116,8 +119,6 @@ class CoincDecider:
             nu_t_strs.append(nu_time.datetime.strftime('%H:%M:%S:%f'))
         self.cache_df['nu_delta_t'] = del_ts
         self.cache_df['neutrino_time'] = nu_t_strs
-        
-
 
     def reset_cache(self):
         """ Resets mongo cache and all coincidence arrays if coincidence is broken
