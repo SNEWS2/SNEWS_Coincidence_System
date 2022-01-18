@@ -9,6 +9,7 @@ import pandas as pd
 from hop import Stream
 from . import snews_bot
 
+
 # TODO: Implement confidence level on coincidence list.
 # TODO: Archive old cache and parse it
 # TODO: Archive Melih's Lonely Signals
@@ -102,6 +103,22 @@ class CoincDecider:
         else:
             pass
 
+    def message_out_of_order(self):
+        self.cache_df['neutrino_time'] = pd.to_datetime(self.cache_df.neutrino_time)
+        self.cache_df.sort_values(by='neutrino_time', inplace=True)
+        self.cache_df.reset_index(inplace=True)
+        self.initial_nu_time = self.cache_df['neutrino_time']
+        del_ts = []
+        nu_t_strs = []
+        for nu_time in self.cache_df['neutrino_time']:
+            del_t = (nu_time - self.initial_nu_time).total_seconds()
+            del_ts.append(del_t)
+            nu_t_strs.append(nu_time.datetime.strftime('%H:%M:%S:%f'))
+        self.cache_df['nu_delta_t'] = del_ts
+        self.cache_df['neutrino_time'] = nu_t_strs
+        
+
+
     def reset_cache(self):
         """ Resets mongo cache and all coincidence arrays if coincidence is broken
 
@@ -139,7 +156,11 @@ class CoincDecider:
                 # self.coinc_broken = True
                 # self.pub_alert()  # why it was not publishing alert?
 
-
+            if self.delta_t < self.coinc_threshold & self.delta_t >= -10.0:
+                click.secho('got something'.upper(), fg='white', bg='red')
+                click.secho('Current message has an earlier nu time..'.upper(), fg='white', bg='red')
+                self.append_df(mgs)
+                self.message_out_of_order()
             # the conditional below, repeats itself
             elif self.delta_t > self.coinc_threshold:
                 print('Outside SN window')
