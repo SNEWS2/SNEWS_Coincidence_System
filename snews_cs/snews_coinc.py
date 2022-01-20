@@ -110,7 +110,7 @@ class CoincDecider:
         self.cache_df['neutrino_time'] = pd.to_datetime(self.cache_df.neutrino_time)
         self.cache_df.sort_values(by='neutrino_time', inplace=True)
         self.cache_df.reset_index(inplace=True)
-        self.initial_nu_time = self.cache_df['neutrino_time']
+        self.initial_nu_time = self.cache_df['neutrino_time'][0]
         del_ts = []
         nu_t_strs = []
         for nu_time in self.cache_df['neutrino_time']:
