@@ -157,7 +157,7 @@ class CoincDecider:
                 # self.coinc_broken = True
                 # self.pub_alert()  # why it was not publishing alert?
 
-            if self.delta_t < self.coinc_threshold & self.delta_t >= -10.0:
+            if self.delta_t < 0 and self.delta_t >= -1 * self.coinc_threshold:
                 click.secho('got something'.upper(), fg='white', bg='red')
                 click.secho('Current message has an earlier nu time..'.upper(), fg='white', bg='red')
                 self.append_df(mgs)
