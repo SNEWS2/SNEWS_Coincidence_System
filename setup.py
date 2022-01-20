@@ -16,7 +16,6 @@ version = version_match.group(1)
 # requirements
 install_requires = [
     "hop-client >= 0.5.0",
-    "hop-plugin-snews",
     "jsonschema",
     "numpy",
     "pymongo",
@@ -28,7 +27,7 @@ def read_requirements():
     # with open('snews_cs/requirements.txt') as req:
     #     content = req.read()
     #     requirements = content.split('\n')
-    # return install_requires.append(requirements)
+    # return install_requires + requirements
     return install_requires
 
 

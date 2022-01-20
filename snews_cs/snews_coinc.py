@@ -34,7 +34,7 @@ class CoincDecider:
     
     """
 
-    def __init__(self, env_path=None, use_local_db=False, hype_mode_ON=True):
+    def __init__(self, env_path=None, use_local_db=False, hype_mode_ON=True, is_test=True):
         snews_utils.set_env(env_path)
         self.hype_mode_ON = hype_mode_ON
         self.storage = Storage(drop_db=False, use_local_db=use_local_db)
@@ -57,6 +57,7 @@ class CoincDecider:
         self.coinc_broken = False
         self.cache_reset = False
         self.initial_set = False
+        self.is_test = is_test
 
     def append_df(self, mgs):
         """ Appends cache df when there is a coincident signal
@@ -275,7 +276,7 @@ class CoincDecider:
                         self.hype_mode_publish(n_old_unique_count=self.n_unique_detectors)
                     self.n_unique_detectors = self.cache_df['detector_name'].nunique()
                     self.display_table()
-                    snews_bot.send_table(self.cache_df)
+                    snews_bot.send_table(self.cache_df, self.is_test)
 
                 # Check for Retraction (NEEDS WORK)
                 if snews_message['_id'].split('_')[1] == 'FalseOBS':
