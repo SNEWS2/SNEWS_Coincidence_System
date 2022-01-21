@@ -53,8 +53,8 @@ def get_simulated_message(neutrino_time, detector_name):
     message = {"_id": _id,
                "detector_name": detector_name,
                "sent_time": times.get_snews_time(),
-               "machine_time": "",
+               "machine_time": None,
                "neutrino_time" : neutrino_time,
-               "p_value" : 0
+               "p_value" : None
                }
     return message

@@ -32,11 +32,10 @@ def main(ctx, env):
 
 @main.command()
 @click.option('--local/--no-local', default=True, show_default='True', help='Whether to use local database server or take from the env file')
-@click.option('--hype/--no-hype', default=False, show_default='True', help='Whether to run in hype mode')
+@click.option('--hype/--no-hype', default=True, show_default='True', help='Whether to run in hype mode')
 def run_coincidence(local, hype):
     """ 
     """
-    click.echo('Initial implementation. Likely to change')
     # # Initiate Coincidence Decider
     coinc = snews_coinc.CoincDecider(use_local_db=local, hype_mode_ON=hype)
     try: coinc.run_coincidence()
