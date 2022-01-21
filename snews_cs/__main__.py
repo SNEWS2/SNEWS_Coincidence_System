@@ -3,24 +3,15 @@
  The command line tool for
  - Running coincidence logic in the background
  - Simulate data
- - iniate slack bot
-
- TODO:
- -> Storage will change, and tools will need to be updated
- -> Allow Heartbeat command to accept external detector status info
- ->
+ - initiate slack bot
 """
 
 # https://click.palletsprojects.com/en/8.0.x/utils/
-import click
+import click, os
 from . import __version__
-import sys, os
-sys.path.append('../../SNEWS_Publishing_Tools/')
-from SNEWS_PT import snews_pt_utils
-from SNEWS_PT.snews_pub import Publisher, CoincidenceTier
 from . import snews_utils
 from . import snews_coinc
-from .simulate import randomly_select_detector
+from .simulate import randomly_select_detector, get_simulated_message
 
 
 @click.group(invoke_without_command=True)
@@ -36,7 +27,7 @@ def main(ctx, env):
     base = os.path.dirname(os.path.realpath(__file__))
     env_path = base + env
     ctx.ensure_object(dict)
-    snews_pt_utils.set_env(env_path)
+    snews_utils.set_env(env_path)
     ctx.obj['env'] = env
 
 @main.command()
@@ -71,24 +62,34 @@ def simulate(ctx, rate, alert_probability):
     """
     import numpy as np
     import time
-    times = snews_pt_utils.TimeStuff()
+    from hop import Stream
+    times = snews_utils.TimeStuff()
+    snews_utils.set_env(ctx.obj['env'])
+    obs_broker = os.getenv("OBSERVATION_TOPIC")
+    stream = Stream(until_eos=True, auth=True)
     click.secho(f'Simulating observation messages every {rate} sec\n\
         with a {alert_probability*100}% alert probability ', fg='blue', bg='white', bold=True)
     try:
-        while True:
-            detector = randomly_select_detector()
-            if np.random.random() < alert_probability:
-                data = snews_pt_utils.coincidence_tier_data()
-                data['detector_name'] = detector
-                data['neutrino_time'] = times.get_snews_time('%H:%M:%S:%f')
-                message = CoincidenceTier(**data).message()
-                pub = ctx.with_resource(Publisher(verbose=True))
-                pub.send(message)
-            time.sleep(rate)
+        with stream.open(obs_broker, 'w') as s:
+            while True:
+                detector = randomly_select_detector()
+                if np.random.random() < alert_probability:
+                    msg = get_simulated_message(times.get_snews_time('%H:%M:%S:%f'), detector)
+                    s.write(msg)
+                    display_message(msg)
+
+                time.sleep(rate)
     except KeyboardInterrupt:
         pass
     finally:
         click.secho(f'\n{"="*30}DONE{"="*30}', fg='white', bg='green')
+
+def display_message(message):
+    click.secho(f'{"-" * 57}', fg='bright_blue')
+    if message['_id'].split('_')[1] == 'FalseOBS':
+        click.secho("It's okay, we all make mistakes".upper(), fg='magenta')
+    for k, v in message.items():
+        print(f'{k:<20s}:{v}')
 
 if __name__ == "__main__":
     main()
