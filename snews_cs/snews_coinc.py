@@ -69,11 +69,6 @@ class CoincDecider:
 
         """
         self.cache_df = self.cache_df.append(mgs, ignore_index=True)
-        df_len = len(self.cache_df.index)
-        if df_len == 1:
-            self.cache_df.at[df_len - 1, 'nu_delta_t'] = 0
-        elif df_len > 1:
-            self.cache_df.at[df_len - 1, 'nu_delta_t'] = self.delta_t
 
     def reset_df(self):
         """ Resets coincidence arrays if coincidence is broken
@@ -85,37 +80,38 @@ class CoincDecider:
         else:
             pass
 
-    def set_initial_signal(self, mgs):
+    def set_initial_signal(self, snews_message):
         """ Sets up the initial signal
 
         Parameters
         ----------
-        mgs : `dict`
+        snews_message : `dict`
             dictionary of the SNEWS message
 
         """
         if len(self.cache_df.index) == 0:
             print('Setting initial values')
-            self.initial_nu_time = self.times.str_to_hr(mgs['neutrino_time'])
-            self.append_df(mgs)
+            snews_message['nu_delta_t'] = 0
+            snews_message['coinc_num'] = [0]
+            self.append_df(snews_message)
             self.coinc_broken = False
             self.cache_reset = False
             self.initial_set = True
         else:
             pass
 
-    def message_out_of_order(self):
+    def message_out_of_order(self, message):
         """ This method will reorder the cache if a coincident message arrives
         with a nu time earlier than the set initial time.
         """
         self.cache_df['neutrino_time'] = pd.to_datetime(self.cache_df.neutrino_time)
         self.cache_df.sort_values(by='neutrino_time', inplace=True)
         self.cache_df.reset_index(inplace=True)
-        self.initial_nu_time = self.cache_df['neutrino_time'][0]
+        initial_nu_time = self.cache_df['neutrino_time'][0]
         del_ts = []
         nu_t_strs = []
         for nu_time in self.cache_df['neutrino_time']:
-            del_t = (nu_time - self.initial_nu_time).total_seconds()
+            del_t = (nu_time - initial_nu_time).total_seconds()
             del_ts.append(del_t)
             nu_t_strs.append(nu_time.datetime.strftime('%H:%M:%S:%f'))
         self.cache_df['nu_delta_t'] = del_ts
@@ -131,6 +127,62 @@ class CoincDecider:
             self.coinc_broken = False
             self.delta_t = None
             self.cache_reset = True
+        else:
+            pass
+
+    def protect_cache(self):
+        if len(self.cache_df.index) > 1:
+            return True
+
+    def checking_for_coincidence(self, message, coinc_num=0):
+        # only run if there is 1 or more messages in the df
+        if len(self.cache_df.index) >= 1:
+            message_nu_time = self.times.str_to_hr(message['neutrino_time'])
+            # If there are more multiple sub-coincidence lists begin recursion call
+            if self.cache_df['coinc_num'].nunique() > 1:
+                # loop through all the sub-coincidence lists
+                for coinc_num in self.cache_df['coinc_num']:
+                    self.checking_for_coincidence(message=message, coinc_num=coinc_num)
+            # define a temporary df by querying for the coinc_num
+            temp_df = self.cache_df.query('coinc_num==@coinc_num')
+            temp_df.reset_index(inplace=True)
+            initial_nu_time = self.times.str_to_hr(temp_df['neutrino_time'][0])
+            in_coinc = True
+            ind = temp_df.index[0]
+            initial_delta = (message_nu_time - initial_nu_time).total_seconds()
+            # if the message has an earlier nu_time than the set initial_nu_time
+            # TODO: Needs work
+            if 0 > initial_delta >= -1 * self.coinc_threshold:
+                pass
+            # loop through all the nu times
+            for nu_time in temp_df['neutrino_times']:
+                nu_time = self.times.str_to_hr(nu_time)
+                delta_t = (message_nu_time - nu_time).total_seconds()
+                # checks if coincidence holds with all message in current sub coincidence list
+                if delta_t <= self.coinc_threshold:
+                    in_coinc = True
+                # if not coincidence is broken, break the for loop
+                else:
+                    in_coinc = False
+                    break
+                ind += 1
+            if in_coinc:
+                # if the message has already been added to the df, append the other sub list number to its coinc_num
+                if message['_id'] in self.cache_df['_id']:
+                    message_ind = self.cache_df.query(f"_id=-{message['_id']}")
+                    self.cache_df['coinc_num'][message_ind].append(coinc_num)
+                # if the message has not been added to the df
+                else:
+                    message['coinc_num'] = coinc_num
+                    message['nu_delta_t'] = initial_delta
+                    self.append_df(message)
+            if not in_coinc and coinc_num == self.cache_df['coinc_num'].max():
+                message['nu_delta_t'] = 0
+                message['coinc_num'] = coinc_num + 1
+                self.append_df(message)
+
+
+
         else:
             pass
 
@@ -150,8 +202,10 @@ class CoincDecider:
         """
 
         if len(self.cache_df.index) >= 1:
-            self.curr_nu_time = self.times.str_to_hr(mgs['neutrino_time'])
-            self.delta_t = (self.curr_nu_time - self.initial_nu_time).total_seconds()
+            curr_nu_time = self.times.str_to_hr(mgs['neutrino_time'])
+            self.delta_t = (curr_nu_time - self.initial_nu_time).total_seconds()
+            if self.cache_df['coinc_num'].nunique() > 1:
+                pass
             if self.delta_t <= self.coinc_threshold:
                 self.append_df(mgs)
                 click.secho('got something'.upper(), fg='white', bg='red')
@@ -165,10 +219,15 @@ class CoincDecider:
                 self.message_out_of_order()
             # the conditional below, repeats itself
             elif self.delta_t > self.coinc_threshold:
-                print('Outside SN window')
-                print('Coincidence is broken, checking to see if an ALERT can be published...\n\n')
+                print('Signal is outside SN window')
+                if self.protect_cache():
+                    coinc_num = self.cache_df['coinc_num'].max() + 1
+                    print(f'Protecting Cache.. Creating new Coincidence List: #{coinc_num}')
+                    # TODO:Create some sort of secondary cache
+                    pass
                 self.coinc_broken = True
-                self.pub_alert()
+                # print('Coincidence is broken, checking to see if an ALERT can be published...\n\n')
+                # self.pub_alert()
                 print('Resetting the cache')
                 self.reset_cache()
                 self.set_initial_signal(mgs)
@@ -235,24 +294,38 @@ class CoincDecider:
             click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
             click.secho(f'{"=" * 57}', fg='bright_red')
 
-    def pub_alert(self):
-        """ When the coincidence is broken publish alert
-            if there were more than 1 detectors in the 
-            given coincidence window
+    # def pub_alert(self):
+    #     """ When the coincidence is broken publish alert
+    #         if there were more than 1 detectors in the
+    #         given coincidence window
+    #
+    #     """
+    #     if self.coinc_broken and self.cache_df['detector_name'].nunique() > 1:
+    #         # click.secho(f'{"=" * 57}', fg='bright_red')
+    #         p_vals = self.cache_df['p_value'].to_list()
+    #         nu_times = self.cache_df['neutrino_time'].to_list()
+    #         detector_names = self.cache_df['detector_name'].to_list()
+    #         alert_data = snews_utils.data_cs_alert(p_vals=p_vals, nu_times=nu_times, detector_names=detector_names, )
+    #         self.alert.publish(msg_type=self.topic_type, data=alert_data)
+    #         click.secho('Published an Alert using pub_alert!!!'.upper(), bg='bright_green', fg='red')
+    #         click.secho(f'{"=" * 57}', fg='bright_red')
+    #     else:
+    #         print('Nothing to send :(')
+    #         pass
 
-        """
-        if self.coinc_broken and self.cache_df['detector_name'].nunique() > 1:
-            # click.secho(f'{"=" * 57}', fg='bright_red')
-            p_vals = self.cache_df['p_value'].to_list()
-            nu_times = self.cache_df['neutrino_time'].to_list()
-            detector_names = self.cache_df['detector_name'].to_list()
-            alert_data = snews_utils.data_cs_alert(p_vals=p_vals, nu_times=nu_times, detector_names=detector_names, )
-            self.alert.publish(msg_type=self.topic_type, data=alert_data)
-            click.secho('Published an Alert using pub_alert!!!'.upper(), bg='bright_green', fg='red')
-            click.secho(f'{"=" * 57}', fg='bright_red')
-        else:
-            print('Nothing to send :(')
-            pass
+    def dump_old_messages(self, message):
+
+        current_sent_time = message['sent_time']
+        secs_in_day = 86400
+        ind = 0
+        for latest_sent_time in self.cache_df['sent_time']:
+            latest_sent_time = datetime.strptime(latest_sent_time, '%d/%m/%y %H:%M:%S')
+            current_sent_time = datetime.strptime(current_sent_time, '%d/%m/%y %H:%M:%S')
+
+            del_t = (current_sent_time - latest_sent_time).total_seconds()
+            if del_t >= secs_in_day:
+                self.cache_df.drop(ind, inplace=True)
+            ind += 1
 
     def run_coincidence(self):
         ''' Main body of the class.
@@ -272,6 +345,7 @@ class CoincDecider:
                         self.display_table()
                         continue
                     self.check_for_coinc(snews_message)
+                    self.dump_old_messages(snews_message)
                     if len(self.cache_df.index) > 1:
                         self.hype_mode_publish(n_old_unique_count=self.n_unique_detectors)
                     self.n_unique_detectors = self.cache_df['detector_name'].nunique()
