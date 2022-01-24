@@ -6,7 +6,7 @@ and trigger alerts
 import os , json
 from collections import namedtuple
 import numpy as np
-
+from . import snews_utils
 
 def _retrieve_detectors():
     ''' Retrieve the name-ID-location of the participating detectors.
@@ -43,3 +43,18 @@ def get_detector(detector):
 def randomly_select_detector():
     detectors = _retrieve_detectors()
     return np.random.choice(list(detectors.keys()))
+
+
+def get_simulated_message(neutrino_time, detector_name):
+    times = snews_utils.TimeStuff()
+    date_time = times.get_snews_time(fmt="%y/%m/%d_%H:%M:%S:%f")
+    _id =  f'(SIMULATED)-{detector_name}_CoincidenceTier_{date_time}'
+
+    message = {"_id": _id,
+               "detector_name": detector_name,
+               "sent_time": times.get_snews_time(),
+               "machine_time": None,
+               "neutrino_time" : neutrino_time,
+               "p_value" : None
+               }
+    return message

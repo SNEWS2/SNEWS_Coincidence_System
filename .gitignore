@@ -14,3 +14,4 @@ doc/_build/
 *.log
 /snews_cs/hop_sub.py
 /snews_cs/slack_alert.py
+./auxiliary/test-config.env

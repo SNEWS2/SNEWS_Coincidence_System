@@ -2,77 +2,18 @@
 # Melih Kara, Karlsruhe Institute of Technology
 # make sure you have the slackAPI installed pip install slack_sdk
 # https://api.slack.com/reference/surfaces/formatting
+# TODO: Later, use threaded options to add new incoming messages to same alert
 
 from slack_sdk import WebClient
 import os
 from . import snews_utils
-from hop import Stream
-import tabulate
-import json
 
-# import hop_sub
 snews_utils.set_env()
-
 slack_token = os.getenv('SLACK_TOKEN')
 client = WebClient(slack_token)
 broker = os.getenv("HOP_BROKER")
 alert_topic = os.getenv("ALERT_TOPIC")
 slack_channel_id = os.getenv("slack_channel_id")
-
-# pl = \
-#     [{
-#         "type": "section",
-#         "text": {
-#             "type": "mrkdwn",
-#             "text": "*SUPERNOVA ALERT*".center(50, '=')
-#         }
-#     },
-#         {
-#             "type": "image",
-#             "image_url": "https://raw.githubusercontent.com/SNEWS2/hop-SNalert-app/snews2_dev/hop_comms/auxiliary/snalert.gif",
-#             "alt_text": "snews-alert"
-#         },
-#         {
-#             "type": "section",
-#             "text": {
-#                 "type": "mrkdwn",
-#                 "text": "test"
-#             }
-#         }
-#     ]
-#
-# import sys
-#
-# # if len(sys.argv) > 1:
-# #     test = False
-# # else:
-# #     test = bool(sys.argv[1])
-#
-#
-# def format_messages(message):
-#     # tag = '<!here>' if not test else ' '
-#     tag = ''
-#     msg = f"\n\t\t *SUPERNOVA ALERT* {tag}\n" \
-#           f">- The Alert ID: {message['_id']}\n" \
-#           f">- :satellite_antenna: Detector Events {', '.join([i for i in message['detector_events']])}\n" \
-#           f">- :clock8: Sent Time `{message['sent_time']}`\n" \
-#           f">- :boom: Neutrino times `{'`, `'.join([i for i in message['neutrino_times']])}`"
-#     return msg
-#
-#
-# def call_slack(p):
-#     pl[2]['text']['text'] = p
-#     client.chat_postMessage(channel=slack_channel_id, blocks=pl)
-#
-#
-# def send_alert():
-#     stream = Stream(until_eos=False)
-#     with stream.open(alert_topic, "r") as s:
-#         for message in s:
-#             fmt_msg = format_messages(message)
-#             print(fmt_msg)
-#             call_slack(fmt_msg)
-
 
 def get_image(is_test=True):
     tag = '<!here>' if not is_test else ' '
@@ -94,7 +35,12 @@ def get_image(is_test=True):
 
 
 # it is going to be two subsequent messages
-# Later we can brush this upp
+# Later we can brush this up
+# TODO: for tables it complains
+# UserWarning: The `text` argument is missing in the request payload for a chat.postMessage call -
+# It's a best practice to always provide a `text` argument when posting a message.
+# The `text` argument is used in places where content cannot be rendered such as: system push notifications,
+# assistive technology such as screen readers, etc.
 def send_table(df, is_test=True):
     table = df.to_markdown(tablefmt="grid")
     image_block = get_image(is_test)
