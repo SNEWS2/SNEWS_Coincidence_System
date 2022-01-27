@@ -101,38 +101,49 @@ class CoincDecider:
             pass
 
     # TOD: NEEDS WORK !
-    def message_out_of_order(self, df, sub_list_num):
+    def message_out_of_order(self, sub_list_num):
         """ This method will reorder the cache if a coincident message arrives
         with a nu time earlier than the set initial time.
         """
         print('MESSAGE OUT OF ORDER')
-
-        df['neutrino_time'] = pd.to_datetime(df.neutrino_time, format='%H:%M:%S:%f')
-        df.sort_values(by='neutrino_time', inplace=True)
-        df.reset_index(inplace=True,drop=True)
-        df.to_markdown()
-        initial_nu_time = df['neutrino_time'][0]
+        bad_df = self.cache_df.query(f'sub_list_num=={sub_list_num}')
+        bad_df['neutrino_time'] = pd.to_datetime(bad_df.neutrino_time, format='%H:%M:%S:%f')
+        bad_df.sort_values(by='neutrino_time', inplace=True)
+        bad_df.reset_index(inplace=True, drop=True)
+        initial_nu_time = bad_df['neutrino_time'][0]
         del_ts = []
         nu_t_strs = []
-        for nu_time in df['neutrino_time']:
+        for nu_time in bad_df['neutrino_time']:
             del_t = (nu_time - initial_nu_time).total_seconds()
             del_ts.append(del_t)
             nu_t_str = nu_time.strftime('%H:%M:%S:%f')
             nu_t_strs.append(nu_t_str)
-        df['nu_delta_t'] = del_ts
+        bad_df['nu_delta_t'] = del_ts
         print(del_ts)
-        df['neutrino_time'] = nu_t_strs
-
-        df_chunk = self.cache_df.query(f'sub_list_num != {sub_list_num}')
-        self.cache_df = pd.concat([df, df_chunk])
+        bad_df['neutrino_time'] = nu_t_strs
+        if len(self.cache_df['sub_list_num'].unique()) > 1:
+            df_chunk = self.cache_df.query(f'sub_list_num != {sub_list_num}')
+            self.cache_df = pd.concat([bad_df, df_chunk])
+            self.check_for_in_between_messages(ini_time=initial_nu_time, sub_list_num=sub_list_num)
+        else:
+            self.cache_df = bad_df
         self.cache_df.sort_values(by='sub_list_num', inplace=True)
-        self.cache_df.reset_index(inplace=True,drop=True)
+        self.cache_df.reset_index(inplace=True, drop=True)
 
-    def check_for_in_between_messages(self, ini_time):
+    def check_for_in_between_messages(self, ini_time, sub_list_num):
+        # nu_times_strs = self.cache_df['neutrino_time']
         self.cache_df['neutrino_time'] = pd.to_datetime(self.cache_df.neutrino_time, format='%H:%M:%S:%f')
+        chunk_df = self.cache_df.query(f'sub_list_num!={sub_list_num}')
+        chunk_inds = list(chunk_df.index)
 
-    def fix_sub_list(self, messed_up_sub_list_num):
-        pass
+        for ind in chunk_inds:
+            delta_t = (chunk_df['neutrino_time'][ind] - ini_time).total_seconds()
+            if delta_t <= self.coinc_threshold:
+                sub_list_duplicate = pd.Series(chunk_df)
+                sub_list_duplicate['sub_list_num'] = sub_list_num
+                self.cache_df.append(sub_list_duplicate, ignore_index=True)
+        self.cache_df.sort_values(by=['sub_list_num', 'neutrino_time'])
+        self.cache_df.reset_index(inplace=True, drop=True)
 
     def reset_cache(self):
         """ Resets mongo cache and all coincidence arrays if coincidence is broken
@@ -168,10 +179,11 @@ class CoincDecider:
             # If there are more multiple sub-lists begin recursion call
             out_of_ord = False
             within_sub_list = False
+            print('Checking coinc')
             for sub_list_num in self.cache_df['sub_list_num'].unique():
                 # define a temporary df by querying for the sub_list_num
                 temp_df = self.cache_df.query(f'sub_list_num=={sub_list_num}')
-                temp_df.reset_index(inplace=True,drop=True)
+                temp_df.reset_index(inplace=True, drop=True)
                 initial_nu_time = self.times.str_to_hr(temp_df['neutrino_time'][0])
                 in_coinc = True
                 ind = temp_df.index[0]
@@ -184,19 +196,22 @@ class CoincDecider:
                     else:
                         out_of_ord = True
                         within_sub_list = False
-                        continue
                 if (0 > initial_delta >= -1 * self.coinc_threshold) and out_of_ord and within_sub_list:
                     message['sub_list_num'] = sub_list_num
                     message['nu_delta_t'] = ' '
                     self.append_df(message)
-                    self.message_out_of_order(temp_df, sub_list_num)
-                    pass
-                if (initial_delta < -1 * self.coinc_threshold) and out_of_ord and sub_list_num == self.cache_df[
-                    'sub_list_num'].max() and not within_sub_list:
+                    print(message['_id'])
+                    self.message_out_of_order(sub_list_num)
+                    return
+                print(f'out_of_ord {out_of_ord}')
+                print(f'within_sub_list {within_sub_list}')
+                print(f'sub_list_num {sub_list_num}')
+                if out_of_ord and sub_list_num == self.cache_df['sub_list_num'].max() and not within_sub_list:
+                    print('no coinc and early')
                     message['sub_list_num'] = sub_list_num + 1
                     message['nu_delta_t'] = 0
                     self.append_df(message)
-
+                    return
 
                 # loop through all the nu times
                 for nu_time in temp_df['neutrino_time']:
@@ -213,6 +228,7 @@ class CoincDecider:
                 if in_coinc:
                     # if the message is coincident with the entire sub list append it with the initial delta and current
                     # coinc num
+                    print('appending')
                     message['sub_list_num'] = sub_list_num
                     message['nu_delta_t'] = initial_delta
                     self.append_df(message)
@@ -227,7 +243,7 @@ class CoincDecider:
             fg='magenta', bold=True, )
         print(self.cache_df.to_markdown())
 
-    # Needs df update
+    # TODO: 27/02 update for new df format
     def retract_from_cache(self, retrc_message):
         """ 
         loops through false warnings collection looks for 
@@ -308,14 +324,12 @@ class CoincDecider:
                         self.set_initial_signal(snews_message)
                         self.display_table()
                         continue
-                    # self.check_for_coinc(snews_message)
                     self.checking_for_coincidence(snews_message)
-
                     if len(self.cache_df.index) > 1:
                         self.hype_mode_publish(n_old_unique_count=self.n_unique_detectors)
                     self.n_unique_detectors = self.cache_df['detector_name'].nunique()
                     self.display_table()
-                    snews_bot.send_table(self.cache_df, self.is_test)
+                    # snews_bot.send_table(self.cache_df, self.is_test)
 
                 # Check for Retraction (NEEDS WORK)
                 if snews_message['_id'].split('_')[1] == 'FalseOBS':
