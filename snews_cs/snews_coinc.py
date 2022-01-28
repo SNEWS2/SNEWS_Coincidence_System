@@ -59,6 +59,7 @@ class CoincDecider:
         self.initial_set = False
         self.is_test = is_test
 
+    # ------------------------------------------------------------------------------------------------------------------
     def append_df(self, mgs):
         """ Appends cache df when there is a coincident signal
 
@@ -70,6 +71,7 @@ class CoincDecider:
         """
         self.cache_df = self.cache_df.append(mgs, ignore_index=True)
 
+    # ------------------------------------------------------------------------------------------------------------------
     def reset_df(self):
         """ Resets coincidence arrays if coincidence is broken
 
@@ -80,6 +82,7 @@ class CoincDecider:
         else:
             pass
 
+    # ------------------------------------------------------------------------------------------------------------------
     def set_initial_signal(self, snews_message):
         """ Sets up the initial signal
 
@@ -100,7 +103,7 @@ class CoincDecider:
         else:
             pass
 
-    # TOD: NEEDS WORK !
+    # ------------------------------------------------------------------------------------------------------------------
     def message_out_of_order(self, sub_list_num):
         """ This method will reorder the cache if a coincident message arrives
         with a nu time earlier than the set initial time.
@@ -130,6 +133,7 @@ class CoincDecider:
         self.cache_df.sort_values(by='sub_list_num', inplace=True)
         self.cache_df.reset_index(inplace=True, drop=True)
 
+    # ------------------------------------------------------------------------------------------------------------------
     def check_for_in_between_messages(self, ini_time, sub_list_num):
         # nu_times_strs = self.cache_df['neutrino_time']
         self.cache_df['neutrino_time'] = pd.to_datetime(self.cache_df.neutrino_time, format='%H:%M:%S:%f')
@@ -145,6 +149,7 @@ class CoincDecider:
         self.cache_df.sort_values(by=['sub_list_num', 'neutrino_time'])
         self.cache_df.reset_index(inplace=True, drop=True)
 
+    # ------------------------------------------------------------------------------------------------------------------
     def reset_cache(self):
         """ Resets mongo cache and all coincidence arrays if coincidence is broken
 
@@ -157,6 +162,48 @@ class CoincDecider:
             self.cache_reset = True
         else:
             pass
+
+    # ------------------------------------------------------------------------------------------------------------------
+    def check_coinc_v2(self, message):
+        message_nu_time = self.times.str_to_hr(message['neutrino_time'])
+        self.cache_df['neutrino_time'] = pd.to_datetime(self.cache_df.neutrino_time, format='%H:%M:%S:%f')
+        max_sub_list_num = self.cache_df['sub_list_num'].max()
+        ind = 0
+        for nu_t in self.cache_df['neutrino_time']:
+            delta_t_post = (message_nu_time - nu_t).total_seconds()
+            delta_t_pre = (nu_t - message_nu_time).total_seconds()
+            curr_sub_list_num = self.cache_df['sub_list_num'][ind]
+
+            new_ini_t = False
+            # current row is an initial nu signal
+            if self.cache_df['nu_delta_t'][ind] == 0:
+                # if message arrives within it's coincidence window append it
+                if delta_t_post <= self.coinc_threshold:
+                    message['sub_list_num'] = curr_sub_list_num
+                    message['nu_delta_t'] = delta_t_post
+                    self.append_df(message)
+                # if message is outside it's coincidence window and all lists have been loop through
+                # append it, but in a new list
+                if delta_t_post > self.coinc_threshold and max_sub_list_num == curr_sub_list_num:
+                    message['sub_list_num'] = max_sub_list_num + 1
+                    message['nu_delta_t'] = 0
+                    self.append_df(message)
+                if 0 > delta_t_post >= -1 * self.coinc_threshold:
+                    new_ini_t = True
+                    message['sub_list_num'] = max_sub_list_num
+                    message['nu_delta_t'] = 0
+                    self.append_df(message)
+                    # set this message as initial
+                    # fix the sub list (reorder and write new delta_t_post)
+                    # use sep method
+            if self.cache_df['sub_list_num'][ind] != curr_sub_list_num and delta_t_pre <= self.coinc_threshold:
+                duplicate_row = self.cache_df.iloc[ind]
+                duplicate_row['nu_delta_t'] = delta_t_pre
+                duplicate_row['sub_list_num'] = curr_sub_list_num
+
+            ind += 1
+
+    # ----------------------------------------------------------------------------------------------------------------
 
     def checking_for_coincidence(self, message):
         """
@@ -237,13 +284,16 @@ class CoincDecider:
                     message['sub_list_num'] = sub_list_num + 1
                     self.append_df(message)
 
+    # ------------------------------------------------------------------------------------------------------------------
     def display_table(self):
         click.secho(
             f'Here is the current coincident table\n',
             fg='magenta', bold=True, )
-        print(self.cache_df.to_markdown())
+        for sub_list in self.cache_df['sub_list_num']:
+            print(self.cache_df.query(f'sub_list_num=={sub_list}').to_markdown())
 
-    # TODO: 27/02 update for new df format
+    # TODO: 27/02 update for new df format (REWORK)
+    # ------------------------------------------------------------------------------------------------------------------
     def retract_from_cache(self, retrc_message):
         """ 
         loops through false warnings collection looks for 
@@ -272,6 +322,8 @@ class CoincDecider:
                 if self.cache_df.loc[i, '_id'] == false_id:
                     self.cache_df.drop(index=i, inplace=True)
 
+    # TODO: NEEDS REWORK
+    # ------------------------------------------------------------------------------------------------------------------
     def hype_mode_publish(self, n_old_unique_count):
         """ This method will publish an alert every time a new detector
             submits an observation message
@@ -293,6 +345,7 @@ class CoincDecider:
             click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
             click.secho(f'{"=" * 100}', fg='bright_red')
 
+    # ------------------------------------------------------------------------------------------------------------------
     def dump_old_messages(self, message):
 
         current_sent_time = message['sent_time']
@@ -307,6 +360,7 @@ class CoincDecider:
                 self.cache_df.drop(ind, inplace=True)
             ind += 1
 
+    # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
         ''' Main body of the class.
 
@@ -324,11 +378,14 @@ class CoincDecider:
                         self.set_initial_signal(snews_message)
                         self.display_table()
                         continue
-                    self.checking_for_coincidence(snews_message)
-                    if len(self.cache_df.index) > 1:
-                        self.hype_mode_publish(n_old_unique_count=self.n_unique_detectors)
-                    self.n_unique_detectors = self.cache_df['detector_name'].nunique()
+                    self.check_coinc_v2(message=snews_message)
+                    # self.checking_for_coincidence(snews_message)
                     self.display_table()
+                    # TODO: Rework needed !!
+                    # if len(self.cache_df.index) > 1:
+                    #     self.hype_mode_publish(n_old_unique_count=self.n_unique_detectors)
+                    # self.n_unique_detectors = self.cache_df['detector_name'].nunique()
+
                     # snews_bot.send_table(self.cache_df, self.is_test)
 
                 # Check for Retraction (NEEDS WORK)
