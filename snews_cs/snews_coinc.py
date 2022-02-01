@@ -166,42 +166,67 @@ class CoincDecider:
     # ------------------------------------------------------------------------------------------------------------------
     def check_coinc_v2(self, message):
         message_nu_time = self.times.str_to_hr(message['neutrino_time'])
-        self.cache_df['neutrino_time'] = pd.to_datetime(self.cache_df.neutrino_time, format='%H:%M:%S:%f')
+        nu_times = pd.to_datetime(self.cache_df.neutrino_time, format='%H:%M:%S:%f')
         max_sub_list_num = self.cache_df['sub_list_num'].max()
         ind = 0
-        for nu_t in self.cache_df['neutrino_time']:
+        building_new_list = False
+        for nu_t in nu_times:
             delta_t_post = (message_nu_time - nu_t).total_seconds()
             delta_t_pre = (nu_t - message_nu_time).total_seconds()
             curr_sub_list_num = self.cache_df['sub_list_num'][ind]
-
-            new_ini_t = False
+            delta_t = delta_t_post
             # current row is an initial nu signal
-            if self.cache_df['nu_delta_t'][ind] == 0:
+            if self.cache_df['nu_delta_t'][ind] == 0.0:
                 # if message arrives within it's coincidence window append it
-                if delta_t_post <= self.coinc_threshold:
+                if 0 < delta_t_post <= self.coinc_threshold:
+                    print('1')
                     message['sub_list_num'] = curr_sub_list_num
                     message['nu_delta_t'] = delta_t_post
                     self.append_df(message)
+                    ind += 1
+                    continue
                 # if message is outside it's coincidence window and all lists have been loop through
                 # append it, but in a new list
                 if delta_t_post > self.coinc_threshold and max_sub_list_num == curr_sub_list_num:
+                    print('2')
                     message['sub_list_num'] = max_sub_list_num + 1
                     message['nu_delta_t'] = 0
                     self.append_df(message)
+                    building_new_list = True
+                    ind += 1
+                    continue
                 if 0 > delta_t_post >= -1 * self.coinc_threshold:
-                    new_ini_t = True
-                    message['sub_list_num'] = max_sub_list_num
+                    print('3')
+                    curr_sub_list_num = max_sub_list_num + 1
+                    message['sub_list_num'] = curr_sub_list_num
                     message['nu_delta_t'] = 0
                     self.append_df(message)
+                    building_new_list = True
+                    ind += 1
+                    continue
                     # set this message as initial
                     # fix the sub list (reorder and write new delta_t_post)
                     # use sep method
-            if self.cache_df['sub_list_num'][ind] != curr_sub_list_num and delta_t_pre <= self.coinc_threshold:
+                if delta_t_post > -1 * self.coinc_threshold:
+                    print('4')
+                    curr_sub_list_num = max_sub_list_num + 1
+                    message['sub_list_num'] = curr_sub_list_num
+                    message['nu_delta_t'] = 0
+                    self.append_df(message)
+                    building_new_list = True
+                    ind += 1
+                    continue
+            if building_new_list:
+                print('4')
+                if delta_t_pre <= -1*self.coinc_threshold or delta_t_post > self.coinc_threshold:
+                    pass
+                
                 duplicate_row = self.cache_df.iloc[ind]
                 duplicate_row['nu_delta_t'] = delta_t_pre
                 duplicate_row['sub_list_num'] = curr_sub_list_num
-
-            ind += 1
+                self.cache_df.append(duplicate_row, ignore_index=True)
+                ind += 1
+                continue
 
     # ----------------------------------------------------------------------------------------------------------------
 
@@ -289,7 +314,7 @@ class CoincDecider:
         click.secho(
             f'Here is the current coincident table\n',
             fg='magenta', bold=True, )
-        for sub_list in self.cache_df['sub_list_num']:
+        for sub_list in self.cache_df['sub_list_num'].unique():
             print(self.cache_df.query(f'sub_list_num=={sub_list}').to_markdown())
 
     # TODO: 27/02 update for new df format (REWORK)
