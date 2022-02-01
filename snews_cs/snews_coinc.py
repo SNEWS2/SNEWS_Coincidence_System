@@ -31,7 +31,13 @@ class CoincDecider:
     env_path : `str`, optional
         user can give the path a specific SNEWS env file, 
         defaults to None ./auxiliary/test-config.env)
-    
+    use_local_db : `bool`, default is False
+        Whether to use local database for testing
+    hype_mode_ON : `bool`, default is True
+        When True submits after the first coincident without waiting
+    is_test : `bool`, default is True
+        If test, append test field on messages, do not tag channel in slack
+
     """
 
     def __init__(self, env_path=None, use_local_db=False, hype_mode_ON=True, is_test=True):
@@ -40,9 +46,9 @@ class CoincDecider:
         self.storage = Storage(drop_db=False, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
-        self.cache_expiration = 86400
+        self.cache_expiration = 86400 # 24 hr
         self.coinc_cache = self.storage.coincidence_tier_cache
-        self.alert = Publish_Alert(use_local=True)
+        self.alert = Publish_Alert(use_local=True) # @Sebastian should this be use_local=use_local_db
         self.times = snews_utils.TimeStuff(env_path)
         self.observation_topic = os.getenv("OBSERVATION_TOPIC")
 
@@ -107,6 +113,7 @@ class CoincDecider:
     def message_out_of_order(self, sub_list_num):
         """ This method will reorder the cache if a coincident message arrives
         with a nu time earlier than the set initial time.
+
         """
         print('MESSAGE OUT OF ORDER')
         bad_df = self.cache_df.query(f'sub_list_num=={sub_list_num}')
@@ -166,7 +173,7 @@ class CoincDecider:
     # ------------------------------------------------------------------------------------------------------------------
     def check_coinc_v2(self, message):
         message_nu_time = self.times.str_to_hr(message['neutrino_time'])
-        nu_times = pd.to_datetime(self.cache_df.neutrino_time, format='%H:%M:%S:%f')
+        nu_times = pd.to_datetime(self.cache_df.neutrino_time, format='%H:%M:%S:%f') # all nu_times array
         max_sub_list_num = self.cache_df['sub_list_num'].max()
         ind = 0
         building_new_list = False
@@ -174,7 +181,7 @@ class CoincDecider:
             delta_t_post = (message_nu_time - nu_t).total_seconds()
             delta_t_pre = (nu_t - message_nu_time).total_seconds()
             curr_sub_list_num = self.cache_df['sub_list_num'][ind]
-            delta_t = delta_t_post
+            # delta_t = delta_t_post
             # current row is an initial nu signal
             if self.cache_df['nu_delta_t'][ind] == 0.0:
                 # if message arrives within it's coincidence window append it
@@ -195,6 +202,11 @@ class CoincDecider:
                     building_new_list = True
                     ind += 1
                     continue
+                # this condition does exactly the same as above
+                # doesn't 0 > delta_t_post >= -1 * self.coinc_threshold means delta_t_pre > self.coinc_threshold
+                # so I think you can merge the two as
+                # isin_window =(delta_t_post > self.coinc_threshold) or (delta_t_pre > self.coinc_threshold)
+                # if isin_window and max_sub_list_num == curr_sub_list_num:
                 if 0 > delta_t_post >= -1 * self.coinc_threshold:
                     print('3')
                     curr_sub_list_num = max_sub_list_num + 1
@@ -401,7 +413,7 @@ class CoincDecider:
                     click.secho('Incoming message !!!'.upper(), bold=True, fg='red')
                     if not self.initial_set:
                         self.set_initial_signal(snews_message)
-                        self.display_table()
+                        self.display_table() # this displays the first message alone without coincidence right?
                         continue
                     self.check_coinc_v2(message=snews_message)
                     # self.checking_for_coincidence(snews_message)
