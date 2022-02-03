@@ -60,16 +60,23 @@ class CoincDecider:
         self.is_test = is_test
 
     # ------------------------------------------------------------------------------------------------------------------
-    def append_df(self, mgs):
+    def append_message_to_df(self, message, delta_t, sub_list_num):
         """ Appends cache df when there is a coincident signal
 
         Parameters
         ----------
-        mgs : `dict`
+        message : `dict`
             dictionary of the SNEWS message
+        delta_t : 'float'
+            value for time difference between message nu time and initial (0 if message set initial)
+        sub_list_num : 'int'
+            numeric label for coincidence sub list
 
         """
-        self.cache_df = self.cache_df.append(mgs, ignore_index=True)
+
+        message['sub_list_num'] = sub_list_num
+        message['nu_delta_t'] = delta_t
+        self.cache_df = self.cache_df.append(message, ignore_index=True)
 
     # ------------------------------------------------------------------------------------------------------------------
     def reset_df(self):
@@ -82,72 +89,6 @@ class CoincDecider:
         else:
             pass
 
-    # ------------------------------------------------------------------------------------------------------------------
-    def set_initial_signal(self, snews_message):
-        """ Sets up the initial signal
-
-        Parameters
-        ----------
-        snews_message : `dict`
-            dictionary of the SNEWS message
-
-        """
-        if len(self.cache_df.index) == 0:
-            print('Setting initial values')
-            snews_message['nu_delta_t'] = 0
-            snews_message['sub_list_num'] = 0
-            self.append_df(snews_message)
-            self.coinc_broken = False
-            self.cache_reset = False
-            self.initial_set = True
-        else:
-            pass
-
-    # ------------------------------------------------------------------------------------------------------------------
-    def message_out_of_order(self, sub_list_num):
-        """ This method will reorder the cache if a coincident message arrives
-        with a nu time earlier than the set initial time.
-        """
-        print('MESSAGE OUT OF ORDER')
-        bad_df = self.cache_df.query(f'sub_list_num=={sub_list_num}')
-        bad_df['neutrino_time'] = pd.to_datetime(bad_df.neutrino_time, format='%H:%M:%S:%f')
-        bad_df.sort_values(by='neutrino_time', inplace=True)
-        bad_df.reset_index(inplace=True, drop=True)
-        initial_nu_time = bad_df['neutrino_time'][0]
-        del_ts = []
-        nu_t_strs = []
-        for nu_time in bad_df['neutrino_time']:
-            del_t = (nu_time - initial_nu_time).total_seconds()
-            del_ts.append(del_t)
-            nu_t_str = nu_time.strftime('%H:%M:%S:%f')
-            nu_t_strs.append(nu_t_str)
-        bad_df['nu_delta_t'] = del_ts
-        print(del_ts)
-        bad_df['neutrino_time'] = nu_t_strs
-        if len(self.cache_df['sub_list_num'].unique()) > 1:
-            df_chunk = self.cache_df.query(f'sub_list_num != {sub_list_num}')
-            self.cache_df = pd.concat([bad_df, df_chunk])
-            self.check_for_in_between_messages(ini_time=initial_nu_time, sub_list_num=sub_list_num)
-        else:
-            self.cache_df = bad_df
-        self.cache_df.sort_values(by='sub_list_num', inplace=True)
-        self.cache_df.reset_index(inplace=True, drop=True)
-
-    # ------------------------------------------------------------------------------------------------------------------
-    def check_for_in_between_messages(self, ini_time, sub_list_num):
-        # nu_times_strs = self.cache_df['neutrino_time']
-        self.cache_df['neutrino_time'] = pd.to_datetime(self.cache_df.neutrino_time, format='%H:%M:%S:%f')
-        chunk_df = self.cache_df.query(f'sub_list_num!={sub_list_num}')
-        chunk_inds = list(chunk_df.index)
-
-        for ind in chunk_inds:
-            delta_t = (chunk_df['neutrino_time'][ind] - ini_time).total_seconds()
-            if delta_t <= self.coinc_threshold:
-                sub_list_duplicate = pd.Series(chunk_df)
-                sub_list_duplicate['sub_list_num'] = sub_list_num
-                self.cache_df.append(sub_list_duplicate, ignore_index=True)
-        self.cache_df.sort_values(by=['sub_list_num', 'neutrino_time'])
-        self.cache_df.reset_index(inplace=True, drop=True)
 
     # ------------------------------------------------------------------------------------------------------------------
     def reset_cache(self):
@@ -164,158 +105,78 @@ class CoincDecider:
             pass
 
     # ------------------------------------------------------------------------------------------------------------------
-    def check_coinc_v2(self, message):
+    def copy_row_and_append(self, ind, delta_t, sub_list_num):
+        duplicate_row = self.cache_df.iloc[ind].copy(deep=False)
+        duplicate_row['nu_delta_t'] = np.abs(delta_t)
+        duplicate_row['sub_list_num'] = sub_list_num
+        return self.cache_df.append(duplicate_row, ignore_index=True)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    def check_coincidence(self, message):
         message_nu_time = self.times.str_to_hr(message['neutrino_time'])
-        nu_times = pd.to_datetime(self.cache_df.neutrino_time, format='%H:%M:%S:%f')
         max_sub_list_num = self.cache_df['sub_list_num'].max()
-        ind = 0
+        nu_times = list(pd.to_datetime(self.cache_df.neutrino_time, format='%H:%M:%S:%f'))
+        index = list(self.cache_df.index)
         building_new_list = False
-        for nu_t in nu_times:
-            delta_t_post = (message_nu_time - nu_t).total_seconds()
-            delta_t_pre = (nu_t - message_nu_time).total_seconds()
+        new_sub_list_num = None
+        for ind, nu_t in zip(index, nu_times):
             curr_sub_list_num = self.cache_df['sub_list_num'][ind]
-            delta_t = delta_t_post
-            # current row is an initial nu signal
-            if self.cache_df['nu_delta_t'][ind] == 0.0:
-                # if message arrives within it's coincidence window append it
-                if 0 < delta_t_post <= self.coinc_threshold:
-                    print('1')
-                    message['sub_list_num'] = curr_sub_list_num
-                    message['nu_delta_t'] = delta_t_post
-                    self.append_df(message)
-                    ind += 1
-                    continue
-                # if message is outside it's coincidence window and all lists have been loop through
-                # append it, but in a new list
-                if delta_t_post > self.coinc_threshold and max_sub_list_num == curr_sub_list_num:
-                    print('2')
-                    message['sub_list_num'] = max_sub_list_num + 1
-                    message['nu_delta_t'] = 0
-                    self.append_df(message)
+            delta_t = (message_nu_time - nu_t).total_seconds()
+            print(f'current delta {delta_t}')
+            # check if current iteration is a initial nu time of a sub list
+            if self.cache_df['nu_delta_t'][ind] == 0.0 and not building_new_list:
+                print(f'Checking this sub list {curr_sub_list_num} ini {self.cache_df["detector_name"][ind]}')
+                # WITHIN coincidence
+                # message nu time is recorded at a later or earlier time than the sub list's initial nu time
+                if 0 < np.abs(delta_t) <= self.coinc_threshold:
+                    # if earlier make a new sub_list, append the message and current ini row to the new sub list.
+                    if delta_t < 0:
+                        print('In coincidence with current ini but early')
+                        new_sub_list_num = max_sub_list_num + 1
+                        self.append_message_to_df(message, 0, new_sub_list_num)
+                        self.cache_df = self.copy_row_and_append(ind=ind, delta_t=delta_t,
+                                                                 sub_list_num=new_sub_list_num)
+                        building_new_list = True
+                        continue
+                    # if later append message to current sub list
+                    else:
+                        print('In coincidence with current list')
+                        self.append_message_to_df(message, delta_t, curr_sub_list_num)
+                        continue
+                # OUTSIDE coincidence
+                # message nu time is recorded at a later or earlier time than the sub list's initial nu time
+                # append message to a new sub list only if the loop has gone through all sub lists.
+                elif (np.abs(delta_t) > self.coinc_threshold) and max_sub_list_num == curr_sub_list_num:
+                    print('Building new list: late nu time out of coincidence')
+                    new_sub_list_num = max_sub_list_num + 1
+                    self.append_message_to_df(message, 0, new_sub_list_num)
                     building_new_list = True
-                    ind += 1
                     continue
-                if 0 > delta_t_post >= -1 * self.coinc_threshold:
-                    print('3')
-                    curr_sub_list_num = max_sub_list_num + 1
-                    message['sub_list_num'] = curr_sub_list_num
-                    message['nu_delta_t'] = 0
-                    self.append_df(message)
-                    building_new_list = True
-                    ind += 1
+            # if building a new list loop through the other messages, check if they are coincident
+            if building_new_list and np.abs(delta_t) <= self.coinc_threshold:
+                print('appending to new list')
+                # if detector already in list skip it
+                if self.cache_df['detector_name'][ind] in list(self.cache_df.query(f'sub_list_num=={new_sub_list_num}')[
+                                                                   'detector_name']):
+                    print('This detector is already in the list, skipping')
                     continue
-                    # set this message as initial
-                    # fix the sub list (reorder and write new delta_t_post)
-                    # use sep method
-                if delta_t_post > -1 * self.coinc_threshold:
-                    print('4')
-                    curr_sub_list_num = max_sub_list_num + 1
-                    message['sub_list_num'] = curr_sub_list_num
-                    message['nu_delta_t'] = 0
-                    self.append_df(message)
-                    building_new_list = True
-                    ind += 1
+                # duplicate the row and copy it to the new sub list
+                else:
+                    print('Adding detector to new sub list.')
+                    self.cache_df = self.copy_row_and_append(ind=ind, delta_t=delta_t,
+                                                             sub_list_num=new_sub_list_num)
                     continue
-            if building_new_list:
-                print('4')
-                if delta_t_pre <= -1*self.coinc_threshold or delta_t_post > self.coinc_threshold:
-                    pass
-                
-                duplicate_row = self.cache_df.iloc[ind]
-                duplicate_row['nu_delta_t'] = delta_t_pre
-                duplicate_row['sub_list_num'] = curr_sub_list_num
-                self.cache_df.append(duplicate_row, ignore_index=True)
-                ind += 1
-                continue
+            print(ind)
 
     # ----------------------------------------------------------------------------------------------------------------
 
-    def checking_for_coincidence(self, message):
-        """
-        Checks new message in the stream,
-        if message is within SN time window (10sec)
-        it is added to the coincidence list, if not
-        the message is added to separate coincidence list.
-        An alter will be published if a new coincident detector is added to the list.
-
-        Parameters
-        ----------
-        message : `dict`
-            dictionary of the SNEWS message
-
-        """
-
-        # only run if there is 1 or more messages in the df
-        if len(self.cache_df.index) >= 1:
-            message_nu_time = self.times.str_to_hr(message['neutrino_time'])
-            # If there are more multiple sub-lists begin recursion call
-            out_of_ord = False
-            within_sub_list = False
-            print('Checking coinc')
-            for sub_list_num in self.cache_df['sub_list_num'].unique():
-                # define a temporary df by querying for the sub_list_num
-                temp_df = self.cache_df.query(f'sub_list_num=={sub_list_num}')
-                temp_df.reset_index(inplace=True, drop=True)
-                initial_nu_time = self.times.str_to_hr(temp_df['neutrino_time'][0])
-                in_coinc = True
-                ind = temp_df.index[0]
-                initial_delta = (message_nu_time - initial_nu_time).total_seconds()
-                # if the message has an earlier nu_time than the set initial_nu_time
-                if 0 > initial_delta:
-                    if initial_delta >= -1 * self.coinc_threshold:
-                        out_of_ord = True
-                        within_sub_list = True
-                    else:
-                        out_of_ord = True
-                        within_sub_list = False
-                if (0 > initial_delta >= -1 * self.coinc_threshold) and out_of_ord and within_sub_list:
-                    message['sub_list_num'] = sub_list_num
-                    message['nu_delta_t'] = ' '
-                    self.append_df(message)
-                    print(message['_id'])
-                    self.message_out_of_order(sub_list_num)
-                    return
-                print(f'out_of_ord {out_of_ord}')
-                print(f'within_sub_list {within_sub_list}')
-                print(f'sub_list_num {sub_list_num}')
-                if out_of_ord and sub_list_num == self.cache_df['sub_list_num'].max() and not within_sub_list:
-                    print('no coinc and early')
-                    message['sub_list_num'] = sub_list_num + 1
-                    message['nu_delta_t'] = 0
-                    self.append_df(message)
-                    return
-
-                # loop through all the nu times
-                for nu_time in temp_df['neutrino_time']:
-                    nu_time = self.times.str_to_hr(nu_time)
-                    delta_t = (message_nu_time - nu_time).total_seconds()
-                    # checks if coincidence holds with all message in current sub coincidence list
-                    if delta_t <= self.coinc_threshold:
-                        in_coinc = True
-                    # if not coincidence is broken, break the for loop
-                    else:
-                        in_coinc = False
-                        break
-                    ind += 1
-                if in_coinc:
-                    # if the message is coincident with the entire sub list append it with the initial delta and current
-                    # coinc num
-                    print('appending')
-                    message['sub_list_num'] = sub_list_num
-                    message['nu_delta_t'] = initial_delta
-                    self.append_df(message)
-                if not in_coinc and sub_list_num == self.cache_df['sub_list_num'].max():
-                    message['nu_delta_t'] = 0
-                    message['sub_list_num'] = sub_list_num + 1
-                    self.append_df(message)
-
-    # ------------------------------------------------------------------------------------------------------------------
     def display_table(self):
         click.secho(
             f'Here is the current coincident table\n',
             fg='magenta', bold=True, )
         for sub_list in self.cache_df['sub_list_num'].unique():
             print(self.cache_df.query(f'sub_list_num=={sub_list}').to_markdown())
+            print('='*100)
 
     # TODO: 27/02 update for new df format (REWORK)
     # ------------------------------------------------------------------------------------------------------------------
@@ -386,6 +247,11 @@ class CoincDecider:
             ind += 1
 
     # ------------------------------------------------------------------------------------------------------------------
+    def debloater(self):
+        for sub_list in self.cache_df['sub_list_num'].unique():
+            pass
+
+    # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
         ''' Main body of the class.
 
@@ -400,19 +266,19 @@ class CoincDecider:
                     click.secho(f'{"-" * 57}', fg='bright_blue')
                     click.secho('Incoming message !!!'.upper(), bold=True, fg='red')
                     if not self.initial_set:
-                        self.set_initial_signal(snews_message)
+                        self.append_message_to_df(snews_message, delta_t=0, sub_list_num=0)
                         self.display_table()
+                        self.initial_set = True
                         continue
-                    self.check_coinc_v2(message=snews_message)
-                    # self.checking_for_coincidence(snews_message)
-                    self.display_table()
+                    self.check_coincidence(message=snews_message)
+
                     # TODO: Rework needed !!
                     # if len(self.cache_df.index) > 1:
                     #     self.hype_mode_publish(n_old_unique_count=self.n_unique_detectors)
                     # self.n_unique_detectors = self.cache_df['detector_name'].nunique()
 
                     # snews_bot.send_table(self.cache_df, self.is_test)
-
+                    self.display_table()
                 # Check for Retraction (NEEDS WORK)
                 if snews_message['_id'].split('_')[1] == 'FalseOBS':
                     if snews_message['which_tier'] == 'CoincidenceTier' or snews_message['which_tier'] == 'ALL':
