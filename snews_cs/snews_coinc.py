@@ -149,7 +149,7 @@ class CoincDecider:
             fg='magenta', bold=True, )
         for sub_list in self.cache_df['sub_list_num'].unique():
             print(self.cache_df.query(f'sub_list_num=={sub_list}').to_markdown())
-            print('=' * 200)
+            print('=' * 168)
 
     # TODO: 27/02 update for new df format (REWORK)
     # ------------------------------------------------------------------------------------------------------------------
@@ -234,8 +234,9 @@ class CoincDecider:
             for snews_message in s:
                 # Check for Coincidence
                 if snews_message['_id'].split('_')[1] == self.topic_type:
+                    _str = '!!! This is a Test !!!' if 'TEST' in snews_message['_id'] else '!!!'
                     click.secho(f'{"-" * 57}', fg='bright_blue')
-                    click.secho('Incoming message !!!'.upper(), bold=True, fg='red')
+                    click.secho(f'Incoming message {_str}'.upper(), bold=True, fg='red')
                     self.check_coincidence_melih_seb_edition(message=snews_message)
 
                 # Check for Retraction (NEEDS WORK)
