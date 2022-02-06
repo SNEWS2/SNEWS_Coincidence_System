@@ -91,5 +91,11 @@ def display_message(message):
     for k, v in message.items():
         print(f'{k:<20s}:{v}')
 
+@main.command()
+def run_scenarios():
+    """
+    """
+    os.system(f'python3 ./test/test_scenarios.py')
+
 if __name__ == "__main__":
     main()
