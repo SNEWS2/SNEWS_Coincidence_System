@@ -129,7 +129,7 @@ class CoincDecider:
 
         # after checking all the sublist, if the message not in coincidence with any, only then make a new list
         if not self.in_coincidence:
-            new_sub_list = max(subs_list_nums, default=-1) + 1
+            new_sub_list = max(subs_list_nums, default=-1) + 1 #-1 is there for the very first msg when sub_list_nums empty
             self.append_message_to_df(message, 0, new_sub_list)
 
             # check if any other non-initial signal might be in coincidence
