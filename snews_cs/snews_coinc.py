@@ -89,15 +89,22 @@ class CoincDecider:
         p_dt = delta_ts[delta_ts >= 0]
         n_dt = delta_ts[delta_ts < 0]
         if any(-n_dt <= self.coinc_threshold):
-            self.in_coincidence = True
-            return 'EARLY_COINCIDENT', np.insert(np.sort(np.abs(delta_ts)), 0, 0)
+            if len(n_dt) != 1:
+                return 'NOT_COINCIDENT',
+            else:
+                # only if there was a single message in that sublist re-order that sublist
+                # otherwise, keep it as is, and make a new one with the earlier message being first
+                self.in_coincidence = True
+                return 'EARLY_COINCIDENT', np.insert(np.sort(np.abs(delta_ts)), 0, 0)
         # if not check if current message is in the list
         elif any(p_dt <= self.coinc_threshold):
             if p_dt[0] <= self.coinc_threshold:
                 self.in_coincidence = True
                 return 'COINCIDENT', delta_ts[0]
             else:
+                # self.in_coincidence = False
                 print('It is coincident but we make a new sublist as it is beyond 10s from initial msg in this list')
+                print(f' Looping over {sub_list_num} for detector: {message["detector_name"]}')
                 return 'NOT_COINCIDENT',
         elif not any(np.abs(delta_ts) <= self.coinc_threshold):
             # this condition is a must!
