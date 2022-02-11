@@ -8,6 +8,7 @@ import pandas as pd
 from hop import Stream
 from . import snews_bot
 
+
 class CoincDecider:
     """ CoincDecider class for Supernova alerts (Coincidence Tier)
         
@@ -33,7 +34,7 @@ class CoincDecider:
         self.column_names = ["_id", "detector_name", "sent_time", "machine_time", "neutrino_time",
                              "p_value", "meta", "sub_list_num", "nu_delta_t"]
 
-        self.cache_df = pd.DataFrame(columns = self.column_names)
+        self.cache_df = pd.DataFrame(columns=self.column_names)
 
         self.is_test = is_test
 
@@ -62,7 +63,7 @@ class CoincDecider:
 
         """
         del self.cache_df
-        self.cache_df = pd.DataFrame(columns = self.column_names)
+        self.cache_df = pd.DataFrame(columns=self.column_names)
         self.initial_set = False
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -83,7 +84,7 @@ class CoincDecider:
         # compare the current nu time with all other on the sublist
         message_nu_time = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
         nu_times = pd.to_datetime(sub_list.neutrino_time, format='%y/%m/%d %H:%M:%S:%f')
-        delta_ts = ((message_nu_time - nu_times).dt.total_seconds()).values # numpy array
+        delta_ts = ((message_nu_time - nu_times).dt.total_seconds()).values  # numpy array
 
         # if any delta t is negative, current message has to be made initial, before!
         p_dt = delta_ts[delta_ts >= 0]
@@ -111,7 +112,20 @@ class CoincDecider:
             # otherwise it duplicates because it can satisfy two conditions at the same time
             return 'NOT_COINCIDENT',
         else:
-            raise "Something weird happenning"
+            raise "Something weird happening"
+
+    # ------------------------------------------------------------------------------------------------------------------
+    def _dump_redundant_list(self):
+        for sub_list in list(self.cache_df['sub_list_num'].unique()):
+            curr_ids = list(self.cache_df.query(f'sub_list_num=={sub_list}')['_id'])
+            for other_sub_list in list(self.cache_df['sub_list_num'].unique()):
+                other_ids = list(self.cache_df.query(f'sub_list_num=={other_sub_list}')['_id'])
+                if sub_list == other_sub_list:
+                    continue
+                elif len(curr_ids) < len(other_ids) and set(curr_ids).issubset(other_ids):
+                    curr_index = list(self.cache_df.query(f'sub_list_num=={sub_list}').index)
+                    self.cache_df = self.cache_df.drop(curr_index)
+                    self.cache_df.reset_index(drop=True)
 
     # ------------------------------------------------------------------------------------------------------------------
     def check_coincidence_melih_seb_edition(self, message):
@@ -119,19 +133,22 @@ class CoincDecider:
         subs_list_nums = list(self.cache_df['sub_list_num'].unique())
         self.in_coincidence = False
         in_list_already = False
+        already_made_new_nc_list = False
         for sub_list in subs_list_nums:
             coinc_with_list = self.coincident_with_whole_list(message, sub_list)
             if coinc_with_list[0] == 'ALREADY_IN_LIST':
+                print('ALREADY_IN_LIST')
                 in_list_already = True
                 continue
             elif coinc_with_list[0] == 'COINCIDENT':
+                print('COINCIDENT')
                 delta_t = coinc_with_list[1]
                 self.append_message_to_df(message, delta_t, sub_list)
 
             elif coinc_with_list[0] == 'EARLY_COINCIDENT':
                 self.append_message_to_df(message, 0, sub_list)
                 _sub_list = self.cache_df.query(f'sub_list_num=={sub_list}')
-                _sub_list = _sub_list.sort_values(by='neutrino_time') # first sort! dt's are sorted too
+                _sub_list = _sub_list.sort_values(by='neutrino_time')  # first sort! dt's are sorted too
                 # re-assign dt making the early message first
                 _sub_list['nu_delta_t'] = coinc_with_list[1]
                 self.cache_df = pd.concat([_sub_list, self.cache_df.query(f'sub_list_num!={sub_list}')],
@@ -140,7 +157,8 @@ class CoincDecider:
 
         # after checking all the sublist, if the message not in coincidence with any, only then make a new list
         if not self.in_coincidence:
-            new_sub_list = max(subs_list_nums, default=-1) + 1 #-1 is there for the very first msg when sub_list_nums empty
+            new_sub_list = max(subs_list_nums,
+                               default=-1) + 1  # -1 is there for the very first msg when sub_list_nums empty
             self.append_message_to_df(message, 0, new_sub_list)
 
             # check if any other non-initial signal might be in coincidence
@@ -152,6 +170,8 @@ class CoincDecider:
             if not in_list_already:
                 # self.hype_mode_publish()
                 self.display_table()
+        self._dump_redundant_list()
+        self.display_table()
 
     # ----------------------------------------------------------------------------------------------------------------
     def display_table(self):
