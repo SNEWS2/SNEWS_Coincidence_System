@@ -1,5 +1,5 @@
 import pymongo
-from . import snews_utils
+from . import cs_utils
 import os
 
 
@@ -19,7 +19,7 @@ class Storage:
     """
 
     def __init__(self, env=None, drop_db=True, use_local_db=False):
-        snews_utils.set_env(env)
+        cs_utils.set_env(env)
         self.mgs_expiration = int(os.getenv('MSG_EXPIRATION'))
         self.coinc_threshold = int(os.getenv('COINCIDENCE_THRESHOLD'))
         self.mongo_server = os.getenv('DATABASE_SERVER')

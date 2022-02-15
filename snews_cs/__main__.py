@@ -10,7 +10,7 @@
 # https://click.palletsprojects.com/en/8.0.x/utils/
 import click, os
 from . import __version__
-from . import snews_utils
+from . import cs_utils
 from . import snews_coinc
 from .simulate import randomly_select_detector, get_simulated_message
 
@@ -28,7 +28,7 @@ def main(ctx, env):
     base = os.path.dirname(os.path.realpath(__file__))
     env_path = base + env
     ctx.ensure_object(dict)
-    snews_utils.set_env(env_path)
+    cs_utils.set_env(env_path)
     ctx.obj['env'] = env
 
 @main.command()
@@ -63,8 +63,8 @@ def simulate(ctx, rate, alert_probability):
     import numpy as np
     import time
     from hop import Stream
-    times = snews_utils.TimeStuff()
-    snews_utils.set_env(ctx.obj['env'])
+    times = cs_utils.TimeStuff()
+    cs_utils.set_env(ctx.obj['env'])
     obs_broker = os.getenv("OBSERVATION_TOPIC")
     stream = Stream(until_eos=True, auth=True)
     click.secho(f'Simulating observation messages every {rate} sec\n\

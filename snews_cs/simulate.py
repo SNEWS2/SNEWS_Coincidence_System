@@ -2,7 +2,7 @@
 module to simulate observation messages
 and trigger alerts
 """
-
+# Do we need this ??
 import os , json
 from collections import namedtuple
 import numpy as np
