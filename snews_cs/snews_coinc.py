@@ -1,13 +1,13 @@
-from . import snews_utils
+from . import cs_utils
 from .snews_db import Storage
 import os, click
 from datetime import datetime
-from .hop_pub import Publish_Alert
+from .alert_pub import AlertPublisher
 import numpy as np
 import pandas as pd
 from hop import Stream
 from . import snews_bot
-
+from .cs_alert_schema import CoincidenceTierAlert
 
 class CoincDecider:
     """ CoincDecider class for Supernova alerts (Coincidence Tier)
@@ -21,24 +21,26 @@ class CoincDecider:
     """
 
     def __init__(self, env_path=None, use_local_db=False, hype_mode_ON=True, is_test=True):
-        snews_utils.set_env(env_path)
+        cs_utils.set_env(env_path)
         self.hype_mode_ON = hype_mode_ON
         self.storage = Storage(drop_db=False, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
         self.coinc_cache = self.storage.coincidence_tier_cache
-        self.alert = Publish_Alert(use_local=True)
-        self.times = snews_utils.TimeStuff(env_path)
+        self.alert = AlertPublisher(env_path=env_path,use_local=use_local_db)
+        self.times = cs_utils.TimeStuff(env_path)
         self.observation_topic = os.getenv("OBSERVATION_TOPIC")
         self.column_names = ["_id", "detector_name", "received_time", "machine_time", "neutrino_time",
                              "p_value", "meta", "sub_list_num", "nu_delta_t"]
 
         self.cache_df = pd.DataFrame(columns=self.column_names)
+        self.alert_schema = CoincidenceTierAlert(env_path)
 
         self.is_test = is_test
         self.in_coincidence = False
         self.in_list_already = False
+        self.secs_in_day = 86400
 
     # ------------------------------------------------------------------------------------------------------------------
     def append_message_to_df(self, message, delta_t, sub_list_num):
@@ -215,7 +217,7 @@ class CoincDecider:
             self.cache_df = self.cache_df.reset_index(drop=True)
 
     # ------------------------------------------------------------------------------------------------------------------
-    def check_coincidence(self, message, ):
+    def _check_coincidence(self, message, ):
         click.secho(f'{message["detector_name"]}', )
         if len(self.cache_df) == 0:
             self.append_message_to_df(message, 0, 0)
@@ -241,9 +243,7 @@ class CoincDecider:
         #         self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'neutrino_time'])
         #         self.hype_mode_publish()
         #         self.display_table()
-        #
-        # #         #
-        # #         # self.display_table()
+
         self._dump_redundant_list()
         self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'neutrino_time'])
         self.display_table()
@@ -254,38 +254,33 @@ class CoincDecider:
             f'Here is the current coincident table\n',
             fg='magenta', bold=True, )
         for sub_list in self.cache_df['sub_list_num'].unique():
-            print(self.cache_df.query(f'sub_list_num=={sub_list}').to_markdown())
+            sub_df = self.cache_df.query(f'sub_list_num=={sub_list}')
+            sub_df.drop(columns=['meta','machine_time','schema_version'])
+            snews_bot.send_table(sub_df)
+            print(sub_df.to_markdown())
             print('=' * 168)
 
     # TODO: 27/02 update for new df format (REWORK)
     # ------------------------------------------------------------------------------------------------------------------
     def retract_from_cache(self, retrc_message):
         """
-        loops through false warnings collection looks for
-        coincidence tier false warnings, if a warning is found,
-        it then loops through coincidence cache, if the false message
-        is then all its corresponding features are deleted
-        from the coincidence arrays.
+        Parses retraction message, will delete 'n' latest messages. The list is sorted by 'received_time', the latest message
+        will be at the top of the list.
 
         """
-        if retrc_message['N_retract_latest'] != 0:
-            drop_detector = retrc_message['detector_name']
-            delete_n_many = retrc_message['N_retract_latest']
 
-            if retrc_message['N_retract_latest'] == 'ALL':
-                delete_n_many = self.cache_df.groupby(by='detector_name').size().to_dict()[drop_detector]
-                print(f'\nDropping latest message(s) from {drop_detector}\nRetracting: {delete_n_many} messages')
-            for i in self.cache_df.index:
-                if delete_n_many > 0 and self.cache_df.loc[i, 'detector_name'] == drop_detector:
-                    self.cache_df.drop(index=i, inplace=True)
-                    self.cache_df = self.cache_df.reset_index()
-                    delete_n_many -= 1
+        drop_detector = retrc_message['detector_name']
+        delete_n_many = retrc_message['N_retract_latest']
 
-        if retrc_message['false_id'] != None and retrc_message['false_id'].split('_')[1] == 'CoincidenceTier':
-            false_id = retrc_message['false_id']
-            for i in self.cache_df.index:
-                if self.cache_df.loc[i, '_id'] == false_id:
-                    self.cache_df.drop(index=i, inplace=True)
+        if retrc_message['N_retract_latest'] == 'ALL':
+            delete_n_many = self.cache_df.groupby(by='detector_name').size().to_dict()[drop_detector]
+        print(f'\nDropping latest message(s) from {drop_detector}\nRetracting: {delete_n_many} messages')
+        sorted_df = self.cache_df.sort_values(by='received_time')
+        for i in sorted_df.index:
+            if delete_n_many > 0 and self.cache_df.loc[i, 'detector_name'] == drop_detector:
+                self.cache_df.drop(index=i, inplace=True)
+                delete_n_many -= 1
+        self.cache_df = self.cache_df.reset_index()
 
     # ------------------------------------------------------------------------------------------------------------------
     def hype_mode_publish(self):
@@ -299,12 +294,21 @@ class CoincDecider:
         """
 
         click.secho(f'{"=" * 100}', fg='bright_red')
-        p_vals = self.cache_df['p_value'].to_list()
-        nu_times = self.cache_df['neutrino_time'].to_list()
-        detector_names = self.cache_df['detector_name'].to_list()
-        alert_data = snews_utils.data_cs_alert(p_vals=p_vals, nu_times=nu_times, detector_names=detector_names, )
-        self.alert.publish(msg_type=self.topic_type, data=alert_data)
-        click.secho(f'{"Hype Mode: NEW COINCIDENT DETECTOR.. ".upper():^100}\n', bg='bright_green', fg='red')
+        for sub_list in list(self.cache_df['sub_list_num'].unique()):
+            _sub_df = self.cache_df.query(f'sub_list_num=={sub_list}')
+            p_vals = _sub_df['p_value'].to_list()
+            p_vals_avg = _sub_df['p_value'].mean()
+            nu_times = _sub_df['neutrino_time'].to_list()
+            detector_names = _sub_df['detector_name'].to_list()
+
+            alert_data = cs_utils.data_cs_alert(p_vals=p_vals, p_val_avg=p_vals_avg, sub_list_num=sub_list,
+                                                nu_times=nu_times, detector_names=detector_names, )
+
+            with self.alert as pub:
+                alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
+                pub.send(alert)
+
+        click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}\n', bg='bright_green', fg='red')
         click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
         click.secho(f'{"=" * 100}', fg='bright_red')
         # snews_bot.send_table(self.cache_df, self.is_test)
@@ -312,14 +316,14 @@ class CoincDecider:
     # ------------------------------------------------------------------------------------------------------------------
     def dump_old_messages(self, message):
         current_sent_time = message['sent_time']
-        secs_in_day = 86400
+
         ind = 0
         for latest_sent_time in self.cache_df['sent_time']:
             latest_sent_time = datetime.strptime(latest_sent_time, '%d/%m/%y %H:%M:%S')
             current_sent_time = datetime.strptime(current_sent_time, '%d/%m/%y %H:%M:%S')
 
             del_t = (current_sent_time - latest_sent_time).total_seconds()
-            if del_t >= secs_in_day:
+            if del_t >= self.secs_in_day:
                 self.cache_df.drop(ind, inplace=True)
             ind += 1
 
@@ -338,10 +342,10 @@ class CoincDecider:
                     _str = '!!! This is a Test !!!' if 'TEST' in snews_message['_id'] else '!!!'
                     click.secho(f'{"-" * 57}', fg='bright_blue')
                     click.secho(f'Incoming message {_str}'.upper(), bold=True, fg='red')
-                    self.check_coincidence(message=snews_message)
+                    self._check_coincidence(message=snews_message)
 
                 # Check for Retraction (NEEDS WORK)
-                elif snews_message['_id'].split('_')[1] == 'FalseOBS':
+                elif snews_message['_id'].split('_')[1] == 'Retraction':
                     if snews_message['which_tier'] == 'CoincidenceTier' or snews_message['which_tier'] == 'ALL':
                         self.retract_from_cache(snews_message)
                     else:
