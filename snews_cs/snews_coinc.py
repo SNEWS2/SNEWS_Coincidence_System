@@ -244,7 +244,7 @@ class CoincDecider:
         #
         # #         #
         # #         # self.display_table()
-        # self._dump_redundant_list()
+        self._dump_redundant_list()
         self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'neutrino_time'])
         self.display_table()
 
