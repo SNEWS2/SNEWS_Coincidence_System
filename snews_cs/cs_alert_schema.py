@@ -1,10 +1,8 @@
-from collections import namedtuple
-from . import snews_utils
-from .snews_utils import TimeStuff
+from .cs_utils import TimeStuff
 import sys
 
 
-class CoincidenceTier_Alert:
+class CoincidenceTierAlert:
     """ The Message scheme for the alert and observations
 
     Parameters
@@ -31,10 +29,10 @@ class CoincidenceTier_Alert:
                 The formatted id as a string
             
         """
-        date_time = self.times.get_snews_time(fmt="%y/%m/%d_%H:%M:%S:%f")
-        return f'SNEWS_Coincidence_System_ALERT_{date_time}'
+        date_time = self.times.get_snews_time(fmt="%y/%m/%d %H:%M:%S:%f")
+        return f'SNEWS_CoincidenceALERT_{date_time}'
 
-    def get_cs_alert_schema(self, msg_type, sent_time, data):
+    def get_cs_alert_schema(self, data):
         """ Create a message schema for given topic type.
             Internally called in hop_pub
         
@@ -56,9 +54,12 @@ class CoincidenceTier_Alert:
                     message with the correct scheme 
 
         """
-        return {"_id": self.id_format(),
+        id = self.id_format()
+        return {"_id": id,
                 "detector_names": data['detector_names'],
-                "sent_time": sent_time,
+                "sent_time": id.split('_')[2],
                 "p_values": data['p_vals'],
                 "neutrino_times": data['neutrino_times'],
+                "p_values average": data['p_val_avg'],
+                "sub list number":data['sub_list_num']
                 }
