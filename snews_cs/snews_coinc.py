@@ -9,6 +9,7 @@ from hop import Stream
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
 
+
 class CoincDecider:
     """ CoincDecider class for Supernova alerts (Coincidence Tier)
         
@@ -28,7 +29,7 @@ class CoincDecider:
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
         self.coinc_cache = self.storage.coincidence_tier_cache
-        self.alert = AlertPublisher(env_path=env_path,use_local=use_local_db)
+        self.alert = AlertPublisher(env_path=env_path, use_local=use_local_db)
         self.times = cs_utils.TimeStuff(env_path)
         self.observation_topic = os.getenv("OBSERVATION_TOPIC")
         self.column_names = ["_id", "detector_name", "received_time", "machine_time", "neutrino_time",
@@ -104,6 +105,10 @@ class CoincDecider:
         else:
             self.in_coincidence = False
             return 'NOT_COINCIDENT',
+    # ------------------------------------------------------------------------------------------------------------------
+    def _concat_to_cache(self, new_list, new_sub_list):
+        self.cache_df = pd.concat([self.cache_df.query(f'sub_list_num!={new_sub_list}'), new_list],
+                                  ignore_index=True)
 
     # ------------------------------------------------------------------------------------------------------------------
     def _in_between_coincidence(self, initial_time, detector_name, new_sub_list, other_df):
@@ -115,22 +120,20 @@ class CoincDecider:
         detector_name
         new_sub_list
         other_df
-
-
         """
         other_df = other_df.query(f'detector_name != "{detector_name}"')
         new_list = self.cache_df.query(f'sub_list_num=={new_sub_list}')
         print(f'Checking these detectors: {list(other_df["detector_name"])}')
         for index, row in other_df.iterrows():
-            print(index)
-            nu_time = self.times.str_to_datetime(row['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
+            print(f'{index} {row["detector_name"]} this is my ini time {initial_time}')
             if row['detector_name'] in list(new_list['detector_name']):
                 continue
+            nu_time = self.times.str_to_datetime(row['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
             del_t = (nu_time - initial_time).total_seconds()
             # make sure the signal is not an initial that its nu is earlier than new list's initial
             if float(row['nu_delta_t']) != 0 and (0 > del_t >= -self.coinc_threshold):
                 if self._coincident_with_whole_list(message=row.copy(deep=False),
-                                                    sub_list_num=new_sub_list)[0] == 'EARLY_COINCIDENT':
+                                                    sub_list_num=new_sub_list,)[0] == 'EARLY_COINCIDENT':
                     print(f'{row["detector_name"]} is making new ini {del_t}')
                     initial_time = nu_time
                     new_row = row.copy(deep=False)
@@ -138,25 +141,27 @@ class CoincDecider:
                     new_list = new_list.append(new_row, ignore_index=True)
                     new_nu_time = pd.to_datetime(new_list.neutrino_time, format='%y/%m/%d %H:%M:%S:%f')
                     new_list['nu_delta_t'] = ((new_nu_time - initial_time).dt.total_seconds()).values
-                    print(new_list['nu_delta_t'])
                     new_list = new_list.sort_values(by='neutrino_time')
+                    self._concat_to_cache(new_list, new_sub_list)
                 else:
                     pass
-
             if 0 < del_t <= self.coinc_threshold:
+                print(f'delta within coinc_threshold, my del t is  {del_t}')
+               
                 if self._coincident_with_whole_list(message=row.copy(deep=False),
-                                                    sub_list_num=new_sub_list)[0] == 'COINCIDENT':
-                    print(f'appending to {row["detector_name"]} new list {del_t}')
+                                                    sub_list_num=new_sub_list,)[0] == 'COINCIDENT':
+                    print(f'appending to {row["detector_name"]} new list {new_list} {del_t}')
                     new_row = row.copy(deep=False)
                     new_row['sub_list_num'] = new_sub_list
                     new_row['nu_delta_t'] = del_t
                     new_list = new_list.append(new_row, ignore_index=True)
                     new_list = new_list.sort_values(by='neutrino_time')
+                    self._concat_to_cache(new_list, new_sub_list)
                 else:
                     pass
-
-        self.cache_df = pd.concat([self.cache_df.query(f'sub_list_num!={new_sub_list}'), new_list], ignore_index=True)
         self.cache_df = self.cache_df.reset_index(drop=True)
+
+
 
     # ------------------------------------------------------------------------------------------------------------------
     def _dump_redundant_list(self):
@@ -227,6 +232,7 @@ class CoincDecider:
         self.in_list_already = False
         # already_made_new_nc_list = False
         for sub_list in subs_list_nums:
+            print(f'Checking sub list: {sub_list}')
             self._check_sub_lists(message=message, sub_list=sub_list)
         print(f'in_coincidence: {self.in_coincidence}')
         if not self.in_coincidence:
@@ -255,8 +261,8 @@ class CoincDecider:
             fg='magenta', bold=True, )
         for sub_list in self.cache_df['sub_list_num'].unique():
             sub_df = self.cache_df.query(f'sub_list_num=={sub_list}')
-            sub_df.drop(columns=['meta','machine_time','schema_version'])
-            snews_bot.send_table(sub_df)
+            sub_df = sub_df.drop(columns=['meta', 'machine_time', 'schema_version'])
+            # snews_bot.send_table(sub_df)
             print(sub_df.to_markdown())
             print('=' * 168)
 
