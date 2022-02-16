@@ -23,7 +23,6 @@ The backend tools that needs to run in order for the observation messages to be 
 ```bash
 (venv) User$: snews_cs run-coincidence
 (venv) User$: snews_cs run-slack-bot
-(venv) User$: snews_cs simulate
 ```
 
 Details about the commands can also be displayed via passing `--help` flag. The slack bot requires authentication through a token, contact Melih Kara or Sebastian Torres-Lara if needed.
