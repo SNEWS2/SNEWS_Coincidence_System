@@ -32,7 +32,7 @@ class CoincDecider:
         self.times = snews_utils.TimeStuff(env_path)
         self.observation_topic = os.getenv("OBSERVATION_TOPIC")
         self.column_names = ["_id", "detector_name", "sent_time", "machine_time", "neutrino_time",
-                             "p_value", "meta", "sub_list_num", "nu_delta_t"]
+                             "p_val", "meta", "sub_list_num", "nu_delta_t"]
 
         self.cache_df = pd.DataFrame(columns=self.column_names)
 
@@ -224,7 +224,7 @@ class CoincDecider:
         """
 
         click.secho(f'{"=" * 100}', fg='bright_red')
-        p_vals = self.cache_df['p_value'].to_list()
+        p_vals = self.cache_df['p_val'].to_list()
         nu_times = self.cache_df['neutrino_time'].to_list()
         detector_names = self.cache_df['detector_name'].to_list()
         alert_data = snews_utils.data_cs_alert(p_vals=p_vals, nu_times=nu_times, detector_names=detector_names, )
