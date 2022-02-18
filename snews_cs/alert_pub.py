@@ -20,11 +20,22 @@ from .snews_db import Storage
 class AlertPublisher:
     """ Class to publish SNEWS SuperNova Alerts based on coincidence
     
-    Notes
-    -----
-    Only relevant for the server
+
     """
     def __init__(self, env_path=None, verbose=True, auth=True, use_local=False):
+        """
+        Alert publisher constructor 
+        Parameters
+        ----------
+        env_path: str
+            path to env file, defaults to
+        verbose: bool
+            Show alert, defaults to True
+        auth: bool
+            Use hop-auth crendentials, defaults to True
+        use_local: bool
+            Use local MongoClient, defaults to True
+        """
         cs_utils.set_env(env_path)
         self.auth = auth
         self.broker = os.getenv("HOP_BROKER")
