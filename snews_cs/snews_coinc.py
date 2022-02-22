@@ -289,13 +289,17 @@ class CoincDecider:
     # ------------------------------------------------------------------------------------------------------------------
     def _check_coincidence(self, message, ):
         """
+        Parent method of coincidence, calls a support methods to check if a message is coincident.
+        Appending actions are made by support methods.
+        (1) Checks subs lists to see if messages is coincident with the whole list.
+        (2) If messages is not coincident with any lists make a new subs list and looks for other messages
+            in the cache to append to the new sub list.
+        (3) If a new detector has been added to any subs list proceed to send an alert (both SNEWS alert and Slack post)
 
         Parameters
         ----------
         message: dict
             incoming message
-
-
 
         """
         click.secho(f'{message["detector_name"]}', )
@@ -305,10 +309,11 @@ class CoincDecider:
         subs_list_nums = list(self.cache_df['sub_list_num'].unique())
         self.in_coincidence = False
         self.in_list_already = False
-        # already_made_new_nc_list = False
+        # (1)
         for sub_list in subs_list_nums:
             # print(f'Checking sub list: {sub_list}')
             self._check_sub_lists(message=message, sub_list=sub_list)
+        # (2)
         # print(f'in_coincidence: {self.in_coincidence}')
         if not self.in_coincidence:
             # print('making  new list')
@@ -316,6 +321,7 @@ class CoincDecider:
                                default=-1) + 1  # -1 is there for the very first msg when sub_list_nums empty
             self.append_message_to_df(message, 0, new_sub_list)
             self._new_list_find_coincidences(message=message, new_sub_list=new_sub_list)
+        # (3)
         # unique detector has been added to a sub_list
         # else:
         #     # not coincidence but maybe already in list
@@ -464,6 +470,7 @@ class CoincDecider:
                 # Check for Retraction (NEEDS WORK)
                 elif snews_message['_id'].split('_')[1] == 'Retraction':
                     if snews_message['which_tier'] == 'CoincidenceTier' or snews_message['which_tier'] == 'ALL':
+                        message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
                         self._retract_from_cache(snews_message)
                     else:
                         pass
