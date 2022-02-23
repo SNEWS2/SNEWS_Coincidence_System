@@ -30,7 +30,6 @@ class CoincDecider:
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
-        self.coinc_cache = self.storage.coincidence_tier_cache
         self.alert = AlertPublisher(env_path=env_path, use_local=use_local_db)
         self.times = cs_utils.TimeStuff(env_path)
         self.observation_topic = os.getenv("OBSERVATION_TOPIC")
@@ -462,16 +461,16 @@ class CoincDecider:
                 if snews_message['_id'].split('_')[1] == self.topic_type:
                     if self.is_old_message(message=snews_message):
                         continue
-                    message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
+                    snews_message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
                     self.storage.insert_mgs(snews_message)
                     click.secho(f'{"-" * 57}', fg='bright_blue')
-                    click.secho(f'Incoming message {_str}'.upper(), bold=True, fg='red')
+                    click.secho(f'Incoming message from: {snews_message["detector_name"]}'.upper(), bold=True, fg='red')
                     self._check_coincidence(message=snews_message)
 
                 # Check for Retraction (NEEDS WORK)
                 elif snews_message['_id'].split('_')[1] == 'Retraction':
                     if snews_message['which_tier'] == 'CoincidenceTier' or snews_message['which_tier'] == 'ALL':
-                        message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
+                        snews_message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
                         self._retract_from_cache(snews_message)
                         self.storage.insert_mgs(snews_message)
                     else:
