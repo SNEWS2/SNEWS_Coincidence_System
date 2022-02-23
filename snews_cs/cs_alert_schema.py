@@ -20,7 +20,7 @@ class CoincidenceTierAlert:
     def __init__(self, env_path=None):
         self.times = TimeStuff(env_path)
 
-    def id_format(self):
+    def id_format(self, num_detectors):
         """ Returns formatted message ID
             time format should always be same for all detectors.
 
@@ -30,7 +30,11 @@ class CoincidenceTierAlert:
             
         """
         date_time = self.times.get_snews_time(fmt="%y/%m/%d %H:%M:%S:%f")
-        return f'SNEWS_CoincidenceALERT_{date_time}'
+        if num_detectors == 2:
+            return f'SNEWS_Coincidence-ALERT_{date_time}'
+        else:
+            return f'SNEWS_Coincidence-ALERT-UPDATE_{date_time}'
+
 
     def get_cs_alert_schema(self, data):
         """ Create a message schema for given topic type.
@@ -54,7 +58,7 @@ class CoincidenceTierAlert:
                     message with the correct scheme 
 
         """
-        id = self.id_format()
+        id = self.id_format(len(data['detector_names']))
         return {"_id": id,
                 "detector_names": data['detector_names'],
                 "sent_time": id.split('_')[2],
