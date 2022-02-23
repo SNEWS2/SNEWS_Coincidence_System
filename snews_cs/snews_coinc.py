@@ -463,6 +463,7 @@ class CoincDecider:
                     if self.is_old_message(message=snews_message):
                         continue
                     message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
+                    self.storage.insert_mgs(snews_message)
                     click.secho(f'{"-" * 57}', fg='bright_blue')
                     click.secho(f'Incoming message {_str}'.upper(), bold=True, fg='red')
                     self._check_coincidence(message=snews_message)
@@ -472,6 +473,7 @@ class CoincDecider:
                     if snews_message['which_tier'] == 'CoincidenceTier' or snews_message['which_tier'] == 'ALL':
                         message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
                         self._retract_from_cache(snews_message)
+                        self.storage.insert_mgs(snews_message)
                     else:
                         pass
 
