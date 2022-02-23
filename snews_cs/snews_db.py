@@ -32,9 +32,9 @@ class Storage:
         self.db = self.client.snews_db
         self.all_mgs = self.db.all_mgs
         self.false_warnings = self.db.false_warnings
-        self.sig_tier_cache = self.db.sig_tier_cache
-        self.time_tier_cache = self.db.time_tier_cache
-        self.coincidence_tier_cache = self.db.coincidence_tier_cache
+        self.sig_tier_archive = self.db.sig_tier_archive
+        self.time_tier_archive = self.db.time_tier_archive
+        self.coincidence_tier_archive = self.db.coincidence_tier_archive
         self.coincidence_tier_alerts = self.db.coincidence_tier_alerts
         self.time_tier_alerts = self.db.time_tier_alerts
         self.sig_tier_alerts = self.db.sig_tier_alerts
@@ -42,36 +42,36 @@ class Storage:
         if drop_db:
             # kill all old colls
             self.all_mgs.delete_many({})
-            self.coincidence_tier_cache.delete_many({})
+            self.coincidence_tier_archive.delete_many({})
             self.coincidence_tier_alerts.delete_many({})
             self.false_warnings.delete_many({})
-            self.time_tier_cache.delete_many({})
-            self.sig_tier_cache.delete_many({})
+            self.time_tier_archive.delete_many({})
+            self.sig_tier_archive.delete_many({})
             self.time_tier_alerts.delete_many({})
             self.sig_tier_alerts.delete_many({})
             # drop the old index
             self.all_mgs.drop_indexes()
-            self.coincidence_tier_cache.drop_indexes()
+            self.coincidence_tier_archive.drop_indexes()
             self.false_warnings.drop_indexes()
             self.coincidence_tier_alerts.drop_indexes()
-            self.time_tier_cache.drop_indexes()
-            self.sig_tier_cache.drop_indexes()
+            self.time_tier_archive.drop_indexes()
+            self.sig_tier_archive.drop_indexes()
             self.time_tier_alerts.drop_indexes()
             self.sig_tier_alerts.drop_indexes()
             # set index
             self.all_mgs.create_index('received_time')
-            self.coincidence_tier_cache.create_index('received_time', expireAfterSeconds=self.mgs_expiration)
-            self.sig_tier_cache.create_index('received_time', expireAfterSeconds=self.mgs_expiration)
-            self.time_tier_cache.create_index('received_time', expireAfterSeconds=self.mgs_expiration)
+            self.coincidence_tier_archive.create_index('received_time', expireAfterSeconds=self.mgs_expiration)
+            self.sig_tier_archive.create_index('received_time', expireAfterSeconds=self.mgs_expiration)
+            self.time_tier_archive.create_index('received_time', expireAfterSeconds=self.mgs_expiration)
             self.false_warnings.create_index('received_time')
             self.coincidence_tier_alerts.create_index('received_time')
             self.sig_tier_alerts.create_index('received_time')
             self.time_tier_alerts.create_index('received_time')
 
         self.coll_list = {
-            'CoincidenceTier': self.coincidence_tier_cache,
-            'SigTier':self.sig_tier_cache,
-            'TimeTier':self.time_tier_cache,
+            'CoincidenceTier': self.coincidence_tier_archive,
+            'SigTier':self.sig_tier_archive,
+            'TimeTier':self.time_tier_archive,
             'Retraction': self.false_warnings,
             'CoincidenceTierAlert': self.coincidence_tier_alerts,
             'SigTierAlert': self.sig_tier_alerts,
@@ -108,7 +108,7 @@ class Storage:
         """
         return self.all_mgs.find().sort('received_time', sort_order)
 
-    def get_coincidence_tier_cache(self, sort_order=pymongo.ASCENDING):
+    def get_coincidence_tier_archive(self, sort_order=pymongo.ASCENDING):
         """ Returns a list of all messages in the 'cache' collection
 
         Parameters
@@ -122,7 +122,7 @@ class Storage:
             A list containing all items inside 'Coincidence Tier Cache'
                     
         """
-        return self.coincidence_tier_cache.find().sort('received_time', sort_order)
+        return self.coincidence_tier_archive.find().sort('received_time', sort_order)
 
     def get_false_warnings(self, sort_order=pymongo.ASCENDING):
         """ Returns a list of all messages in the 'cache' collection
@@ -149,16 +149,16 @@ class Storage:
         else:
             return False
 
-    def empty_coinc_cache(self):
+    def empty_coinc_archive(self):
         """ Returns True of if coincidence cache is empty
 
         """
-        if self.coincidence_tier_cache.count() <= 1:
+        if self.coincidence_tier_archive.count() <= 1:
             return True
         else:
             return False
 
-    def purge_cache(self, coll):
+    def purge_archive(self, coll):
         """ Erases all items in a collection
 
         Parameters
