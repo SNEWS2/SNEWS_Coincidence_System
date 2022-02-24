@@ -89,6 +89,6 @@ def data_cs_alert(p_vals=None, nu_times=None,
                 dictionary of the complete alert data
 
     """
-    keys = ['p_vals', 'neutrino_times', 'detector_names','p value average','sub_list_num']
+    keys = ['p_vals', 'neutrino_times', 'detector_names','p_val_avg','sub_list_num']
     values = [p_vals, nu_times, detector_names, p_val_avg, sub_list_num]
     return dict(zip(keys, values))

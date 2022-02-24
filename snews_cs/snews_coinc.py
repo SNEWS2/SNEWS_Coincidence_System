@@ -12,7 +12,7 @@ from .cs_alert_schema import CoincidenceTierAlert
 
 class CoincDecider:
 
-    def __init__(self, env_path=None, use_local_db=True, is_test=True):
+    def __init__(self, env_path=None, use_local_db=True, is_test=True,drop_db=False):
         """Coincidence Decider
 
         Parameters
@@ -26,7 +26,7 @@ class CoincDecider:
         """
         cs_utils.set_env(env_path)
         self.hype_mode_ON = True
-        self.storage = Storage(drop_db=False, use_local_db=use_local_db)
+        self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
@@ -324,11 +324,12 @@ class CoincDecider:
         # unique detector has been added to a sub_list
         # else:
         #     # not coincidence but maybe already in list
-        #     if not self.in_list_already:
-        #         self._dump_redundant_list()
-        #         self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'neutrino_time'])
-        #         self.hype_mode_publish()
-        #         self.display_table()
+        if not self.in_list_already:
+            print('we got something publishing an alert !')
+            self._dump_redundant_list()
+            self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'neutrino_time'])
+            self.hype_mode_publish()
+            self.display_table()
 
         self._dump_redundant_list()
         self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'neutrino_time'])

@@ -52,7 +52,7 @@ class AlertPublisher:
     def __exit__(self, *args):
         self.stream.close()
 
-    def send(self, messages):
+    def send(self, message):
         """This method will set the sent_time and send the message to the hop broker.
 
         Parameters
@@ -61,13 +61,14 @@ class AlertPublisher:
             list containing observation message.
 
         """
-    
+
         self.stream.write(message)
         self.display_message(message)
 
     def display_message(self, message):
         if self.verbose:
-            tier = message['_id'].split('_')[1]
+            print(message['_id'])
+            tier = 'TEST ALERT'
             click.secho(f'{"-" * 64}', fg='bright_blue')
             click.secho(f'Sending {tier}', fg='bright_red')
             for k, v in message.items():

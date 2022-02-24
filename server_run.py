@@ -5,5 +5,5 @@ import hop
 if __name__ == '__main__':
     print(f'hop version: {hop.__version__}')
     # print(f'SNEWS CS version: {_version.__version__}')
-    coinc = CoincDecider(use_local_db=True)
+    coinc = CoincDecider(use_local_db=True, drop_db=True)
     coinc.run_coincidence()
