@@ -1,25 +1,21 @@
 /* Uses skorch docs theme from https://skorch.readthedocs.io */
 
 .wy-side-nav-search {
-	background-color: #3B556F;
-	#background-color: #fcfcfc;
+	background-color: #4e9647c4;
 }
 
 .wy-side-nav-search > div.version {
-	color: #F8F9F9;
-	#color: black;
+	color: #882562;
 }
 
 .wy-side-nav-search > a {
-	color: #F8F9F9;
-	#color: black;
+	color: #85e7e7;
 }
 
 /* Adds logo in header for mobile */
 
 .wy-nav-top {
 	background-color: #3B556F;
-	#background-color: #fcfcfc;
 	background-image: url('../logo.png');
 	background-repeat: no-repeat;
 	background-position: bottom;
