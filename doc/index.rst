@@ -9,15 +9,11 @@ User's Guide
 
    user/installation
    user/quickstart
-   ../README.md
+   
 
 API Reference
 -------------
 
-.. toctree::
-   :maxdepth: 2
-
-   api/api
 
 Indices and tables
 ==================
