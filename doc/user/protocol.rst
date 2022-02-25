@@ -1,5 +1,5 @@
 ==================
-SNEWS Protocols
+SNEWS Protocols (Not written yet.)
 ==================
 
 .. contents::

@@ -1,3 +1,9 @@
+[![Documentation Status](https://readthedocs.org/projects/snews-coincidence-system/badge/?version=latest)](https://snews-coincidence-system.readthedocs.io/en/latest/?badge=latest&style=for-the-badge)
+
+|              |        |
+| ------------ | ------ |
+| **Docs:**    | https://snews-coincidence-system.readthedocs.io/en/latest/  |
+
 # SNEWS_Coincidence_System
 Coincidence System backend for snews alert trigger
 

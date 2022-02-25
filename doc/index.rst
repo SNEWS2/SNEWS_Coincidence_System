@@ -9,10 +9,7 @@ User's Guide
 
    user/installation
    user/quickstart
-   user/architecture
-   user/messages
-   user/protocol
-   user/hop-comms
+   ../README.md
 
 API Reference
 -------------

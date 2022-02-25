@@ -1,4 +1,4 @@
-# Quickstart
+# (Not written yet. IGNORE) Quickstart
 
 The module allows you to `publish`, `subscribe`, `retract` and `simulate` observation messages among other things. For these to work an environment file specifying the related kafka and mongo servers is needed. While a default file ('hop_comms/auxiliary/test-config.env') comes with the package, it can also be set from the command line on-flight.  
 
