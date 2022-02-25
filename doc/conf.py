@@ -22,7 +22,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 # -- Project information -----------------------------------------------------
 
-project = u'snews'
+project = u'snews coincidence system'
 copyright = u'2022, Melih Kara'
 author = u'Torres-Lara Sebastian, Kara Melih'
 
@@ -55,6 +55,8 @@ extensions = [
     'myst_parser',
     'autoapi.extension',
     ]
+
+autoapi_dirs = ['../snews_cs']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
