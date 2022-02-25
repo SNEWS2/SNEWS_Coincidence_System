@@ -23,8 +23,8 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 # -- Project information -----------------------------------------------------
 
 project = u'snews'
-copyright = u'2020, Skylar(Yiyang) Xu'
-author = u'Skylar(Yiyang) Xu, Torres-Lara Sebastian, Kara Melih'
+copyright = u'2022, Melih Kara'
+author = u'Torres-Lara Sebastian, Kara Melih'
 
 # The short X.Y version
 version = u''
