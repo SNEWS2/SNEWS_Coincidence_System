@@ -1,4 +1,4 @@
-SNEWS documentation
+SNEWS Coincidence System
 ====================================================
 
 User's Guide
