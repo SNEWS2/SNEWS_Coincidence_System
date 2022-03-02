@@ -12,8 +12,8 @@ from .cs_alert_schema import CoincidenceTierAlert
 
 class CoincDecider:
 
-    def __init__(self, env_path=None, use_local_db=True, is_test=True,drop_db=False):
-        """Coincidence Decider
+    def __init__(self, env_path=None, use_local_db=True, is_test=True, drop_db=False):
+        """Coincidence Decider class constructor
 
         Parameters
         ----------
@@ -45,7 +45,7 @@ class CoincDecider:
         self.stash_time = 86400
 
     # ------------------------------------------------------------------------------------------------------------------
-    def is_old_message(self,message):
+    def _is_old_message(self, message):
         """
         Checks if snews message is too old.
 
@@ -61,11 +61,12 @@ class CoincDecider:
         curr_t = datetime.utcnow()
         nu_t = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
 
-        del_t = (curr_t-nu_t).total_seconds()
+        del_t = (curr_t - nu_t).total_seconds()
         if del_t >= self.stash_time:
             return True
         else:
-            return  False
+            return False
+
     # ------------------------------------------------------------------------------------------------------------------
     def append_message_to_df(self, message, delta_t, sub_list_num):
         """
@@ -181,14 +182,13 @@ class CoincDecider:
             label of new sub list
 
         """
-        # print('new_list_find_coincidence')
+
         other_df = self.cache_df.query(f'sub_list_num!={new_sub_list}').sort_values(by='neutrino_time').drop_duplicates(
             subset=['_id'])
         detector_name = message['detector_name']
         initial_time = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
         other_df = other_df.query(f'detector_name != "{detector_name}"')
         new_list = self.cache_df.query(f'sub_list_num=={new_sub_list}')
-        # print(f'Checking these detectors: {list(other_df["detector_name"])}')
 
         for index, row in other_df.iterrows():
             # print(f'{index} {row["detector_name"]} this is my ini time {initial_time}')
@@ -215,7 +215,8 @@ class CoincDecider:
             # (2)
             if 0 < del_t <= self.coinc_threshold:
                 # print(f'delta within coinc_threshold, my del t is  {del_t}')
-
+                print(self._coincident_with_whole_list(message=row.copy(deep=False),
+                                                       sub_list_num=new_sub_list, ))
                 if self._coincident_with_whole_list(message=row.copy(deep=False),
                                                     sub_list_num=new_sub_list, )[0] == 'COINCIDENT':
                     # print(f'appending to {row["detector_name"]} new list {new_list} {del_t}')
@@ -247,7 +248,6 @@ class CoincDecider:
                     curr_index = list(self.cache_df.query(f'sub_list_num=={sub_list}').index)
                     self.cache_df = self.cache_df.drop(curr_index)
                     self.cache_df = self.cache_df.reset_index(drop=True)
-
 
     # ------------------------------------------------------------------------------------------------------------------
     def _check_sub_lists(self, message, sub_list):
@@ -301,10 +301,10 @@ class CoincDecider:
             incoming message
 
         """
-        click.secho(f'{message["detector_name"]}', )
         if len(self.cache_df) == 0:
             self.append_message_to_df(message, 0, 0)
             pass
+
         subs_list_nums = list(self.cache_df['sub_list_num'].unique())
         self.in_coincidence = False
         self.in_list_already = False
@@ -327,11 +327,9 @@ class CoincDecider:
         if not self.in_list_already:
             print('we got something publishing an alert !')
             self._dump_redundant_list()
-            self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'neutrino_time'])
+            self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'received_time'])
             self.hype_mode_publish()
             self.display_table()
-
-    
 
     # ----------------------------------------------------------------------------------------------------------------
     def display_table(self):
@@ -387,7 +385,7 @@ class CoincDecider:
             n_old_unique_count : `int`
                 the least number of detectors required for the hype publish
         """
-        # TODO: make Update and Initial_Alert tag
+
         click.secho(f'{"=" * 100}', fg='bright_red')
         for sub_list in list(self.cache_df['sub_list_num'].unique()):
             _sub_df = self.cache_df.query(f'sub_list_num=={sub_list}')
@@ -429,7 +427,7 @@ class CoincDecider:
             current_sent_time = datetime.strptime(current_sent_time, '%d/%m/%y %H:%M:%S')
 
             del_t = (current_sent_time - latest_sent_time).total_seconds()
-            if del_t >= self.secs_in_day:
+            if del_t >= self.stash_time:
                 self.cache_df.drop(ind, inplace=True)
             ind += 1
         self.cache_df = self.cache_df.reset_index(drop=True)
@@ -454,12 +452,10 @@ class CoincDecider:
             for snews_message in s:
                 # Check for Coincidence\
                 # TODO: control for ol msg
-                if self.is_old_message(message=snews_message):
+                if snews_message['_id'].split('_')[0] != 'hard-reset' and self._is_old_message(message=snews_message):
                     continue
 
                 if snews_message['_id'].split('_')[1] == self.topic_type:
-                    if self.is_old_message(message=snews_message):
-                        continue
                     snews_message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
                     self.storage.insert_mgs(snews_message)
                     click.secho(f'{"-" * 57}', fg='bright_blue')
@@ -477,7 +473,7 @@ class CoincDecider:
 
                 elif snews_message['_id'].split('_')[0] == 'hard-reset':
                     self.reset_df()
-                    click.secho('Cache restrated', fg='yellow')
+                    click.secho('Cache restarted', fg='yellow')
 
-                else:
-                    print(snews_message['_id'].split('_')[0], ' is not recognized!')
+                # else:
+                #     print(snews_message['_id'].split('_')[0], ' is not recognized!')
