@@ -31,17 +31,19 @@ def main(ctx, env):
     cs_utils.set_env(env_path)
     ctx.obj['env'] = env
 
+
 @main.command()
 @click.option('--local/--no-local', default=True, show_default='True', help='Whether to use local database server or take from the env file')
-@click.option('--hype/--no-hype', default=True, show_default='True', help='Whether to run in hype mode')
-def run_coincidence(local, hype):
-    """ 
+def run_coincidence(local):
+    """ Initiate Coincidence Decider 
     """
-    # # Initiate Coincidence Decider
-    coinc = snews_coinc.CoincDecider(use_local_db=local, hype_mode_ON=hype)
-    try: coinc.run_coincidence()
-    except KeyboardInterrupt: pass
-    finally: click.secho(f'\n{"="*30}DONE{"="*30}', fg='white', bg='green')
+    coinc = snews_coinc.CoincDecider(use_local_db=local)
+    try: 
+        coinc.run_coincidence()
+    except KeyboardInterrupt: 
+        pass
+    finally: 
+        click.secho(f'\n{"="*30}DONE{"="*30}', fg='white', bg='green')
 
 
 @main.command()
@@ -84,12 +86,14 @@ def simulate(ctx, rate, alert_probability):
     finally:
         click.secho(f'\n{"="*30}DONE{"="*30}', fg='white', bg='green')
 
+
 def display_message(message):
     click.secho(f'{"-" * 57}', fg='bright_blue')
     if message['_id'].split('_')[1] == 'FalseOBS':
         click.secho("It's okay, we all make mistakes".upper(), fg='magenta')
     for k, v in message.items():
         print(f'{k:<20s}:{v}')
+
 
 if __name__ == "__main__":
     main()
