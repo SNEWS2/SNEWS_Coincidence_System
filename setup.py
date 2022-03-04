@@ -15,11 +15,13 @@ version = version_match.group(1)
 
 # requirements
 install_requires = [
-    "hop-client >= 0.5.0",
-    "jsonschema",
-    "numpy",
-    "pymongo",
-    "python-dotenv",
+    "hop-client=0.5.0",
+    "jsonschema=4.4.0",
+    "numpy=1.22.2",
+    "pymongo=4.0.2",
+    "python-dotenv=0.19.2",
+    "pandas=1.4.1",
+    "slack-sdk=3.15.2",
 ]
 
 
@@ -42,7 +44,6 @@ extras_require = {
         'pytest-mongodb',
         'pytest-runner',
         'twine',
-        "schedule",
     ],
     'docs': [
         'sphinx',
