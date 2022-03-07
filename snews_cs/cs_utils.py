@@ -82,6 +82,10 @@ def data_cs_alert(p_vals=None, nu_times=None,
             list of neutrino arrival times
         detector_names : `list`
             list of ids of the detectors involved in the alert
+        p_val_avg : `float`
+            Naive, average p value 
+        sub_list_num : `int`
+            The sublist number of the triggered alert
 
         Returns        
         -------
@@ -89,6 +93,6 @@ def data_cs_alert(p_vals=None, nu_times=None,
                 dictionary of the complete alert data
 
     """
-    keys = ['p_vals', 'neutrino_times', 'detector_names','p_val_avg','sub_list_num']
+    keys = ['p_vals', 'neutrino_times', 'detector_names', 'p_val_avg', 'sub_list_num']
     values = [p_vals, nu_times, detector_names, p_val_avg, sub_list_num]
     return dict(zip(keys, values))
