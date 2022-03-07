@@ -12,7 +12,6 @@ import click, os
 from . import __version__
 from . import cs_utils
 from . import snews_coinc
-from .simulate import randomly_select_detector, get_simulated_message
 
 
 @click.group(invoke_without_command=True)
