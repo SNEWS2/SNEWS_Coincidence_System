@@ -1,6 +1,5 @@
 """
-An interface for SNEWS member experiment 
-to publish their observation and heartbeat messages.
+An interface for SNEWS alert publisher
 
 Created: 
 August 2021
@@ -19,7 +18,6 @@ from .snews_db import Storage
 
 class AlertPublisher:
     """ Class to publish SNEWS SuperNova Alerts based on coincidence
-    
 
     """
     def __init__(self, env_path=None, verbose=True, auth=True, use_local=False):
@@ -74,17 +72,3 @@ class AlertPublisher:
             for k, v in message.items():
                 print(f'{k:<20s}:{v}')
                 
-                
-                
-    # def publish_retraction(self, retracted_mgs):
-    #     """
-    #     Takes retracted alert and publishes it.
-    #
-    #     Parameters
-    #     ----------
-    #     retracted_mgs: 'dict'
-    #         Retracted alert message
-    #     """
-    #     stream = Stream(until_eos=True)
-    #     with stream.open(self.alert_topic, "w") as s:
-    #         s.write(retracted_mgs)
