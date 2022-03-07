@@ -10,10 +10,6 @@ class CoincidenceTierAlert:
     env_path : `str`, optional
         The path containing the environment configuration file
         If None, uses the default file in '/auxiliary/test-config.env'
-    detector_key : `str`, optional
-        The name of the detector. If None, uses "TEST"
-    alert : `bool`, optional
-        True if the message is ALERT message. Default is False.
 
     """
 
@@ -23,6 +19,10 @@ class CoincidenceTierAlert:
     def id_format(self, num_detectors):
         """ Returns formatted message ID
             time format should always be same for all detectors.
+            num_detectors: `int`
+                Number of detectors in the alert. If more than 2,
+                it is an update to an earlier alert, and will be 
+                appended with -UPDATE_ string
 
         Returns
             :`str`
@@ -37,18 +37,13 @@ class CoincidenceTierAlert:
 
 
     def get_cs_alert_schema(self, data):
-        """ Create a message schema for given topic type.
+        """ Create a message schema for alert.
             Internally called in hop_pub
         
             Parameters
             ----------
-            msg_type : `str`
-                type of the message to be published. Can be;
-                'TimeTier', 'SigTier', 'CoincidenceTier' for
-                observation messages and, 'HeartBeat' for 
-                heartbeat messages
             data : `named tuple`
-                snews_utils data tuple with predefined field.
+                cs_utils data tuple with predefined field.
             sent_time : `str`
                 time as a string
             
