@@ -13,7 +13,16 @@ with open("snews_cs/_version.py", "r") as f:
 version_match = re.search(r"^version = ['\"]([^'\"]*)['\"]", version_file, re.M)
 version = version_match.group(1)
 
-install_requires = []
+# requirements
+install_requires = [
+    "hop-client=0.5.0",
+    "jsonschema=4.4.0",
+    "numpy=1.22.2",
+    "pymongo=4.0.2",
+    "python-dotenv=0.19.2",
+    "pandas=1.4.1",
+    "slack-sdk=3.15.2",
+]
 
 def read_requirements():
     with open('doc/requirements.txt') as req:
@@ -33,7 +42,6 @@ extras_require = {
         'pytest-mongodb',
         'pytest-runner',
         'twine',
-        "schedule",
     ],
     'docs': [
         'sphinx',

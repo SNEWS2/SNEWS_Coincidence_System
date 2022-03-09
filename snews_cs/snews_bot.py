@@ -6,9 +6,9 @@
 
 from slack_sdk import WebClient
 import os
-from . import snews_utils
+from . import cs_utils
 
-snews_utils.set_env()
+cs_utils.set_env()
 slack_token = os.getenv('SLACK_TOKEN')
 client = WebClient(slack_token)
 broker = os.getenv("HOP_BROKER")
