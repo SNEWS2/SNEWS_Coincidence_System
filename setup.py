@@ -24,13 +24,11 @@ install_requires = [
     "slack-sdk=3.15.2",
 ]
 
-
 def read_requirements():
-    # with open('snews_cs/requirements.txt') as req:
-    #     content = req.read()
-    #     requirements = content.split('\n')
-    # return install_requires + requirements
-    return install_requires
+    with open('doc/requirements.txt') as req:
+        content = req.read()
+        requirements = content.split('\n')
+    return install_requires.append(requirements)
 
 
 extras_require = {

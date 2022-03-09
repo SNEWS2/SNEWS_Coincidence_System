@@ -44,7 +44,6 @@ def run_coincidence(local):
     finally: 
         click.secho(f'\n{"="*30}DONE{"="*30}', fg='white', bg='green')
 
-
 # Called automatically inside the coincidence script 
 # @main.command()
 # @click.option('--test/--no-test', default=True, show_default='True', help='should the bot tag the channel')

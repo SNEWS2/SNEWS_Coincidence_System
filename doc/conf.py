@@ -22,9 +22,9 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 # -- Project information -----------------------------------------------------
 
-project = u'snews'
-copyright = u'2020, Skylar(Yiyang) Xu'
-author = u'Skylar(Yiyang) Xu, Torres-Lara Sebastian, Kara Melih'
+project = u'snews coincidence system'
+copyright = u'2022, Melih Kara'
+author = u'Torres-Lara Sebastian, Kara Melih'
 
 # The short X.Y version
 version = u''
@@ -53,7 +53,10 @@ extensions = [
     'sphinxcontrib.programoutput',
     'sphinx.ext.napoleon',
     'myst_parser',
-]
+    'autoapi.extension',
+    ]
+
+autoapi_dirs = ['../snews_cs']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -107,13 +110,16 @@ def setup(app):
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-if not on_rtd:  # only import and set the theme if we're building docs locally
-    import sphinx_rtd_theme
-    html_theme = 'sphinx_rtd_theme'
-    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+# if not on_rtd:  # only import and set the theme if we're building docs locally
+    # import sphinx_rtd_theme
+    # html_theme = 'sphinx_rtd_theme'
+    # html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+import sphinx_pdj_theme
+html_theme = 'sphinx_pdj_theme'
+html_theme_path = [sphinx_pdj_theme.get_html_theme_path()]
 
 #html_static_path = ['_static']
-html_logo = "_build/html/_static/new_snews_logo_150px.png"
+html_logo = "./snews_logo.png"
 html_theme_options = {
     'logo_only': True,
     'display_version': True,

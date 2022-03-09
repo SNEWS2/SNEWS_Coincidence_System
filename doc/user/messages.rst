@@ -1,5 +1,5 @@
 ==========
-Messages
+Messages (Not written yet.)
 ==========
 
 .. contents::
@@ -18,4 +18,4 @@ SNEWS Custom Messages
 .. For documentation on the hop-client custom message plugins, see 
 .. https://hop-client.readthedocs.io/en/latest/user/models.html
 
-Not written yet.
+

@@ -1,4 +1,4 @@
-SNEWS documentation
+SNEWS Coincidence System
 ====================================================
 
 User's Guide
@@ -9,18 +9,11 @@ User's Guide
 
    user/installation
    user/quickstart
-   user/architecture
-   user/messages
-   user/protocol
-   user/hop-comms
+   
 
 API Reference
 -------------
 
-.. toctree::
-   :maxdepth: 2
-
-   api/api
 
 Indices and tables
 ==================
