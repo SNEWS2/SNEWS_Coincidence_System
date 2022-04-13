@@ -20,7 +20,7 @@ class AlertPublisher:
     """ Class to publish SNEWS SuperNova Alerts based on coincidence
 
     """
-    def __init__(self, env_path=None, verbose=True, auth=True, use_local=False):
+    def __init__(self, env_path=None, verbose=True, auth=True, use_local=False, firedrill_mode=True):
         """
         Alert publisher constructor 
         Parameters
@@ -37,7 +37,10 @@ class AlertPublisher:
         cs_utils.set_env(env_path)
         self.auth = auth
         self.broker = os.getenv("HOP_BROKER")
-        self.alert_topic = os.getenv("ALERT_TOPIC")
+        if firedrill_mode:
+            self.alert_topic = os.getenv("FIREDRILL_ALERT_TOPIC")
+        else:
+            self.alert_topic = os.getenv("ALERT_TOPIC")
         self.times = cs_utils.TimeStuff()
         self.verbose = verbose
         self.time_str = lambda: self.times.get_snews_time()

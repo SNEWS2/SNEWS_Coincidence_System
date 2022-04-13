@@ -12,7 +12,7 @@ from .cs_alert_schema import CoincidenceTierAlert
 
 class CoincDecider:
 
-    def __init__(self, env_path=None, use_local_db=True, is_test=True, drop_db=False):
+    def __init__(self, env_path=None, use_local_db=True, is_test=True, drop_db=False, firedrill_mode=True):
         """Coincidence Decider class constructor
 
         Parameters
@@ -30,9 +30,12 @@ class CoincDecider:
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
-        self.alert = AlertPublisher(env_path=env_path, use_local=use_local_db)
+        self.alert = AlertPublisher(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
         self.times = cs_utils.TimeStuff(env_path)
-        self.observation_topic = os.getenv("OBSERVATION_TOPIC")
+        if firedrill_mode:
+            self.observation_topic = os.getenv("FIREDRILL_OBSERVATION_TOPIC")
+        else:
+            self.observation_topic = os.getenv("OBSERVATION_TOPIC")
         self.column_names = ["_id", "detector_name", "received_time", "machine_time", "neutrino_time",
                              "p_val", "meta", "sub_list_num", "nu_delta_t"]
 
@@ -434,7 +437,7 @@ class CoincDecider:
 
     # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
-        '''
+        """
         As the name states this method runs the coincidence system.
         Starts by subscribing to the hop observation_topic.
         Filters out any messages that don't belong to either CoincidenceTier or Retraction.
@@ -444,7 +447,7 @@ class CoincDecider:
         * IF a hardest is passed then cache is reset.
 
 
-        '''
+        """
 
         stream = Stream(until_eos=False)
         with stream.open(self.observation_topic, "r") as s:
