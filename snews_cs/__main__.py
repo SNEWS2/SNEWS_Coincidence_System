@@ -33,10 +33,11 @@ def main(ctx, env):
 
 @main.command()
 @click.option('--local/--no-local', default=True, show_default='True', help='Whether to use local database server or take from the env file')
-def run_coincidence(local):
+@click.option('--firedrill/--no-firedrill', default=True)
+def run_coincidence(local, firedrill):
     """ Initiate Coincidence Decider 
     """
-    coinc = snews_coinc.CoincDecider(use_local_db=local)
+    coinc = snews_coinc.CoincDecider(use_local_db=local, firedrill_mode=firedrill)
     try: 
         coinc.run_coincidence()
     except KeyboardInterrupt: 
