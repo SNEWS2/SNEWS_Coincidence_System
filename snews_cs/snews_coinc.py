@@ -481,4 +481,3 @@ class CoincDecider:
                 else:
                     click.secho(f"Attempted to submit a message that does not follow "
                                 f"snews_pt convention. \nThis is not supported now", fg='red')
-                    print(f"Message id received; \n{snews_message['_id']}\n")
