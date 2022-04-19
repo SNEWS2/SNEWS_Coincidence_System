@@ -454,6 +454,7 @@ class CoincDecider:
                 if '_id' not in snews_message.keys():
                     click.secho(f"Attempted to submit a message that does not follow "
                                 f"snews_pt convention. \nThis is not supported now", fg='red')
+                    continue
 
                 # if it is a reset message, reset and continue
                 if snews_message['_id'].split('_')[0] == 'hard-reset':
