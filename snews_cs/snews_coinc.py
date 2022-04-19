@@ -441,7 +441,7 @@ class CoincDecider:
 
         * IF a CoincidenceTier message is received then it is passed to _check_coincidence.
         * IF a Retraction message is received then it is passed to _retract_from_cache.
-        * IF a hardest is passed then cache is reset.
+        * IF a hard-reset is passed then cache is reset.
 
 
         '''
@@ -450,11 +450,17 @@ class CoincDecider:
         with stream.open(self.observation_topic, "r") as s:
             print('Nothing here, please wait...')
             for snews_message in s:
-                # Check for Coincidence\
-                # TODO: control for ol msg
-                if snews_message['_id'].split('_')[0] != 'hard-reset' and self._is_old_message(message=snews_message):
+                #  Check for Coincidence
+                # if it is a reset message, reset and continue
+                if snews_message['_id'].split('_')[0] == 'hard-reset':
+                    self.reset_df()
+                    click.secho('Cache restarted', fg='yellow')
+
+                # if it is an old message, continue
+                if self._is_old_message(message=snews_message):
                     continue
 
+                # Handle topic messages
                 if snews_message['_id'].split('_')[1] == self.topic_type:
                     snews_message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
                     self.storage.insert_mgs(snews_message)
@@ -471,9 +477,8 @@ class CoincDecider:
                     else:
                         pass
 
-                elif snews_message['_id'].split('_')[0] == 'hard-reset':
-                    self.reset_df()
-                    click.secho('Cache restarted', fg='yellow')
-
-                # else:
-                #     print(snews_message['_id'].split('_')[0], ' is not recognized!')
+                # Does not follow snews_pt convention
+                else:
+                    click.secho(f"Attempted to submit a message that does not follow "
+                                f"snews_pt convention. \nThis is not supported now", fg='red')
+                    print(f"Message id received; \n{snews_message['_id']}\n")
