@@ -434,7 +434,7 @@ class CoincDecider:
 
     # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
-        '''
+        """
         As the name states this method runs the coincidence system.
         Starts by subscribing to the hop observation_topic.
         Filters out any messages that don't belong to either CoincidenceTier or Retraction.
@@ -444,13 +444,17 @@ class CoincDecider:
         * IF a hard-reset is passed then cache is reset.
 
 
-        '''
+        """
 
         stream = Stream(until_eos=False)
         with stream.open(self.observation_topic, "r") as s:
             print('Nothing here, please wait...')
             for snews_message in s:
                 #  Check for Coincidence
+                if '_id' not in snews_message.keys():
+                    click.secho(f"Attempted to submit a message that does not follow "
+                                f"snews_pt convention. \nThis is not supported now", fg='red')
+
                 # if it is a reset message, reset and continue
                 if snews_message['_id'].split('_')[0] == 'hard-reset':
                     self.reset_df()
