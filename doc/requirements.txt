@@ -26,3 +26,4 @@ virtualenv==20.13.0
 wheel==0.34.2
 pymongo~=4.1.0
 slack-sdk~=3.15.2
+attrs~=21.4.0
