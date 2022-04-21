@@ -25,7 +25,7 @@ class Storage:
         self.mongo_server = os.getenv('DATABASE_SERVER')
 
         if use_local_db:
-            self.client = pymongo.MongoClient('mongodb://localhost:27017/', replicaset='rs0')
+            self.client = pymongo.MongoClient('mongodb://localhost:27017/') #, replicaset='rs0')
         else:
             self.client = pymongo.MongoClient(self.mongo_server)
 
