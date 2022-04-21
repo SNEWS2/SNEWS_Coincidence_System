@@ -434,6 +434,18 @@ class CoincDecider:
                 self.cache_df.drop(ind, inplace=True)
             ind += 1
         self.cache_df = self.cache_df.reset_index(drop=True)
+    # ------------------------------------------------------------------------------------------------------------------
+    def check_rights(self, message):
+        """ check if the requested user has rights
+            e.g. to reset the cache
+
+        """
+        if message['pass'] == os.getenv('snews_cs_admin_pass'):
+            self.reset_df()
+            click.secho('Cache restarted', fg='yellow')
+        else:
+            click.secho('The user has no right to reset the cache', fg='yellow')
+            pass
 
     # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
@@ -457,8 +469,7 @@ class CoincDecider:
                 #  Check for Coincidence
                 # if it is a reset message, reset and continue
                 if snews_message['_id'].split('_')[0] == 'hard-reset':
-                    self.reset_df()
-                    click.secho('Cache restarted', fg='yellow')
+                    self.check_rights(snews_message)
                     continue
 
                 # if it is an old message, continue
