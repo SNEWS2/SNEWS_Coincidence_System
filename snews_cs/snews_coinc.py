@@ -451,13 +451,16 @@ class CoincDecider:
 
         stream = Stream(until_eos=False)
         with stream.open(self.observation_topic, "r") as s:
-            print('Nothing here, please wait...')
+            print(f'Running Coincidence System for {self.observation_topic}\n'
+                  f'Nothing here, please wait...')
             for snews_message in s:
                 #  Check for Coincidence
                 # if it is a reset message, reset and continue
+                print(f"\n {snews_message} \n")
                 if snews_message['_id'].split('_')[0] == 'hard-reset':
                     self.reset_df()
                     click.secho('Cache restarted', fg='yellow')
+                    continue
 
                 # if it is an old message, continue
                 if self._is_old_message(message=snews_message):
