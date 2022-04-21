@@ -456,7 +456,6 @@ class CoincDecider:
             for snews_message in s:
                 #  Check for Coincidence
                 # if it is a reset message, reset and continue
-                print(f"\n {snews_message} \n")
                 if snews_message['_id'].split('_')[0] == 'hard-reset':
                     self.reset_df()
                     click.secho('Cache restarted', fg='yellow')
