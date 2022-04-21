@@ -455,6 +455,14 @@ class CoincDecider:
                   f'Nothing here, please wait...')
             for snews_message in s:
                 #  Check for Coincidence
+                # check if the message contains "_id", otherwise following checks crash
+                if '_id' not in snews_message.keys():
+                    click.secho(f"Attempted to submit a message that does not follow "
+                                f"snews_pt convention. \nThis is not supported now", fg='red')
+                    # in the future, I suggest we log these messages and check who submits what
+                    # if this is a repeated behaviour, we might need to warn the user as they don't get a feedback
+                    continue
+
                 # if it is a reset message, reset and continue
                 if snews_message['_id'].split('_')[0] == 'hard-reset':
                     self.reset_df()
