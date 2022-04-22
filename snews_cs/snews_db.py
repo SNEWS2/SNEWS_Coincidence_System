@@ -26,6 +26,7 @@ class Storage:
 
         if use_local_db:
             self.client = pymongo.MongoClient('mongodb://localhost:27017/', replicaset='rs0')
+            # replicaset='rs0' caused issue for @Melih
         else:
             self.client = pymongo.MongoClient(self.mongo_server)
 

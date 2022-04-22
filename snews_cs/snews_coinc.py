@@ -451,18 +451,25 @@ class CoincDecider:
 
         stream = Stream(until_eos=False)
         with stream.open(self.observation_topic, "r") as s:
-            print('Nothing here, please wait...')
+            print(f'Running Coincidence System for {self.observation_topic}\n'
+                  f'Nothing here, please wait...')
             for snews_message in s:
                 #  Check for Coincidence
+                # check if the message contains "_id", otherwise following checks crash
                 if '_id' not in snews_message.keys():
                     click.secho(f"Attempted to submit a message that does not follow "
                                 f"snews_pt convention. \nThis is not supported now", fg='red')
+                    # in the future, I suggest we log these messages and check who submits what
+                    # if this is a repeated behaviour, we might need to warn the user as they don't get a feedback
+
                     continue
 
                 # if it is a reset message, reset and continue
                 if snews_message['_id'].split('_')[0] == 'hard-reset':
                     self.reset_df()
                     click.secho('Cache restarted', fg='yellow')
+                    continue
+
 
                 # if it is an old message, continue
                 if self._is_old_message(message=snews_message):
@@ -489,3 +496,5 @@ class CoincDecider:
                 else:
                     click.secho(f"Attempted to submit a message that does not follow "
                                 f"snews_pt convention. \nThis is not supported now", fg='red')
+                    print(f"Message id received; \n{snews_message['_id']}\n")
+

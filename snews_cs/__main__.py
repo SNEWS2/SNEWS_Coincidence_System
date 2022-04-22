@@ -33,7 +33,7 @@ def main(ctx, env):
 
 @main.command()
 @click.option('--local/--no-local', default=True, show_default='True', help='Whether to use local database server or take from the env file')
-@click.option('--firedrill/--no-firedrill', default=True)
+@click.option('--firedrill/--no-firedrill', default=True, show_default='True', help='Whether to use firedrill brokers or default ones')
 def run_coincidence(local, firedrill):
     """ Initiate Coincidence Decider 
     """
