@@ -8,7 +8,7 @@ import pandas as pd
 from hop import Stream
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
-
+from .cs_stats import CoincStat
 
 class CoincDecider:
 
@@ -25,6 +25,7 @@ class CoincDecider:
             tells CoincDecider if it's running in test mode,
         """
         cs_utils.set_env(env_path)
+        self.stats = CoincStat()
         self.hype_mode_ON = True
         self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
