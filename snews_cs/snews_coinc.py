@@ -8,7 +8,7 @@ import pandas as pd
 from hop import Stream
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
-
+from .cs_stats import CoincStat
 
 class CoincDecider:
 
@@ -25,6 +25,7 @@ class CoincDecider:
             tells CoincDecider if it's running in test mode,
         """
         cs_utils.set_env(env_path)
+        self.stats = CoincStat()
         self.hype_mode_ON = True
         self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
@@ -434,6 +435,18 @@ class CoincDecider:
                 self.cache_df.drop(ind, inplace=True)
             ind += 1
         self.cache_df = self.cache_df.reset_index(drop=True)
+    # ------------------------------------------------------------------------------------------------------------------
+    def check_rights(self, message):
+        """ check if the requested user has rights
+            e.g. to reset the cache
+
+        """
+        if message['pass'] == os.getenv('snews_cs_admin_pass'):
+            self.reset_df()
+            click.secho('Cache restarted', fg='yellow')
+        else:
+            click.secho('The user has no right to reset the cache', fg='yellow')
+            pass
 
     # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
@@ -451,13 +464,24 @@ class CoincDecider:
 
         stream = Stream(until_eos=False)
         with stream.open(self.observation_topic, "r") as s:
-            print('Nothing here, please wait...')
+            print(f'Running Coincidence System for {self.observation_topic}\n'
+                  f'Nothing here, please wait...')
             for snews_message in s:
                 #  Check for Coincidence
+                # check if the message contains "_id", otherwise following checks crash
+                if '_id' not in snews_message.keys():
+                    click.secho(f"Attempted to submit a message that does not follow "
+                                f"snews_pt convention. \nThis is not supported now", fg='red')
+                    # in the future, I suggest we log these messages and check who submits what
+                    # if this is a repeated behaviour, we might need to warn the user as they don't get a feedback
+
+                    continue
+
                 # if it is a reset message, reset and continue
                 if snews_message['_id'].split('_')[0] == 'hard-reset':
-                    self.reset_df()
-                    click.secho('Cache restarted', fg='yellow')
+                    self.check_rights(snews_message)
+                    continue
+
 
                 # if it is an old message, continue
                 if self._is_old_message(message=snews_message):
@@ -485,3 +509,4 @@ class CoincDecider:
                     click.secho(f"Attempted to submit a message that does not follow "
                                 f"snews_pt convention. \nThis is not supported now", fg='red')
                     print(f"Message id received; \n{snews_message['_id']}\n")
+
