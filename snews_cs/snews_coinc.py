@@ -8,11 +8,14 @@ import pandas as pd
 from hop import Stream
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
+from .cs_utils import is_garbage_message
 from .cs_stats import CoincStat
+
 
 class CoincDecider:
 
-    def __init__(self, env_path=None, use_local_db=True, is_test=True, drop_db=False, firedrill_mode=True):
+    def __init__(self, env_path=None, use_local_db=True, is_test=True, drop_db=False, firedrill_mode=True,
+                 hb_path=None, server_tag=None):
         """Coincidence Decider class constructor
 
         Parameters
@@ -27,6 +30,8 @@ class CoincDecider:
         cs_utils.set_env(env_path)
         self.stats = CoincStat()
         self.hype_mode_ON = True
+        self.hb_path = hb_path
+        self.server_tag = server_tag
         self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
@@ -393,13 +398,16 @@ class CoincDecider:
         click.secho(f'{"=" * 100}', fg='bright_red')
         for sub_list in list(self.cache_df['sub_list_num'].unique()):
             _sub_df = self.cache_df.query(f'sub_list_num=={sub_list}')
+            if len(_sub_df) <= 1:
+                continue
             p_vals = _sub_df['p_val'].to_list()
             p_vals_avg = _sub_df['p_val'].mean()
             nu_times = _sub_df['neutrino_time'].to_list()
             detector_names = _sub_df['detector_name'].to_list()
-
+            false_alarm_prob = self.stats.cache_false_alarm_rate(cache_sub_list=_sub_df, path_to_hb=self.hb_path)
             alert_data = cs_utils.data_cs_alert(p_vals=p_vals, p_val_avg=p_vals_avg, sub_list_num=sub_list,
-                                                nu_times=nu_times, detector_names=detector_names, )
+                                                nu_times=nu_times, detector_names=detector_names,
+                                                false_alarm_prob=false_alarm_prob, server_tag=self.server_tag)
 
             with self.alert as pub:
                 alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
@@ -435,12 +443,14 @@ class CoincDecider:
                 self.cache_df.drop(ind, inplace=True)
             ind += 1
         self.cache_df = self.cache_df.reset_index(drop=True)
+
     # ------------------------------------------------------------------------------------------------------------------
     def check_rights(self, message):
         """ check if the requested user has rights
             e.g. to reset the cache
 
         """
+
         if message['pass'] == os.getenv('snews_cs_admin_pass'):
             self.reset_df()
             click.secho('Cache restarted', fg='yellow')
@@ -469,22 +479,13 @@ class CoincDecider:
             for snews_message in s:
                 #  Check for Coincidence
                 # check if the message contains "_id", otherwise following checks crash
-                if '_id' not in snews_message.keys():
-                    click.secho(f"Attempted to submit a message that does not follow "
-                                f"snews_pt convention. \nThis is not supported now", fg='red')
-                    # in the future, I suggest we log these messages and check who submits what
-                    # if this is a repeated behaviour, we might need to warn the user as they don't get a feedback
-
+                if is_garbage_message(snews_message):
+                    print('Message will not be added to cache\nPlease make sure your message follow SNEWS-PT format')
                     continue
 
                 # if it is a reset message, reset and continue
                 if snews_message['_id'].split('_')[0] == 'hard-reset':
                     self.check_rights(snews_message)
-                    continue
-
-
-                # if it is an old message, continue
-                if self._is_old_message(message=snews_message):
                     continue
 
                 # Handle topic messages
@@ -503,10 +504,3 @@ class CoincDecider:
                         self.storage.insert_mgs(snews_message)
                     else:
                         pass
-
-                # Does not follow snews_pt convention
-                else:
-                    click.secho(f"Attempted to submit a message that does not follow "
-                                f"snews_pt convention. \nThis is not supported now", fg='red')
-                    print(f"Message id received; \n{snews_message['_id']}\n")
-
