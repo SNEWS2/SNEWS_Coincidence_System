@@ -55,3 +55,25 @@ All the observation messages are kept in cache for 24 hours after their `neutrin
 
 Details about the commands can also be displayed via passing `--help` flag. The slack bot requires authentication through a token, contact Melih Kara or Sebastian Torres-Lara if needed.
 
+# SNEWS Detector List 
+
+* “Baksan” 
+* “Borexino” 
+* “DS-20K” 
+* “DUNE”
+* “HALO”
+* “HALO-1kT” 
+* “Hyper-K” 
+* “IceCube” 
+* “JUNO”
+* “KM3NeT” 
+* “KamLAND” 
+* “LVD”
+* “LZ”
+* “MicroBooNe” 
+* “NOvA” 
+* “PandaX-4T”
+* “SBND” 
+* “SNO+”
+* “Super-K”
+* “XENONnT”
