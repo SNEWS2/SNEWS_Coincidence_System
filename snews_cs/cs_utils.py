@@ -71,7 +71,7 @@ def get_logger(scriptname, logfile_name):
 
 # TODO: Change to SNEWS_PT struc
 def data_cs_alert(p_vals=None, nu_times=None,
-                  detector_names=None, p_val_avg=None, sub_list_num=None):
+                  detector_names=None, p_val_avg=None, sub_list_num=None, false_alarm_prob=None, server_tag=None):
     """ Default alert message data
         
         Parameters
@@ -93,8 +93,8 @@ def data_cs_alert(p_vals=None, nu_times=None,
                 dictionary of the complete alert data
 
     """
-    keys = ['p_vals', 'neutrino_times', 'detector_names', 'p_val_avg', 'sub_list_num']
-    values = [p_vals, nu_times, detector_names, p_val_avg, sub_list_num]
+    keys = ['p_vals', 'neutrino_times', 'detector_names', 'p_val_avg', 'sub_list_num', 'false_alarm_prob', 'server_tag']
+    values = [p_vals, nu_times, detector_names, p_val_avg, sub_list_num, false_alarm_prob, server_tag]
     return dict(zip(keys, values))
 
 
