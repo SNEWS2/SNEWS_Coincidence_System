@@ -4,6 +4,7 @@ Example initial dosctring
 from dotenv import load_dotenv
 from datetime import datetime
 import os
+import json
 
 
 def set_env(env_path=None):
@@ -37,7 +38,7 @@ class TimeStuff:
         self.get_hour = lambda fmt=self.hour_fmt: datetime.utcnow().strftime(fmt)
         self.get_date = lambda fmt=self.date_fmt: datetime.utcnow().strftime(fmt)
 
-    def str_to_datetime(self, nu_time, fmt='%y/%m/%d %H:%M:%S'):
+    def str_to_datetime(self, nu_time, fmt='%y/%m/%d %H:%M:%S:%f'):
         """ string to datetime object """
         return datetime.strptime(nu_time, fmt)
 
@@ -68,7 +69,6 @@ def get_logger(scriptname, logfile_name):
     return logger
 
 
-
 # TODO: Change to SNEWS_PT struc
 def data_cs_alert(p_vals=None, nu_times=None,
                   detector_names=None, p_val_avg=None, sub_list_num=None):
@@ -96,3 +96,91 @@ def data_cs_alert(p_vals=None, nu_times=None,
     keys = ['p_vals', 'neutrino_times', 'detector_names', 'p_val_avg', 'sub_list_num']
     values = [p_vals, nu_times, detector_names, p_val_avg, sub_list_num]
     return dict(zip(keys, values))
+
+
+def is_garbage_message(snews_message):
+    """ This method checks to see if message meets SNEWS standards
+
+    Parameters
+    ----------
+    snews_message : dict
+        incoming SNEWS message
+
+    Returns
+    -------
+        bool
+            True if message does not meet CS standards, else
+
+    """
+    time = TimeStuff()
+    with open('snews_cs/auxiliary/detector_properties.json') as file:
+        snews_detectors = json.load(file)
+    snews_detectors = list(snews_detectors.keys())
+    message_key = snews_message.keys()
+    is_garbage = False
+    missing_key = False
+    warning = f'The following Message does not meet SNEWS CS standards !\n{snews_message}\n'
+    if 'detector_name' not in message_key:
+        # print(')
+        warning += f'* Does not have required key: "detector_name"\n'
+        is_garbage = True
+        missing_key = True
+    if 'neutrino_time' not in message_key:
+        warning += f'* Does not have required key: "neutrino_time"\n'
+        is_garbage = True
+        missing_key = True
+    if 'p_value' not in message_key:
+        warning += f'* Does not have required key: "p_value"\n'
+        is_garbage = True
+        missing_key = True
+    if missing_key:
+        print(warning)
+        return is_garbage
+    contents_suck = False
+    if type(snews_message['p_value']) is not float:
+        contents_suck = True
+        is_garbage = True
+        warning += f'* p value needs to be a float type, type given: {type(snews_message["p_value"])}\n'
+    if type(snews_message['p_value']) is float and (snews_message['p_value'] >= 1.0 or snews_message['p_value'] <= 0):
+        warning += f'* {snews_message["p_value"]} is not a valid p value !\n'
+        contents_suck = True
+        is_garbage = True
+    if type(snews_message['detector_name']) is not str:
+        contents_suck = True
+        is_garbage = True
+        warning += f'* "detector_name" must be a str, type given: {type(snews_message["detector_name"])}\n'
+    if type(snews_message['neutrino_time']) is not str:
+        contents_suck = True
+        is_garbage = True
+        warning += f'* neutrino time must be a str, type given: {type(snews_message["neutrino_time"])}\n'
+    if snews_message['detector_name'] not in snews_detectors:
+        contents_suck = True
+        is_garbage = True
+        warning += f'* "{snews_message["detector_name"]}" is not in the SNEWS detector list\n\t-Please see README file for detector list\n'
+    if contents_suck:
+        print(warning)
+        return is_garbage
+    shitty_nu_time = False
+
+    try:
+        time.str_to_datetime(snews_message['neutrino_time'])
+    except ValueError:
+        warning += f'* neutrino time: {snews_message["neutrino_time"]} does not match SNEWS CS format: "%y/%m/%d %H:%M:%S:%f"'
+        shitty_nu_time = True
+        is_garbage = True
+
+    if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() <= -172800.0:
+        warning += f'* neutrino time is more than 48 hrs olds !'
+        shitty_nu_time = True
+        is_garbage = True
+
+    if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() > 0:
+        warning += f'* neutrino time comes from the future, please stop breaking causality'
+        shitty_nu_time = True
+        is_garbage = True
+
+    if shitty_nu_time:
+        print(warning)
+        return is_garbage
+
+    return is_garbage
