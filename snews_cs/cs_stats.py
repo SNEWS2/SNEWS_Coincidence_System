@@ -24,8 +24,9 @@ class CoincStat:
             num_coinc_detectors = len(cache_sub_list['detector_name'])
 
             num_detectors_online = len(json.load(json_file)['detectors'])
-
-            mu = 1 * num_detectors_online  # expected number of false coincidence for a week
-
+            if num_detectors_online > 0:
+                mu = 1 * num_detectors_online  # expected number of false coincidence for a week
+            else:
+                mu = 1
             prob_false_alarm_rate = poisson.pmf(k=num_coinc_detectors, mu=mu)
             return prob_false_alarm_rate
