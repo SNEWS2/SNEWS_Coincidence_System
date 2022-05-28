@@ -6,7 +6,7 @@ import json
 
 class CoincStat:
 
-    def cache_false_alarm_rate(self, cache_sub_list, path_to_hb='heartboeats/heartboeats.json'):
+    def cache_false_alarm_rate(self, cache_sub_list, path_to_hb='heartbeats/heartbeats.json'):
         '''
         Generates flase alarm rates for a set of detector heartbeats
 
@@ -22,8 +22,10 @@ class CoincStat:
         '''
         with open(path_to_hb) as json_file:
             num_coinc_detectors = len(cache_sub_list['detector_name'])
-
-            num_detectors_online = len(json.load(json_file)['detectors'])
+            if path_to_hb is None:
+                num_coinc_detectors = 0
+            else:
+                num_detectors_online = len(json.load(json_file)['detectors'])
             if num_detectors_online > 0:
                 mu = 1 * num_detectors_online  # expected number of false coincidence for a week
             else:
