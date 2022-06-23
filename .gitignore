@@ -15,3 +15,4 @@ doc/_build/
 /snews_cs/hop_sub.py
 /snews_cs/slack_alert.py
 /snews_cs/auxiliary/test-config.env
+firedrill.ipynb

@@ -35,7 +35,6 @@ class CoincidenceTierAlert:
         else:
             return f'SNEWS_Coincidence-ALERT-UPDATE_{date_time}'
 
-
     def get_cs_alert_schema(self, data):
         """ Create a message schema for alert.
             Internally called in hop_pub
@@ -55,10 +54,12 @@ class CoincidenceTierAlert:
         """
         id = self.id_format(len(data['detector_names']))
         return {"_id": id,
+                "server_tag": data['server_tag'],
+                "false_alarm_probability": data['false_alarm_prob'],
                 "detector_names": data['detector_names'],
                 "sent_time": id.split('_')[2],
                 "p_values": data['p_vals'],
                 "neutrino_times": data['neutrino_times'],
                 "p_values average": data['p_val_avg'],
-                "sub list number":data['sub_list_num']
+                "sub list number": data['sub_list_num']
                 }
