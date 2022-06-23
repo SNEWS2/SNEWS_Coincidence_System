@@ -20,15 +20,15 @@ class CoincStat:
         -------
 
         '''
-        with open(path_to_hb) as json_file:
-            num_coinc_detectors = len(cache_sub_list['detector_name'])
-            if path_to_hb is None:
-                num_coinc_detectors = 0
-            else:
+        num_coinc_detectors = len(cache_sub_list['detector_name'])
+        if path_to_hb is None:
+            num_detectors_online = 0
+        else:
+            with open(path_to_hb) as json_file:
                 num_detectors_online = len(json.load(json_file)['detectors'])
-            if num_detectors_online > 0:
-                mu = 1 * num_detectors_online  # expected number of false coincidence for a week
-            else:
-                mu = 1
-            prob_false_alarm_rate = poisson.pmf(k=num_coinc_detectors, mu=mu)
-            return prob_false_alarm_rate
+        if num_detectors_online > 0:
+            mu = 1 * num_detectors_online  # expected number of false coincidence for a week
+        else:
+            mu = 1
+        prob_false_alarm_rate = poisson.pmf(k=num_coinc_detectors, mu=mu)
+        return prob_false_alarm_rate
