@@ -121,7 +121,6 @@ def is_garbage_message(snews_message):
     missing_key = False
     warning = f'The following Message does not meet SNEWS CS standards !\n{snews_message}\n'
     if 'detector_name' not in message_key:
-        # print(')
         warning += f'* Does not have required key: "detector_name"\n'
         is_garbage = True
         missing_key = True
@@ -129,20 +128,20 @@ def is_garbage_message(snews_message):
         warning += f'* Does not have required key: "neutrino_time"\n'
         is_garbage = True
         missing_key = True
-    if 'p_value' not in message_key:
-        warning += f'* Does not have required key: "p_value"\n'
+    if 'p_val' not in message_key:
+        warning += f'* Does not have required key: "p_val"\n'
         is_garbage = True
         missing_key = True
     if missing_key:
         print(warning)
         return is_garbage
     contents_suck = False
-    if type(snews_message['p_value']) is not float:
+    if type(snews_message['p_val']) is not float:
         contents_suck = True
         is_garbage = True
-        warning += f'* p value needs to be a float type, type given: {type(snews_message["p_value"])}\n'
-    if type(snews_message['p_value']) is float and (snews_message['p_value'] >= 1.0 or snews_message['p_value'] <= 0):
-        warning += f'* {snews_message["p_value"]} is not a valid p value !\n'
+        warning += f'* p value needs to be a float type, type given: {type(snews_message["p_val"])}\n'
+    if type(snews_message['p_val']) is float and (snews_message['p_val'] >= 1.0 or snews_message['p_val'] <= 0):
+        warning += f'* {snews_message["p_val"]} is not a valid p value !\n'
         contents_suck = True
         is_garbage = True
     if type(snews_message['detector_name']) is not str:

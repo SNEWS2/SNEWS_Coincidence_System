@@ -161,6 +161,22 @@ class CoincDecider:
         """
         self.cache_df = pd.concat([self.cache_df.query(f'sub_list_num!={new_sub_list_num}'), new_list],
                                   ignore_index=True)
+    # ------------------------------------------------------------------------------------------------------------------
+    def _nu_delta_organizer(self, df):
+        main_temp = pd.DataFrame()
+        for sub_list in list(df['sub_list_num'].unique()):
+            temp = df.query(f'sub_list_num=={sub_list}')
+            temp = temp.sort_values(by='neutrino_time').reset_index(drop=True)
+            new_delta = []
+            new_initial = temp['neutrino_time'][0]
+            for time in temp['neutrino_time']:
+                new_delta.append(
+                    (self.times.str_to_datetime(time) - self.times.str_to_datetime(new_initial)).total_seconds())
+            temp['nu_delta_t'] = new_delta
+            main_temp = pd.concat([main_temp, temp])
+
+        main_temp.reset_index(drop=True, inplace=True)
+        return main_temp
 
     # ------------------------------------------------------------------------------------------------------------------
     def _new_list_find_coincidences(self, message, new_sub_list):
@@ -337,6 +353,7 @@ class CoincDecider:
             print('we got something publishing an alert !')
             self._dump_redundant_list()
             self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'received_time'])
+            self.cache_df = self._nu_delta_organizer(self.cache_df)
             self.hype_mode_publish()
             self.display_table()
 
@@ -480,7 +497,7 @@ class CoincDecider:
                 #  Check for Coincidence
                 # check if the message contains "_id", otherwise following checks crash
                 if is_garbage_message(snews_message):
-                    print('Message will not be added to cache\nPlease make sure your message follow SNEWS-PT format')
+                    print('\nMessage will not be added to cache\nPlease make sure your message follows the SNEWS-PT format')
                     continue
 
                 # if it is a reset message, reset and continue
