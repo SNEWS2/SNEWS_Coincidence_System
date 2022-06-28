@@ -174,7 +174,7 @@ class CoincDecider:
                     (self.times.str_to_datetime(time) - self.times.str_to_datetime(new_initial)).total_seconds())
             temp['nu_delta_t'] = new_delta
             main_temp = pd.concat([main_temp, temp])
-
+        main_temp.sort_values(by=['sub_list_num','neutrino_time'],ascending=False,inplace=True)
         main_temp.reset_index(drop=True, inplace=True)
         return main_temp
 
@@ -369,7 +369,7 @@ class CoincDecider:
         for sub_list in self.cache_df['sub_list_num'].unique():
             sub_df = self.cache_df.query(f'sub_list_num=={sub_list}')
             sub_df = sub_df.drop(columns=['meta', 'machine_time', 'schema_version'])
-            sub_df = sub_df.sort_values(by=['received_time'])
+            sub_df = sub_df.sort_values(by=['neutrino_time'])
             # snews_bot.send_table(sub_df)
             print(sub_df.to_markdown())
             print('=' * 168)
