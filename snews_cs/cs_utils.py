@@ -24,9 +24,9 @@ def set_env(env_path=None):
 
 
 class TimeStuff:
-    ''' SNEWS format datetime objects
+    """ SNEWS format datetime objects
 
-    '''
+    """
 
     def __init__(self, env_path=None):
         set_env(env_path)
@@ -113,7 +113,8 @@ def is_garbage_message(snews_message):
 
     """
     time = TimeStuff()
-    with open('snews_cs/auxiliary/detector_properties.json') as file:
+    detector_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/detector_properties.json'))
+    with open(detector_file) as file:
         snews_detectors = json.load(file)
     snews_detectors = list(snews_detectors.keys())
     message_key = snews_message.keys()
@@ -183,3 +184,18 @@ def is_garbage_message(snews_message):
         return is_garbage
 
     return is_garbage
+
+def test_connection(message, broker):
+    """ When received a test_connection key
+        reinstert the message with updated status
+        this way user can test if their message
+        goes and comes back from the server
+    """
+    from hop import Stream
+    stream = Stream(until_eos=False)
+    with stream.open(broker, "w") as s:
+        # insert back with a "received" status
+        message["status"] = "received"
+        s.write(message)
+        print(message)
+        print(f"{message['name']} tested their connection {message['time']}")

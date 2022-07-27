@@ -8,7 +8,7 @@ import pandas as pd
 from hop import Stream
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
-from .cs_utils import is_garbage_message
+from .cs_utils import is_garbage_message, test_connection
 from .cs_stats import CoincStat
 
 
@@ -496,13 +496,36 @@ class CoincDecider:
             for snews_message in s:
                 #  Check for Coincidence
                 # check if the message contains "_id", otherwise following checks crash
-                if is_garbage_message(snews_message):
-                    print('\nMessage will not be added to cache\nPlease make sure your message follows the SNEWS-PT format')
-                    continue
+                if "_id" not in snews_message.keys():
+                    print("\nMessage will not be added to cache\n not using snews_pt"
+                          "Submitted message\n", snews_message) # log the message
+
+                if snews_message['_id'].split('_')[0] == 'test-connection':
+                    if snews_message["status"] == "sending":
+                        test_connection(snews_message, self.observation_topic)
+                        continue
+                    else:
+                        continue
 
                 # if it is a reset message, reset and continue
                 if snews_message['_id'].split('_')[0] == 'hard-reset':
                     self.check_rights(snews_message)
+                    continue
+
+                # Check for Retraction (NEEDS WORK)
+                elif snews_message['_id'].split('_')[1] == 'Retraction':
+                    if snews_message['which_tier'] == 'CoincidenceTier' or snews_message['which_tier'] == 'ALL':
+                        snews_message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
+                        self._retract_from_cache(snews_message)
+                        self.storage.insert_mgs(snews_message)
+                    else:
+                        pass
+
+# --------------------------------- main purpose (coincidence) checks after here ---------------------------------------
+                # only check if they are garbage when they are intended to be observation
+                if is_garbage_message(snews_message):
+                    print('\nMessage will not be added to cache\n'
+                          'Please make sure your message follows the SNEWS-PT format')
                     continue
 
                 # Handle topic messages
@@ -513,11 +536,4 @@ class CoincDecider:
                     click.secho(f'Incoming message from: {snews_message["detector_name"]}'.upper(), bold=True, fg='red')
                     self._check_coincidence(message=snews_message)
 
-                # Check for Retraction (NEEDS WORK)
-                elif snews_message['_id'].split('_')[1] == 'Retraction':
-                    if snews_message['which_tier'] == 'CoincidenceTier' or snews_message['which_tier'] == 'ALL':
-                        snews_message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
-                        self._retract_from_cache(snews_message)
-                        self.storage.insert_mgs(snews_message)
-                    else:
-                        pass
+
