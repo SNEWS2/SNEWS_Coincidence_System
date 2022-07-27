@@ -433,7 +433,11 @@ class CoincDecider:
         click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}\n', bg='bright_green', fg='red')
         click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
         click.secho(f'{"=" * 100}', fg='bright_red')
-        # snews_bot.send_table(self.cache_df, self.is_test)
+        try:
+            snews_bot.send_table(self.cache_df, self.is_test)
+        except:
+            print("Bot failed to send slack message")
+            pass
 
     # ------------------------------------------------------------------------------------------------------------------
     def dump_old_messages(self, message):
