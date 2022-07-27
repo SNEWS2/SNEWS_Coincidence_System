@@ -98,7 +98,7 @@ def data_cs_alert(p_vals=None, nu_times=None,
     return dict(zip(keys, values))
 
 
-def is_garbage_message(snews_message):
+def is_garbage_message(snews_message, is_test=False):
     """ This method checks to see if message meets SNEWS standards
 
     Parameters
@@ -175,9 +175,12 @@ def is_garbage_message(snews_message):
         is_garbage = True
 
     if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() > 0:
-        warning += f'* neutrino time comes from the future, please stop breaking causality'
-        shitty_nu_time = True
-        is_garbage = True
+        if is_test:
+            pass
+        else:
+            warning += f'* neutrino time comes from the future, please stop breaking causality'
+            shitty_nu_time = True
+            is_garbage = True
 
     if shitty_nu_time:
         print(warning)
@@ -197,5 +200,4 @@ def test_connection(message, broker):
         # insert back with a "received" status
         message["status"] = "received"
         s.write(message)
-        print(message)
-        print(f"{message['name']} tested their connection {message['time']}")
+        print(f"> {message['time']} -> {message['name']} tested their connection")

@@ -494,6 +494,7 @@ class CoincDecider:
             print(f'Running Coincidence System for {self.observation_topic}\n'
                   f'Nothing here, please wait...')
             for snews_message in s:
+                is_test = False
                 #  Check for Coincidence
                 # check if the message contains "_id", otherwise following checks crash
                 if "_id" not in snews_message.keys():
@@ -507,13 +508,18 @@ class CoincDecider:
                     else:
                         continue
 
+                # testing scenarios, bypass garbage check if it is a test
+                if "meta" in snews_message.keys():
+                    if "testing" in snews_message["meta"].keys():
+                        is_test = True
+
                 # if it is a reset message, reset and continue
                 if snews_message['_id'].split('_')[0] == 'hard-reset':
                     self.check_rights(snews_message)
                     continue
 
                 # Check for Retraction (NEEDS WORK)
-                elif snews_message['_id'].split('_')[1] == 'Retraction':
+                if snews_message['_id'].split('_')[1] == 'Retraction':
                     if snews_message['which_tier'] == 'CoincidenceTier' or snews_message['which_tier'] == 'ALL':
                         snews_message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
                         self._retract_from_cache(snews_message)
@@ -523,7 +529,7 @@ class CoincDecider:
 
 # --------------------------------- main purpose (coincidence) checks after here ---------------------------------------
                 # only check if they are garbage when they are intended to be observation
-                if is_garbage_message(snews_message):
+                if is_garbage_message(snews_message, is_test):
                     print('\nMessage will not be added to cache\n'
                           'Please make sure your message follows the SNEWS-PT format')
                     continue
