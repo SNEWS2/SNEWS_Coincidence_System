@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 import os
 import json
+import click
 
 
 def set_env(env_path=None):
@@ -188,16 +189,142 @@ def is_garbage_message(snews_message, is_test=False):
 
     return is_garbage
 
-def test_connection(message, broker):
-    """ When received a test_connection key
-        reinstert the message with updated status
-        this way user can test if their message
-        goes and comes back from the server
+
+class CommandHandler:
+    """ class to handle the manual command issued by the admins
+        These commands can be
+        - Garbage message handling
+        - Reset the cache
+        - Test connection
+        - Retract messages
+        - Testing-purpose submissions
+        - Get logs
+        - Change Broker
     """
-    from hop import Stream
-    stream = Stream(until_eos=False)
-    with stream.open(broker, "w") as s:
-        # insert back with a "received" status
-        message["status"] = "received"
-        s.write(message)
-        print(f"> {message['time']} -> {message['name']} tested their connection")
+    def __init__(self, message):
+        self.known_commands = ["test-connection", "test-scenarios",
+                               "hard-reset", "Retraction", "broker-change"]
+        self.known_command_functions = {"test-connection": self.test_connection,
+                                        "hard-reset": self.hard_reset,
+                                        "Retraction": self.retract,
+                                        "broker-change": self.change_broker}
+        self.input_message = message
+        self.command = None
+        self.username = self.input_message.get("detector_name", "NoName")
+        self.times = TimeStuff()
+        self.entry = lambda : f"\n{self.times.get_snews_time()} |{self.username}|"
+
+    def handle(self, CoincDeciderInstance):
+        if not self.check_id():
+            return False
+        self.command = self.input_message['_id'].split('_')[0]
+        return self.check_command(CoincDeciderInstance)
+
+    def check_id(self):
+        """ check if the format is correct
+            snews_pt sends messages in mongodb format
+            which HAS TO contain an _id field
+        """
+        if "_id" not in self.input_message.keys():
+            log = f"{self.entry()} message without '_id' field\n" \
+                  f"{self.input_message}\n"
+            print(log)
+            return False
+        else:
+            return True
+
+    def check_command(self, CoincDeciderInstance):
+        if self.command in self.known_commands:
+            log = f"{self.entry()} {self.command} is passed!"
+            print(log)
+            return self.known_command_functions[self.command](CoincDeciderInstance)
+        else:
+            # for now assume it is an observation message
+
+            if "this is a test" in self.input_message['meta'].values():
+                is_test = True
+                log = f"{self.entry()} TEST SCENARIO Message Received!"
+                if "test" or "firedrill" in CoincDeciderInstance.observation_topic:
+                    pass
+                else:
+                    log += f"\nThe {CoincDeciderInstance.observation_topic} does not allow for tests!"
+                    return False
+            else:
+                log = f"{self.entry()} Observation Message Received!"
+                is_test = False
+            is_garbage = is_garbage_message(self.input_message, is_test=is_test)
+            is_correct_topic = (self.input_message['_id'].split('_')[1] == CoincDeciderInstance.topic_type)
+            if (not is_garbage) and is_correct_topic:
+                log += "\t valid message"
+                print(log)
+                return True
+            else:
+                log += "\t NOT a valid message"
+                print(log)
+                return  False
+
+    def test_connection(self, CoincDeciderInstance):
+        """ When received a test_connection key
+            reinstert the message with updated status
+            this way user can test if their message
+            goes and comes back from the server
+        """
+        if self.input_message["status"] == "received":
+            log = f"{self.entry()} confirm received"
+            print(log)
+            return False
+        from hop import Stream
+        stream = Stream(until_eos=True)
+        with stream.open(CoincDeciderInstance.observation_topic, "w") as s:
+            # insert back with a "received" status
+            msg = self.input_message.copy()
+            msg["status"] = "received"
+            s.write(msg)
+            print(f"{self.entry()} tested their connection")
+        return False
+
+
+    def _check_rights(self):
+        if self.input_message['pass'] == os.getenv('snews_cs_admin_pass'):
+            return True
+        else:
+            return False
+
+    def hard_reset(self, CoincDeciderInstance):
+        if self._check_rights():
+            CoincDeciderInstance.reset_df()
+            log = click.style(f"{self.entry()} Cache restarted", fg='yellow')
+        else:
+            log = click.style(f'{self.entry()} The user has no right to reset the cache', fg='yellow')
+        print(f'{log}')
+        return False
+
+    def retract(self, CoincDeciderInstance):
+        retrc_message = self.input_message
+        if not retrc_message.get('N_retract_latest', False):
+            log = f"{self.entry()} Tried retracting message without 'N_retract_latest' key, setting to 'ALL'"
+            print(log)
+            retrc_message['N_retract_latest'] = 'ALL'
+
+        drop_detector = retrc_message['detector_name']
+        delete_n_many = retrc_message['N_retract_latest']
+
+        if retrc_message['N_retract_latest'] == 'ALL':
+            delete_n_many = CoincDeciderInstance.cache_df.groupby(by='detector_name').size().to_dict()[drop_detector]
+        log = click.style(f'{self.entry()} Dropping latest message(s) from {drop_detector}\nRetracting: {delete_n_many} messages')
+        sorted_df = CoincDeciderInstance.cache_df.sort_values(by='received_time')
+        for i in sorted_df.index:
+            if delete_n_many > 0 and CoincDeciderInstance.cache_df.loc[i, 'detector_name'] == drop_detector:
+                CoincDeciderInstance.cache_df.drop(index=i, inplace=True)
+                delete_n_many -= 1
+        CoincDeciderInstance.cache_df = CoincDeciderInstance.cache_df.reset_index(drop=True)
+        return False
+
+    def change_broker(self):
+        auth = self._check_rights()
+        new_broker_name = self.input_message["_id"]
+        if auth:
+            log = click.style(f"{self.entry()} tried to change the broker but it is not implemented")
+        else:
+            log = click.style(f"{self.entry()} tried to change the broker.")
+        raise NotImplementedError

@@ -8,7 +8,7 @@ import pandas as pd
 from hop import Stream
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
-from .cs_utils import is_garbage_message, test_connection
+from .cs_utils import  CommandHandler
 from .cs_stats import CoincStat
 
 
@@ -94,7 +94,8 @@ class CoincDecider:
 
         message['sub_list_num'] = sub_list_num
         message['nu_delta_t'] = delta_t
-        self.cache_df = self.cache_df.append(message, ignore_index=True)
+        msg_df = pd.DataFrame.from_dict(message)
+        self.cache_df = pd.concat([self.cache_df, msg_df], ignore_index=True)
 
     # ------------------------------------------------------------------------------------------------------------------
     def reset_df(self):
@@ -374,32 +375,6 @@ class CoincDecider:
             print(sub_df.to_markdown())
             print('=' * 168)
 
-    # TODO: 27/02 update for new df format (REWORK)
-    # ------------------------------------------------------------------------------------------------------------------
-    def _retract_from_cache(self, retrc_message):
-        """
-        Parses retraction message, will delete 'n' latest messages. The list is sorted by 'received_time', the latest message
-        will be at the top of the list.
-
-        Parameters
-        ----------
-        retrc_message: dict
-            retraction message.
-        """
-
-        drop_detector = retrc_message['detector_name']
-        delete_n_many = retrc_message['N_retract_latest']
-
-        if retrc_message['N_retract_latest'] == 'ALL':
-            delete_n_many = self.cache_df.groupby(by='detector_name').size().to_dict()[drop_detector]
-        print(f'\nDropping latest message(s) from {drop_detector}\nRetracting: {delete_n_many} messages')
-        sorted_df = self.cache_df.sort_values(by='received_time')
-        for i in sorted_df.index:
-            if delete_n_many > 0 and self.cache_df.loc[i, 'detector_name'] == drop_detector:
-                self.cache_df.drop(index=i, inplace=True)
-                delete_n_many -= 1
-        self.cache_df = self.cache_df.reset_index(drop=True)
-
     # ------------------------------------------------------------------------------------------------------------------
     def hype_mode_publish(self):
         """
@@ -433,11 +408,11 @@ class CoincDecider:
         click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}\n', bg='bright_green', fg='red')
         click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
         click.secho(f'{"=" * 100}', fg='bright_red')
-        try:
-            snews_bot.send_table(self.cache_df, self.is_test)
-        except:
-            print("Bot failed to send slack message")
-            pass
+        # try:
+        #     snews_bot.send_table(self.cache_df, self.is_test)
+        # except:
+        #     print("Bot failed to send slack message")
+        #     pass
 
     # ------------------------------------------------------------------------------------------------------------------
     def dump_old_messages(self, message):
@@ -466,84 +441,28 @@ class CoincDecider:
         self.cache_df = self.cache_df.reset_index(drop=True)
 
     # ------------------------------------------------------------------------------------------------------------------
-    def check_rights(self, message):
-        """ check if the requested user has rights
-            e.g. to reset the cache
-
-        """
-
-        if message['pass'] == os.getenv('snews_cs_admin_pass'):
-            self.reset_df()
-            click.secho('Cache restarted', fg='yellow')
-        else:
-            click.secho('The user has no right to reset the cache', fg='yellow')
-            pass
-
-    # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
         """
         As the name states this method runs the coincidence system.
         Starts by subscribing to the hop observation_topic.
-        Filters out any messages that don't belong to either CoincidenceTier or Retraction.
 
-        * IF a CoincidenceTier message is received then it is passed to _check_coincidence.
-        * IF a Retraction message is received then it is passed to _retract_from_cache.
-        * IF a hard-reset is passed then cache is reset.
-
+        * If a CoincidenceTier message is received then it is passed to _check_coincidence.
+        * other commands include "test-connection", "test-scenarios",
+                "hard-reset", "Retraction",
 
         """
-
         stream = Stream(until_eos=False)
         with stream.open(self.observation_topic, "r") as s:
-            print(f'Running Coincidence System for {self.observation_topic}\n'
-                  f'Nothing here, please wait...')
+            log = click.style(f'{cs_utils.TimeStuff().get_snews_time()} Running Coincidence System for '
+                              f'{self.observation_topic}\n')
+            print(log)
             for snews_message in s:
-                is_test = False
-                #  Check for Coincidence
-                # check if the message contains "_id", otherwise following checks crash
-                if "_id" not in snews_message.keys():
-                    print("\nMessage will not be added to cache\n not using snews_pt"
-                          "Submitted message\n", snews_message) # log the message
-
-                if snews_message['_id'].split('_')[0] == 'test-connection':
-                    if snews_message["status"] == "sending":
-                        test_connection(snews_message, self.observation_topic)
-                        continue
-                    else:
-                        continue
-
-                # testing scenarios, bypass garbage check if it is a test
-                if "meta" in snews_message.keys():
-                    if "testing" in snews_message["meta"].keys():
-                        is_test = True
-
-                # if it is a reset message, reset and continue
-                if snews_message['_id'].split('_')[0] == 'hard-reset':
-                    self.check_rights(snews_message)
-                    continue
-
-                # Check for Retraction (NEEDS WORK)
-                if snews_message['_id'].split('_')[1] == 'Retraction':
-                    if snews_message['which_tier'] == 'CoincidenceTier' or snews_message['which_tier'] == 'ALL':
-                        snews_message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
-                        self._retract_from_cache(snews_message)
-                        self.storage.insert_mgs(snews_message)
-                    else:
-                        pass
-
-# --------------------------------- main purpose (coincidence) checks after here ---------------------------------------
-                # only check if they are garbage when they are intended to be observation
-                if is_garbage_message(snews_message, is_test):
-                    print('\nMessage will not be added to cache\n'
-                          'Please make sure your message follows the SNEWS-PT format')
-                    continue
-
-                # Handle topic messages
-                if snews_message['_id'].split('_')[1] == self.topic_type:
-                    snews_message['received_time'] = datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
+                handler = CommandHandler(snews_message)
+                go = handler.handle(self)
+                if go:
+                    snews_message['received_time'] = cs_utils.TimeStuff().get_snews_time()
                     self.storage.insert_mgs(snews_message)
                     click.secho(f'{"-" * 57}', fg='bright_blue')
-                    click.secho(f'Incoming message from: {snews_message["detector_name"]}'.upper(), bold=True, fg='red')
                     self._check_coincidence(message=snews_message)
 
 
