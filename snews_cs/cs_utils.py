@@ -327,4 +327,17 @@ class CommandHandler:
             log = click.style(f"{self.entry()} tried to change the broker but it is not implemented")
         else:
             log = click.style(f"{self.entry()} tried to change the broker.")
-        raise NotImplementedError
+        print(log)
+        # raise NotImplementedError # do not crash the server
+        return False
+
+    def display_logs(self):
+        auth = self._check_rights()
+        new_broker_name = self.input_message["_id"]
+        if auth:
+            log = click.style(f"{self.entry()} tried to display the logs but it is not implemented")
+        else:
+            log = click.style(f"{self.entry()} tried to display the logs.")
+        print(log)
+        return False
+
