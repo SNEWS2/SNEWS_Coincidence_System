@@ -30,7 +30,7 @@ class AlertPublisher:
         verbose: bool
             Show alert, defaults to True
         auth: bool
-            Use hop-auth crendentials, defaults to True
+            Use hop-auth credentials, defaults to True
         use_local: bool
             Use local MongoClient, defaults to True
         """
@@ -58,11 +58,10 @@ class AlertPublisher:
 
         Parameters
         ----------
-        messages: list
-            list containing observation message.
+        message: dict
+            dict containing observation message.
 
         """
-
         self.stream.write(message)
         self.display_message(message)
 

@@ -203,11 +203,12 @@ class CommandHandler:
     """
     def __init__(self, message):
         self.known_commands = ["test-connection", "test-scenarios",
-                               "hard-reset", "Retraction", "broker-change"]
+                               "hard-reset", "Retraction", "broker-change", "Heartbeat"]
         self.known_command_functions = {"test-connection": self.test_connection,
                                         "hard-reset": self.hard_reset,
                                         "Retraction": self.retract,
-                                        "broker-change": self.change_broker}
+                                        "broker-change": self.change_broker,
+                                        "Heartbeat": self.heartbeat_handle}
         self.input_message = message
         self.command = None
         self.username = self.input_message.get("detector_name", "NoName")
@@ -217,7 +218,7 @@ class CommandHandler:
     def handle(self, CoincDeciderInstance):
         if not self.check_id():
             return False
-        self.command = self.input_message['_id'].split('_')[0]
+        self.command = self.input_message['_id'].split('_')[1]
         return self.check_command(CoincDeciderInstance)
 
     def check_id(self):
@@ -240,17 +241,20 @@ class CommandHandler:
             return self.known_command_functions[self.command](CoincDeciderInstance)
         else:
             # for now assume it is an observation message
-
+            if "meta" not in self.input_message.keys():
+                log = f"{self.entry()} message with no meta key received. Ignoring!"
+                print(log)
+                return False
             if "this is a test" in self.input_message['meta'].values():
                 is_test = True
-                log = f"{self.entry()} TEST SCENARIO Message Received!"
+                log = f"{self.entry()} {self.command} TEST SCENARIO Message Received!"
                 if "test" or "firedrill" in CoincDeciderInstance.observation_topic:
                     pass
                 else:
                     log += f"\nThe {CoincDeciderInstance.observation_topic} does not allow for tests!"
                     return False
             else:
-                log = f"{self.entry()} Observation Message Received!"
+                log = f"{self.entry()} {self.command} Observation Message Received!"
                 is_test = False
             is_garbage = is_garbage_message(self.input_message, is_test=is_test)
             is_correct_topic = (self.input_message['_id'].split('_')[1] == CoincDeciderInstance.topic_type)
@@ -282,7 +286,6 @@ class CommandHandler:
             s.write(msg)
             print(f"{self.entry()} tested their connection")
         return False
-
 
     def _check_rights(self):
         if self.input_message['pass'] == os.getenv('snews_cs_admin_pass'):
@@ -320,7 +323,7 @@ class CommandHandler:
         CoincDeciderInstance.cache_df = CoincDeciderInstance.cache_df.reset_index(drop=True)
         return False
 
-    def change_broker(self):
+    def change_broker(self, CoincDeciderInstance):
         auth = self._check_rights()
         new_broker_name = self.input_message["_id"]
         if auth:
@@ -331,7 +334,12 @@ class CommandHandler:
         # raise NotImplementedError # do not crash the server
         return False
 
-    def display_logs(self):
+    def heartbeat_handle(self, CoincDeciderInstance):
+        log = f"{self.entry()} Heartbeat Received (Not implemented Yet)!"
+        print(log)
+        return False
+
+    def display_logs(self, CoincDeciderInstance):
         auth = self._check_rights()
         new_broker_name = self.input_message["_id"]
         if auth:

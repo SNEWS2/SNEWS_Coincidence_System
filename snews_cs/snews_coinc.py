@@ -11,13 +11,14 @@ from .cs_alert_schema import CoincidenceTierAlert
 from .cs_utils import CommandHandler
 from .cs_stats import CoincStat
 from .core.logging import getLogger
+from .cs_email import send_email
 
 log = getLogger(__name__)
 
 class CoincDecider:
 
     def __init__(self, env_path=None, use_local_db=True, is_test=True, drop_db=False, firedrill_mode=True,
-                 hb_path=None, server_tag=None):
+                 hb_path=None, server_tag=None, send_email = False):
         """Coincidence Decider class constructor
 
         Parameters
@@ -32,6 +33,7 @@ class CoincDecider:
         log.debug("Initializing CoincDecider\n")
         cs_utils.set_env(env_path)
         self.stats = CoincStat()
+        self.send_email = send_email
         self.hype_mode_ON = True
         self.hb_path = hb_path
         self.server_tag = server_tag
@@ -101,7 +103,6 @@ class CoincDecider:
             temp_msg[key] = [val]
         msg_df = pd.DataFrame.from_dict(temp_msg)
         self.cache_df = pd.concat([msg_df, self.cache_df], ignore_index=True)
-
 
     # ------------------------------------------------------------------------------------------------------------------
     def reset_df(self):
@@ -417,10 +418,14 @@ class CoincDecider:
             with self.alert as pub:
                 alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
                 pub.send(alert)
+                if self.send_email:
+                    send_email(alert)
 
         click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}\n', bg='bright_green', fg='red')
         click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
         click.secho(f'{"=" * 100}', fg='bright_red')
+
+
         # try:
         #     snews_bot.send_table(self.cache_df, self.is_test)
         # except:
