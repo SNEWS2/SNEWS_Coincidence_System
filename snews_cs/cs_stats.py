@@ -31,4 +31,4 @@ class CoincStat:
         else:
             mu = 1
         prob_false_alarm_rate = poisson.pmf(k=num_coinc_detectors, mu=mu)
-        return np.round( prob_false_alarm_rate, decimals= 5)
+        return prob_false_alarm_rate
