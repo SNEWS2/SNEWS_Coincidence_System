@@ -9,9 +9,10 @@ def current_time():
 def send_email(alert_content):
     # echo "This is not the same message as before" | mail -s "Echo test email" someone@example.com
     pretty_alert = ''
-    for key, val in alert_content.items():
-        pretty_alert += f'"{key}" :\t{val}\n'
-    # emails = 'ahabig@d.umn.edu, sebastiantorreslara17@gmail.com, joesmolsky@gmail.com, mlh-kara@hotmail.com'
+    for k, v in alert_content.items():
+        space = 40 - len(k)
+        pretty_alert += f'{k} :{" "*space}{v}\n'
+    # emails = 'sebastiantorreslara17@gmail.com'
     emails = 'snews2-test-ahabig@d.umn.edu'
     os.system(
         f'echo "{pretty_alert}"| mail -s "SNEWS COINCIDENCE {current_time()}" {emails}')

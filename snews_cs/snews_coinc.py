@@ -136,7 +136,6 @@ class CoincDecider:
             self.in_coincidence = True
             return 'ALREADY_IN_LIST',
         # compare the current nu time with all other on the sublist
-        print(message)
         message_nu_time = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
         nu_times = pd.to_datetime(sub_list.neutrino_time, format='%y/%m/%d %H:%M:%S:%f')
         delta_ts = ((message_nu_time - nu_times).dt.total_seconds()).values  # numpy array
