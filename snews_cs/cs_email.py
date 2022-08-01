@@ -11,6 +11,7 @@ def send_email(alert_content):
     pretty_alert = ''
     for key, val in alert_content.items():
         pretty_alert += f'"{key}" :\t{val}\n'
-    emails = 'ahabig@d.umn.edu, sebastiantorreslara17@gmail.com, joesmolsky@gmail.com, mlh-kara@hotmail.com'
+    # emails = 'ahabig@d.umn.edu, sebastiantorreslara17@gmail.com, joesmolsky@gmail.com, mlh-kara@hotmail.com'
+    emails = 'snews2-test-ahabig@d.umn.edu'
     os.system(
         f'echo "{pretty_alert}"| mail -s "SNEWS COINCIDENCE {current_time()}" {emails}')

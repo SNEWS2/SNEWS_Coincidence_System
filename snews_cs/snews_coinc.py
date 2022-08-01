@@ -13,6 +13,7 @@ from .cs_stats import CoincStat
 from .cs_email import send_email
 
 
+
 class CoincDecider:
 
     def __init__(self, env_path=None, use_local_db=True, is_test=True, drop_db=False, firedrill_mode=True,
