@@ -21,7 +21,7 @@ from logging import (
 HOST = gethostname()
 
 log_date = date.today().strftime("%Y-%m-%d")
-log_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../log")
+log_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../logs")
 
 log_file = f"{log_dir}/{log_date}.log"
 fh = FileHandler(log_file)
