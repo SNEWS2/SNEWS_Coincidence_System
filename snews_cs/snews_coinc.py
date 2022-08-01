@@ -11,7 +11,7 @@ from .cs_alert_schema import CoincidenceTierAlert
 from .cs_utils import CommandHandler
 from .cs_stats import CoincStat
 from .cs_email import send_email
-
+import sys
 
 
 class CoincDecider:
@@ -480,3 +480,4 @@ class CoincDecider:
                     self.storage.insert_mgs(snews_message)
                     click.secho(f'{"-" * 57}', fg='bright_blue')
                     self._check_coincidence(message=snews_message)
+                    sys.stdout.flush()
