@@ -10,7 +10,9 @@ from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
 from .cs_utils import CommandHandler
 from .cs_stats import CoincStat
+from .core.logging import getLogger
 
+log = getLogger(__name__)
 
 class CoincDecider:
 
@@ -27,6 +29,7 @@ class CoincDecider:
         is_test: bool
             tells CoincDecider if it's running in test mode,
         """
+        log.debug("Initializing CoincDecider\n")
         cs_utils.set_env(env_path)
         self.stats = CoincStat()
         self.hype_mode_ON = True
