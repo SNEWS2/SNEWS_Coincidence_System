@@ -91,10 +91,14 @@ class CoincDecider:
             numeric label for coincidence sub list
 
         """
-
         message['sub_list_num'] = sub_list_num
         message['nu_delta_t'] = delta_t
-        self.cache_df = self.cache_df.append(message, ignore_index=True)
+        temp_msg = {}
+        for key, val in message.items():
+            temp_msg[key] = [val]
+        msg_df = pd.DataFrame.from_dict(temp_msg)
+        self.cache_df = pd.concat([msg_df, self.cache_df], ignore_index=True)
+
 
     # ------------------------------------------------------------------------------------------------------------------
     def reset_df(self):
@@ -127,6 +131,7 @@ class CoincDecider:
             self.in_coincidence = True
             return 'ALREADY_IN_LIST',
         # compare the current nu time with all other on the sublist
+        print(message)
         message_nu_time = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
         nu_times = pd.to_datetime(sub_list.neutrino_time, format='%y/%m/%d %H:%M:%S:%f')
         delta_ts = ((message_nu_time - nu_times).dt.total_seconds()).values  # numpy array
