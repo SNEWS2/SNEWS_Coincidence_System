@@ -8,7 +8,7 @@ import pandas as pd
 from hop import Stream
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
-from .cs_utils import  CommandHandler
+from .cs_utils import CommandHandler
 from .cs_stats import CoincStat
 
 
@@ -85,17 +85,17 @@ class CoincDecider:
         ----------
         message : `dict`
             dictionary of the SNEWS message
-        delta_t : 'float'
+        delta_t : float
             value for time difference between message nu time and initial (0 if message set initial)
-        sub_list_num : 'int'
+        sub_list_num : int
             numeric label for coincidence sub list
 
         """
 
         message['sub_list_num'] = sub_list_num
         message['nu_delta_t'] = delta_t
-        msg_df = pd.DataFrame.from_dict(message)
-        self.cache_df = pd.concat([self.cache_df, msg_df], ignore_index=True)
+        self.cache_df = self.cache_df.append(message, ignore_index=True)
+
 
     # ------------------------------------------------------------------------------------------------------------------
     def reset_df(self):
@@ -162,11 +162,15 @@ class CoincDecider:
         """
         self.cache_df = pd.concat([self.cache_df.query(f'sub_list_num!={new_sub_list_num}'), new_list],
                                   ignore_index=True)
+
     # ------------------------------------------------------------------------------------------------------------------
     def _nu_delta_organizer(self, df):
         main_temp = pd.DataFrame()
         for sub_list in list(df['sub_list_num'].unique()):
+
+            # print(sub_list)
             temp = df.query(f'sub_list_num=={sub_list}')
+            # print(temp.columns)
             temp = temp.sort_values(by='neutrino_time').reset_index(drop=True)
             new_delta = []
             new_initial = temp['neutrino_time'][0]
@@ -175,7 +179,7 @@ class CoincDecider:
                     (self.times.str_to_datetime(time) - self.times.str_to_datetime(new_initial)).total_seconds())
             temp['nu_delta_t'] = new_delta
             main_temp = pd.concat([main_temp, temp])
-        main_temp.sort_values(by=['sub_list_num','neutrino_time'],ascending=False,inplace=True)
+        main_temp.sort_values(by=['sub_list_num', 'neutrino_time'], ascending=False, inplace=True)
         main_temp.reset_index(drop=True, inplace=True)
         return main_temp
 
@@ -353,7 +357,9 @@ class CoincDecider:
         if not self.in_list_already:
             print('we got something publishing an alert !')
             self._dump_redundant_list()
-            self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'received_time'])
+            # self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'received_time'])
+            print('line 359')
+            print(self.cache_df.columns)
             self.cache_df = self._nu_delta_organizer(self.cache_df)
             self.hype_mode_publish()
             self.display_table()
@@ -464,5 +470,3 @@ class CoincDecider:
                     self.storage.insert_mgs(snews_message)
                     click.secho(f'{"-" * 57}', fg='bright_blue')
                     self._check_coincidence(message=snews_message)
-
-
