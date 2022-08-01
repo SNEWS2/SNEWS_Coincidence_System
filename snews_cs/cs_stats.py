@@ -8,7 +8,7 @@ class CoincStat:
 
     def cache_false_alarm_rate(self, cache_sub_list, path_to_hb='heartbeats/heartbeats.json'):
         '''
-        Generates flase alarm rates for a set of detector heartbeats
+        Generates false alarm rates for a set of detector heartbeats
 
         Parameters
         ----------
@@ -16,8 +16,9 @@ class CoincStat:
             Path to HB log file (JSON ?)
 
         Returns
-
         -------
+        false alarm probability: float
+            probability that SNEWS alert is  a false alarm
 
         '''
         num_coinc_detectors = len(cache_sub_list['detector_name'])
@@ -31,4 +32,7 @@ class CoincStat:
         else:
             mu = 1
         prob_false_alarm_rate = poisson.pmf(k=num_coinc_detectors, mu=mu)
-        return np.round( prob_false_alarm_rate, decimals= 5)
+        return np.round(prob_false_alarm_rate, decimals=5)
+
+    def fancy_stat(self):
+        return 0
