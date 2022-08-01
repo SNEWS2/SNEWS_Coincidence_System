@@ -7,6 +7,9 @@ import os
 import json
 import click
 
+from .core.logging import getLogger
+
+log = getLogger(__name__)
 
 def set_env(env_path=None):
     """ Set environment parameters
@@ -46,28 +49,6 @@ class TimeStuff:
     def str_to_hr(self, nu_time, fmt='%H:%M:%S:%f'):
         """ string to datetime hour object """
         return datetime.strptime(nu_time, fmt)
-
-
-# TODO: needs work
-def get_logger(scriptname, logfile_name):
-    """ Logger
-
-    .. note:: Deprecated
-
-    """
-    import logging
-    # Gets or creates a logger
-    logger = logging.getLogger(scriptname)
-
-    # set log level
-    logger.setLevel(logging.INFO)
-    # define file handler and set formatter
-    file_handler = logging.FileHandler(logfile_name)
-    formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
-    file_handler.setFormatter(formatter)
-    # add file handler to logger
-    logger.addHandler(file_handler)
-    return logger
 
 
 # TODO: Change to SNEWS_PT struc
@@ -135,7 +116,7 @@ def is_garbage_message(snews_message, is_test=False):
         is_garbage = True
         missing_key = True
     if missing_key:
-        print(warning)
+        log.warning(warning)
         return is_garbage
     contents_suck = False
     if type(snews_message['p_val']) is not float:
@@ -159,19 +140,19 @@ def is_garbage_message(snews_message, is_test=False):
         is_garbage = True
         warning += f'* "{snews_message["detector_name"]}" is not in the SNEWS detector list\n\t-Please see README file for detector list\n'
     if contents_suck:
-        print(warning)
+        log.warning(warning)
         return is_garbage
     shitty_nu_time = False
 
     try:
         time.str_to_datetime(snews_message['neutrino_time'])
     except ValueError:
-        warning += f'* neutrino time: {snews_message["neutrino_time"]} does not match SNEWS CS format: "%y/%m/%d %H:%M:%S:%f"'
+        warning += f'* neutrino time: {snews_message["neutrino_time"]} does not match SNEWS CS format: "%y/%m/%d %H:%M:%S:%f"\n'
         shitty_nu_time = True
         is_garbage = True
 
     if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() <= -172800.0:
-        warning += f'* neutrino time is more than 48 hrs olds !'
+        warning += f'* neutrino time is more than 48 hrs olds !\n'
         shitty_nu_time = True
         is_garbage = True
 
@@ -179,12 +160,12 @@ def is_garbage_message(snews_message, is_test=False):
         if is_test:
             pass
         else:
-            warning += f'* neutrino time comes from the future, please stop breaking causality'
+            warning += f'* neutrino time comes from the future, please stop breaking causality\n'
             shitty_nu_time = True
             is_garbage = True
 
     if shitty_nu_time:
-        print(warning)
+        log.warning(warning)
         return is_garbage
 
     return is_garbage
@@ -213,7 +194,7 @@ class CommandHandler:
         self.command = None
         self.username = self.input_message.get("detector_name", "NoName")
         self.times = TimeStuff()
-        self.entry = lambda : f"\n{self.times.get_snews_time()} |{self.username}|"
+        self.entry = lambda : f"\n|{self.username}|"
 
     def handle(self, CoincDeciderInstance):
         if not self.check_id():
@@ -227,44 +208,47 @@ class CommandHandler:
             which HAS TO contain an _id field
         """
         if "_id" not in self.input_message.keys():
-            log = f"{self.entry()} message without '_id' field\n" \
+            msg = f"{self.entry()} message without '_id' field\n" \
                   f"{self.input_message}\n"
-            print(log)
+            log.error(msg)
             return False
         else:
             return True
 
     def check_command(self, CoincDeciderInstance):
         if self.command in self.known_commands:
-            log = f"{self.entry()} {self.command} is passed!"
-            print(log)
+            msg = f"{self.entry()} {self.command} is passed!"
+            log.error(msg)
             return self.known_command_functions[self.command](CoincDeciderInstance)
         else:
             # for now assume it is an observation message
             if "meta" not in self.input_message.keys():
-                log = f"{self.entry()} message with no meta key received. Ignoring!"
-                print(log)
+                msg = f"{self.entry()} message with no meta key received. Ignoring!"
+                log.error(msg)
                 return False
             if "this is a test" in self.input_message['meta'].values():
                 is_test = True
-                log = f"{self.entry()} {self.command} TEST SCENARIO Message Received!"
+                msg = f"{self.entry()} {self.command} TEST SCENARIO Message Received!\n"
+                log.info(msg)
                 if "test" or "firedrill" in CoincDeciderInstance.observation_topic:
                     pass
                 else:
-                    log += f"\nThe {CoincDeciderInstance.observation_topic} does not allow for tests!"
+                    msg = f"\nThe {CoincDeciderInstance.observation_topic} does not allow for tests!\n"
+                    log.warning(msg)
                     return False
             else:
-                log = f"{self.entry()} {self.command} Observation Message Received!"
+                msg = f"{self.entry()} {self.command} Observation Message Received!\n"
+                log.info(msg)
                 is_test = False
             is_garbage = is_garbage_message(self.input_message, is_test=is_test)
             is_correct_topic = (self.input_message['_id'].split('_')[1] == CoincDeciderInstance.topic_type)
             if (not is_garbage) and is_correct_topic:
-                log += "\t valid message"
-                print(log)
+                msg += "\t valid message\n"
+                log.info(msg)
                 return True
             else:
-                log += "\t NOT a valid message"
-                print(log)
+                msg += "\t NOT a valid message\n"
+                log.warning(msg)
                 return  False
 
     def test_connection(self, CoincDeciderInstance):
@@ -274,8 +258,8 @@ class CommandHandler:
             goes and comes back from the server
         """
         if self.input_message["status"] == "received":
-            log = f"{self.entry()} confirm received"
-            print(log)
+            msg = f"{self.entry()} confirm received\n"
+            log.info(msg)
             return False
         from hop import Stream
         stream = Stream(until_eos=True)
@@ -284,7 +268,7 @@ class CommandHandler:
             msg = self.input_message.copy()
             msg["status"] = "received"
             s.write(msg)
-            print(f"{self.entry()} tested their connection")
+            log.info(f"{self.entry()} tested their connection\n")
         return False
 
     def _check_rights(self):
@@ -296,17 +280,17 @@ class CommandHandler:
     def hard_reset(self, CoincDeciderInstance):
         if self._check_rights():
             CoincDeciderInstance.reset_df()
-            log = click.style(f"{self.entry()} Cache restarted", fg='yellow')
+            msg = click.style(f"{self.entry()} Cache restarted", fg='yellow')
         else:
-            log = click.style(f'{self.entry()} The user has no right to reset the cache', fg='yellow')
-        print(f'{log}')
+            msg = click.style(f'{self.entry()} The user has no right to reset the cache', fg='yellow')
+        log.info(f'{msg}\n')
         return False
 
     def retract(self, CoincDeciderInstance):
         retrc_message = self.input_message
         if not retrc_message.get('N_retract_latest', False):
-            log = f"{self.entry()} Tried retracting message without 'N_retract_latest' key, setting to 'ALL'"
-            print(log)
+            msg = f"{self.entry()} Tried retracting message without 'N_retract_latest' key, setting to 'ALL'"
+            log.warning(msg)
             retrc_message['N_retract_latest'] = 'ALL'
 
         drop_detector = retrc_message['detector_name']
@@ -314,7 +298,8 @@ class CommandHandler:
 
         if retrc_message['N_retract_latest'] == 'ALL':
             delete_n_many = CoincDeciderInstance.cache_df.groupby(by='detector_name').size().to_dict()[drop_detector]
-        log = click.style(f'{self.entry()} Dropping latest message(s) from {drop_detector}\nRetracting: {delete_n_many} messages')
+        msg = click.style(f'{self.entry()} Dropping latest message(s) from {drop_detector}\nRetracting: {delete_n_many} messages\n')
+        log.info(msg)
         sorted_df = CoincDeciderInstance.cache_df.sort_values(by='received_time')
         for i in sorted_df.index:
             if delete_n_many > 0 and CoincDeciderInstance.cache_df.loc[i, 'detector_name'] == drop_detector:
@@ -327,25 +312,24 @@ class CommandHandler:
         auth = self._check_rights()
         new_broker_name = self.input_message["_id"]
         if auth:
-            log = click.style(f"{self.entry()} tried to change the broker but it is not implemented")
+            msg = click.style(f"{self.entry()} tried to change the broker but it is not implemented")
         else:
-            log = click.style(f"{self.entry()} tried to change the broker.")
-        print(log)
+            msg = click.style(f"{self.entry()} tried to change the broker.")
+        log.info(msg)
         # raise NotImplementedError # do not crash the server
         return False
 
     def heartbeat_handle(self, CoincDeciderInstance):
-        log = f"{self.entry()} Heartbeat Received (Not implemented Yet)!"
-        print(log)
+        msg = f"{self.entry()} Heartbeat Received (Not implemented Yet)!"
+        log.info(msg)
         return False
 
     def display_logs(self, CoincDeciderInstance):
         auth = self._check_rights()
         new_broker_name = self.input_message["_id"]
         if auth:
-            log = click.style(f"{self.entry()} tried to display the logs but it is not implemented")
+            msg = click.style(f"{self.entry()} tried to display the logs but it is not implemented")
         else:
-            log = click.style(f"{self.entry()} tried to display the logs.")
-        print(log)
+            msg = click.style(f"{self.entry()} tried to display the logs.")
+        log.info(msg)
         return False
-
