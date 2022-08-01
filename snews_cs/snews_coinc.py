@@ -96,7 +96,6 @@ class CoincDecider:
         message['nu_delta_t'] = delta_t
         self.cache_df = self.cache_df.append(message, ignore_index=True)
 
-
     # ------------------------------------------------------------------------------------------------------------------
     def reset_df(self):
         """
