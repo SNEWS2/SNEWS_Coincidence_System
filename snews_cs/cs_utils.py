@@ -320,8 +320,9 @@ class CommandHandler:
         return False
 
     def heartbeat_handle(self, CoincDeciderInstance):
-        msg = f"{self.entry()} Heartbeat Received (Not implemented Yet)!"
+        msg = f"{self.entry()} Heartbeat Received"
         log.info(msg)
+        CoincDeciderInstance.heartbeat.electrocardiogram(self.input_message)
         return False
 
     def display_logs(self, CoincDeciderInstance):

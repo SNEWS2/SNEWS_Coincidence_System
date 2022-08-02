@@ -9,17 +9,19 @@ from hop import Stream
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
 from .cs_utils import CommandHandler
-from .cs_stats import CoincStat
 from .core.logging import getLogger
 from .cs_email import send_email
+from .snews_hb import HeartBeat
+from .cs_stats import cache_false_alarm_rate
 import sys
 
 log = getLogger(__name__)
 
+
 class CoincDecider:
 
     def __init__(self, env_path=None, use_local_db=True, is_test=True, drop_db=False, firedrill_mode=True,
-                 hb_path=None, server_tag=None, send_email = False):
+                 hb_path=None, server_tag=None, send_email=False):
         """Coincidence Decider class constructor
 
         Parameters
@@ -33,7 +35,6 @@ class CoincDecider:
         """
         log.debug("Initializing CoincDecider\n")
         cs_utils.set_env(env_path)
-        self.stats = CoincStat()
         self.send_email = send_email
         self.hype_mode_ON = True
         self.hb_path = hb_path
@@ -53,6 +54,10 @@ class CoincDecider:
 
         self.cache_df = pd.DataFrame(columns=self.column_names)
         self.alert_schema = CoincidenceTierAlert(env_path)
+
+        # handle heartbeat
+        self.store_heartbeat = bool(os.getenv("STORE_HEARTBEAT", "True"))
+        self.heartbeat = HeartBeat(env_path=env_path, firedrill_mode=firedrill_mode)
 
         self.is_test = is_test
         self.in_coincidence = False
@@ -410,7 +415,7 @@ class CoincDecider:
             p_vals_avg = _sub_df['p_val'].mean()
             nu_times = _sub_df['neutrino_time'].to_list()
             detector_names = _sub_df['detector_name'].to_list()
-            false_alarm_prob = self.stats.cache_false_alarm_rate(cache_sub_list=_sub_df, path_to_hb=self.hb_path)
+            false_alarm_prob = cache_false_alarm_rate(cache_sub_list=_sub_df, hb_cache=self.heartbeat.cache_df)
             alert_data = cs_utils.data_cs_alert(p_vals=p_vals, p_val_avg=p_vals_avg, sub_list_num=sub_list,
                                                 nu_times=nu_times, detector_names=detector_names,
                                                 false_alarm_prob=false_alarm_prob, server_tag=self.server_tag)
@@ -424,7 +429,6 @@ class CoincDecider:
         click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}\n', bg='bright_green', fg='red')
         click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
         click.secho(f'{"=" * 100}', fg='bright_red')
-
 
         # try:
         #     snews_bot.send_table(self.cache_df, self.is_test)

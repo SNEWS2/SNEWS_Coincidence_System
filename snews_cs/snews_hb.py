@@ -166,14 +166,17 @@ class HeartBeat:
         return None
 
     def electrocardiogram(self, message):
-        self.sanity_checks(message)
-        message["Received Times"] = datetime.utcnow()
-        self.make_entry(message)
-        self.store_beats()
-        self.drop_old_messages()
-        # self.display_table()
-        self.burn_logs()
-
+        # print("entered in electrocardiogram")
+        try:
+            self.sanity_checks(message)
+            message["Received Times"] = datetime.utcnow()
+            self.make_entry(message)
+            self.store_beats()
+            self.drop_old_messages()
+            # self.display_table()
+            self.burn_logs()
+        except Exception as e:
+            print(f"Something went terribly wrong \n {e}")
 
 
 
