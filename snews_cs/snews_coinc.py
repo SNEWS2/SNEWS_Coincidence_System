@@ -475,13 +475,17 @@ class CoincDecider:
         """
         stream = Stream(until_eos=False)
         with stream.open(self.observation_topic, "r") as s:
-            log = click.style(f'{cs_utils.TimeStuff().get_snews_time()} Running Coincidence System for '
+            _msg = click.style(f'{cs_utils.TimeStuff().get_snews_time()} Running Coincidence System for '
                               f'{self.observation_topic}\n')
-            print(log)
+            print(_msg)
             for snews_message in s:
                 handler = CommandHandler(snews_message)
-                go = handler.handle(self)
+                try:
+                    go = handler.handle(self)
+                except Exception as e:
+                    log.debug(f"Something crashed the server, here is the Exception raised\n{e}\n")
                 if go:
+                    print(snews_message)
                     snews_message['received_time'] = cs_utils.TimeStuff().get_snews_time()
                     self.storage.insert_mgs(snews_message)
                     click.secho(f'{"-" * 57}', fg='bright_blue')
