@@ -11,6 +11,7 @@ from .core.logging import getLogger
 
 log = getLogger(__name__)
 
+
 def set_env(env_path=None):
     """ Set environment parameters
 
@@ -150,19 +151,19 @@ def is_garbage_message(snews_message, is_test=False):
         warning += f'* neutrino time: {snews_message["neutrino_time"]} does not match SNEWS CS format: "%y/%m/%d %H:%M:%S:%f"\n'
         shitty_nu_time = True
         is_garbage = True
-
-    if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() <= -172800.0 and not shitty_nu_time:
-        warning += f'* neutrino time is more than 48 hrs olds !\n'
-        shitty_nu_time = True
-        is_garbage = True
-
-    if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() > 0 and not shitty_nu_time:
-        if is_test:
-            pass
-        else:
-            warning += f'* neutrino time comes from the future, please stop breaking causality\n'
+    if not shitty_nu_time:
+        if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() <= -172800.0:
+            warning += f'* neutrino time is more than 48 hrs olds !\n'
             shitty_nu_time = True
             is_garbage = True
+
+        if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() > 0:
+            if is_test:
+                pass
+            else:
+                warning += f'* neutrino time comes from the future, please stop breaking causality\n'
+                shitty_nu_time = True
+                is_garbage = True
 
     if shitty_nu_time:
         log.warning(warning)
@@ -182,6 +183,7 @@ class CommandHandler:
         - Get logs
         - Change Broker
     """
+
     def __init__(self, message):
         self.known_commands = ["test-connection", "test-scenarios",
                                "hard-reset", "Retraction", "broker-change", "Heartbeat"]
@@ -194,7 +196,7 @@ class CommandHandler:
         self.command = None
         self.username = self.input_message.get("detector_name", "NoName")
         self.times = TimeStuff()
-        self.entry = lambda : f"\n|{self.username}|"
+        self.entry = lambda: f"\n|{self.username}|"
 
     def handle(self, CoincDeciderInstance):
         if not self.check_id():
@@ -252,7 +254,7 @@ class CommandHandler:
             else:
                 msg += "\t NOT a valid message\n"
                 log.warning(msg)
-                return  False
+                return False
 
     def test_connection(self, CoincDeciderInstance):
         """ When received a test_connection key
@@ -301,7 +303,8 @@ class CommandHandler:
 
         if retrc_message['N_retract_latest'] == 'ALL':
             delete_n_many = CoincDeciderInstance.cache_df.groupby(by='detector_name').size().to_dict()[drop_detector]
-        msg = click.style(f'{self.entry()} Dropping latest message(s) from {drop_detector}\nRetracting: {delete_n_many} messages\n')
+        msg = click.style(
+            f'{self.entry()} Dropping latest message(s) from {drop_detector}\nRetracting: {delete_n_many} messages\n')
         log.info(msg)
         sorted_df = CoincDeciderInstance.cache_df.sort_values(by='received_time')
         for i in sorted_df.index:
