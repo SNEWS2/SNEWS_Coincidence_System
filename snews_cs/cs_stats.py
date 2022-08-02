@@ -4,35 +4,24 @@ import pandas as pd
 import json
 
 
-class CoincStat:
+def cache_false_alarm_rate(cache_sub_list, hb_cache):
+    """
+    Generates false alarm rates for a set of detector heartbeats
 
-    def cache_false_alarm_rate(self, cache_sub_list, path_to_hb='heartbeats/heartbeats.json'):
-        '''
-        Generates false alarm rates for a set of detector heartbeats
+    Parameters
+    ----------
 
-        Parameters
-        ----------
-        path_to_hb: str
-            Path to HB log file (JSON ?)
 
-        Returns
-        -------
-        false alarm probability: float
-            probability that SNEWS alert is  a false alarm
+    Returns
+    -------
+    false alarm probability: float
+        probability that SNEWS alert is  a false alarm
 
-        '''
-        num_coinc_detectors = len(cache_sub_list['detector_name'])
-        if path_to_hb is None:
-            num_detectors_online = 0
-        else:
-            with open(path_to_hb) as json_file:
-                num_detectors_online = len(json.load(json_file)['detectors'])
-        if num_detectors_online > 0:
-            mu = 1 * num_detectors_online  # expected number of false coincidence for a week
-        else:
-            mu = 1
-        prob_false_alarm_rate = poisson.pmf(k=num_coinc_detectors, mu=mu)
-        return np.round(prob_false_alarm_rate, decimals=5)
+    """
+    num_coinc_detectors = len(cache_sub_list['detector_name'])
+    num_detectors_online = len(hb_cache)
+    mu = 1 * num_detectors_online  # expected number of false coincidence for a week
+    prob_false_alarm_rate = poisson.pmf(k=num_coinc_detectors, mu=mu)
+    return np.round(prob_false_alarm_rate, decimals=5)
 
-    def fancy_stat(self):
-        return 0
+
