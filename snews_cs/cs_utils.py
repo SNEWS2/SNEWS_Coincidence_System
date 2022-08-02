@@ -151,12 +151,12 @@ def is_garbage_message(snews_message, is_test=False):
         shitty_nu_time = True
         is_garbage = True
 
-    if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() <= -172800.0:
+    if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() <= -172800.0 and not shitty_nu_time:
         warning += f'* neutrino time is more than 48 hrs olds !\n'
         shitty_nu_time = True
         is_garbage = True
 
-    if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() > 0:
+    if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() > 0 and not shitty_nu_time:
         if is_test:
             pass
         else:
