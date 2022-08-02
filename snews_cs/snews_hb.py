@@ -62,7 +62,6 @@ class HeartBeat:
             self.dump_csv()
             self.dump_JSON()
 
-
     def drop_old_messages(self):
         """ Keep the heartbeats for 24 hours
             Drop the earlier-than-24hours messages from cache
@@ -166,7 +165,6 @@ class HeartBeat:
         return None
 
     def electrocardiogram(self, message):
-        # print("entered in electrocardiogram")
         try:
             self.sanity_checks(message)
             message["Received Times"] = datetime.utcnow()

@@ -245,6 +245,9 @@ class CommandHandler:
             if (not is_garbage) and is_correct_topic:
                 msg += "\t valid message\n"
                 log.info(msg)
+                # this is also a heartbeat
+                self.input_message["detector_status"] = "ON"
+                self.heartbeat_handle(CoincDeciderInstance)
                 return True
             else:
                 msg += "\t NOT a valid message\n"
