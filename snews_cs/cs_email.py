@@ -11,7 +11,7 @@ def send_email(alert_content):
     pretty_alert = ''
     for k, v in alert_content.items():
         space = 40 - len(k)
-        pretty_alert += f'{k} :{" "*space}{v}\n'
+        pretty_alert += f'{k} :{r" "*space}{v}\n'
     # emails = 'sebastiantorreslara17@gmail.com'
     emails = 'snews2-test-ahabig@d.umn.edu'
     os.system(

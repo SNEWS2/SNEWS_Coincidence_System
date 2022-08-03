@@ -16,3 +16,4 @@ doc/_build/
 /snews_cs/slack_alert.py
 /snews_cs/auxiliary/test-config.env
 firedrill.ipynb
+server_run_me.py
