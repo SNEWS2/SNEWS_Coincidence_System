@@ -4,6 +4,7 @@ Modified version of Geoffrey Letner's python 201 logger.
 Ref: https://python-tutorial.dev/201/tutorial/logging.html
 """
 import os
+import time
 from datetime import date
 from socket import gethostname
 from logging import (
@@ -30,6 +31,8 @@ formatter = Formatter(
     f"%(asctime)s on {HOST}\n" f"  %(levelname)s [%(name)s] %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+
+formatter.converter = time.gmtime
 
 fh.setFormatter(formatter)
 

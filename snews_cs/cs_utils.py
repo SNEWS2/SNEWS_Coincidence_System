@@ -220,13 +220,13 @@ class CommandHandler:
     def check_command(self, CoincDeciderInstance):
         if self.command in self.known_commands:
             msg = f"{self.entry()} {self.command} is passed!"
-            log.error(msg)
+            log.info(msg)
             return self.known_command_functions[self.command](CoincDeciderInstance)
         else:
             # for now assume it is an observation message
             if "meta" not in self.input_message.keys():
                 msg = f"{self.entry()} message with no meta key received. Ignoring!"
-                log.error(msg)
+                log.warning(msg)
                 return False
             if "this is a test" in self.input_message['meta'].values():
                 is_test = True
