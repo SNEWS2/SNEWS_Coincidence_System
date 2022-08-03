@@ -72,5 +72,5 @@ class AlertPublisher:
             click.secho(f'{"-" * 64}', fg='bright_blue')
             click.secho(f'Sending {tier}', fg='bright_red')
             for k, v in message.items():
-                print(f'{k:<20s}:{v}')
+                print(f'{k:<35s}:{v}')
                 

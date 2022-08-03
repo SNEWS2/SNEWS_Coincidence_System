@@ -31,9 +31,9 @@ class CoincidenceTierAlert:
         """
         date_time = self.times.get_snews_time(fmt="%y/%m/%d %H:%M:%S:%f")
         if num_detectors == 2:
-            return f'SNEWS_Coincidence-ALERT_{date_time}'
+            return f'SNEWS_Coincidence_ALERT {date_time}'
         else:
-            return f'SNEWS_Coincidence-ALERT-UPDATE_{date_time}'
+            return f'SNEWS_Coincidence_ALERT-UPDATE {date_time}'
 
     def get_cs_alert_schema(self, data):
         """ Create a message schema for alert.
@@ -57,7 +57,7 @@ class CoincidenceTierAlert:
                 "server_tag": data['server_tag'],
                 "false_alarm_probability": data['false_alarm_prob'],
                 "detector_names": data['detector_names'],
-                "sent_time": id.split('_')[2],
+                "sent_time": id.split(' ')[1]+' '+id.split(' ')[2],
                 "p_values": data['p_vals'],
                 "neutrino_times": data['neutrino_times'],
                 "p_values average": data['p_val_avg'],
