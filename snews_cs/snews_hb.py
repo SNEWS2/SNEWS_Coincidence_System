@@ -9,7 +9,7 @@ import os, json
 import pandas as pd
 from datetime import datetime, timedelta
 import numpy as np
-from .cs_utils import TimeStuff, set_env
+from .cs_utils import TimeStuff, set_env, make_beat_directory
 
 
 class HeartBeat:
@@ -22,6 +22,7 @@ class HeartBeat:
         set_env(env_path)
         self.store = store
         self.beats_path = os.path.join(os.path.dirname(__file__), "../beats")
+        make_beat_directory(self.beats_path)
         self.stash_time = float(os.getenv("HB_STASH_TIME", "24")) # hours
         self.delete_after = float(os.getenv("HB_DELETE_AFTER", "7")) # days
         if firedrill_mode:

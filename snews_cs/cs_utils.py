@@ -1,5 +1,5 @@
 """
-Example initial dosctring
+Example initial docstring
 """
 from dotenv import load_dotenv
 from datetime import datetime
@@ -27,6 +27,9 @@ def set_env(env_path=None):
     env = env_path or default_env_path
     load_dotenv(env)
 
+def make_beat_directory(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
 class TimeStuff:
     """ SNEWS format datetime objects
@@ -190,7 +193,7 @@ class CommandHandler:
                                         "Heartbeat": self.heartbeat_handle}
         self.input_message = message
         self.command = None
-        self.username = self.input_message.get("detector_name", "NoName")
+        self.username = self.input_message.get("detector_name", "TEST")
         self.times = TimeStuff()
         self.entry = lambda: f"\n|{self.username}|"
 
@@ -218,7 +221,7 @@ class CommandHandler:
             msg = f"{self.entry()} {self.command} is passed!"
             log.info(msg)
             return self.known_command_functions[self.command](CoincDeciderInstance)
-        else:
+        elif "CoincidenceTier" in self.command:
             # for now assume it is an observation message
             if "meta" not in self.input_message.keys():
                 msg = f"{self.entry()} message with no meta key received. Ignoring!"
@@ -251,6 +254,9 @@ class CommandHandler:
                 msg += "\t NOT a valid message\n"
                 log.warning(msg)
                 return False
+        else:
+            log.info(f"{self.entry()} {self.command} is passed, this is not handled by snews_cs")
+            return False
 
     def test_connection(self, CoincDeciderInstance):
         """ When received a test_connection key
