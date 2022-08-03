@@ -112,10 +112,6 @@ def is_garbage_message(snews_message, is_test=False):
         warning += f'* Does not have required key: "neutrino_time"\n'
         is_garbage = True
         missing_key = True
-    if 'p_val' not in message_key:
-        warning += f'* Does not have required key: "p_val"\n'
-        is_garbage = True
-        missing_key = True
     if missing_key:
         log.warning(warning)
         return is_garbage
