@@ -3,7 +3,8 @@ from datetime import datetime
 
 
 def current_time():
-    return datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
+    # return datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
+    return datetime.utcnow().isoformat()
 
 
 def send_email(alert_content):

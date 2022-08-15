@@ -10,7 +10,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import numpy as np
 # from .cs_utils import TimeStuff, set_env, make_beat_directory
-from .cs_utils import set_env, make_beat_directory
+from .cs_utils import set_env#, make_beat_directory
 
 
 class HeartBeat:
