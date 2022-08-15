@@ -78,7 +78,7 @@ class CoincDecider:
         -------
         True is message is older than stash time (24hrs)
         """
-        curr_t = datetime.utcnow()
+        curr_t = datetime.utcnow().isoformat()
         # nu_t = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
         nu_t = datetime.fromisoformat(message['neutrino_time'])
 
