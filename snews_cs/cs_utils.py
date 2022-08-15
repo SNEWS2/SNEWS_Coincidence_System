@@ -196,7 +196,7 @@ class CommandHandler:
         self.input_message = message
         self.command = None
         self.username = self.input_message.get("detector_name", "NoName")
-        self.times = TimeStuff()
+        # self.times = TimeStuff()
         self.entry = lambda : f"\n|{self.username}|"
 
     def handle(self, CoincDeciderInstance):

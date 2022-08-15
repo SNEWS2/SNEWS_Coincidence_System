@@ -44,7 +44,7 @@ class CoincDecider:
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
         self.alert = AlertPublisher(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
-        self.times = cs_utils.TimeStuff(env_path)
+        # self.times = cs_utils.TimeStuff(env_path)
         if firedrill_mode:
             self.observation_topic = os.getenv("FIREDRILL_OBSERVATION_TOPIC")
         else:
@@ -79,7 +79,8 @@ class CoincDecider:
         True is message is older than stash time (24hrs)
         """
         curr_t = datetime.utcnow()
-        nu_t = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
+        # nu_t = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
+        nu_t = datetime.fromisoformat(message['neutrino_time'])
 
         del_t = (curr_t - nu_t).total_seconds()
         if del_t >= self.stash_time:
@@ -141,7 +142,8 @@ class CoincDecider:
             self.in_coincidence = True
             return 'ALREADY_IN_LIST',
         # compare the current nu time with all other on the sublist
-        message_nu_time = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
+        # message_nu_time = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
+        message_nu_time = datetime.from
         nu_times = pd.to_datetime(sub_list.neutrino_time, format='%y/%m/%d %H:%M:%S:%f')
         delta_ts = ((message_nu_time - nu_times).dt.total_seconds()).values  # numpy array
         # check if signal is NOT coincident with the whole list

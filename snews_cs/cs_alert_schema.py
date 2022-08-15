@@ -1,4 +1,5 @@
-from .cs_utils import TimeStuff
+# from .cs_utils import TimeStuff
+from datetime import datetime
 import sys
 
 
@@ -13,8 +14,8 @@ class CoincidenceTierAlert:
 
     """
 
-    def __init__(self, env_path=None):
-        self.times = TimeStuff(env_path)
+    # def __init__(self, env_path=None):
+        # self.times = TimeStuff(env_path)
 
     def id_format(self, num_detectors):
         """ Returns formatted message ID
@@ -29,7 +30,8 @@ class CoincidenceTierAlert:
                 The formatted id as a string
             
         """
-        date_time = self.times.get_snews_time(fmt="%y/%m/%d %H:%M:%S:%f")
+        # date_time = self.times.get_snews_time(fmt="%y/%m/%d %H:%M:%S:%f")
+        date_time = datetime.utcnow().isoformat()
         if num_detectors == 2:
             return f'SNEWS_Coincidence_ALERT {date_time}'
         else:
