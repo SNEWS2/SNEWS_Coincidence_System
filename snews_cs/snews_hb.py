@@ -9,7 +9,8 @@ import os, json
 import pandas as pd
 from datetime import datetime, timedelta
 import numpy as np
-from .cs_utils import TimeStuff, set_env, make_beat_directory
+# from .cs_utils import TimeStuff, set_env, make_beat_directory
+from .cs_utils import set_env, make_beat_directory
 
 
 class HeartBeat:
@@ -30,9 +31,12 @@ class HeartBeat:
         else:
             self.heartbeat_topic = os.getenv("OBSERVATION_TOPIC")
 
-        self.times = TimeStuff()
-        self.hr = self.times.get_hour()
-        self.date = self.times.get_date()
+        # self.times = TimeStuff()
+        self.now = datetime.utcnow().isoformat()
+        # self.hr = self.times.get_hour()
+        self.hr = self.now.split('T')[1][:2]
+        # self.date = self.times.get_date()
+        self.date = self.now.split('T')[0]
         self.column_names = ["Received Times", "Detector", "Stamped Times", "Latency", "Time After Last", "Status"]
         self.cache_df = pd.DataFrame(columns=self.column_names)
 
@@ -41,7 +45,8 @@ class HeartBeat:
         """
         msg = {"Received Times": message["Received Times"], "Detector": message["detector_name"],
                "Status": message["detector_status"]}
-        stamped_time_obj = self.times.str_to_datetime(message["sent_time"], fmt="%y/%m/%d %H:%M:%S:%f")
+        # stamped_time_obj = self.times.str_to_datetime(message["sent_time"], fmt="%y/%m/%d %H:%M:%S:%f")
+        stamped_time_obj = datetime.fromisoformat(message["sent_time"])
         msg["Stamped Times"] = stamped_time_obj
         msg["Latency"] = msg["Received Times"] - msg["Stamped Times"]
         # check the last message of given detector
@@ -168,7 +173,8 @@ class HeartBeat:
     def electrocardiogram(self, message):
         try:
             self.sanity_checks(message)
-            message["Received Times"] = datetime.utcnow()
+            # message["Received Times"] = datetime.utcnow()
+            message["Received Times"] = datetime.utcnow().isoformat()
             self.make_entry(message)
             self.store_beats()
             self.drop_old_messages()
