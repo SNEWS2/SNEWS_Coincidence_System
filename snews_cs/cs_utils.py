@@ -152,6 +152,7 @@ def is_garbage_message(snews_message, is_test=False):
         warning += f'* neutrino time: {snews_message["neutrino_time"]} does not match SNEWS CS (ISO) format: "%Y-%m-%dT%H:%M:%S.%f"\n'
         shitty_nu_time = True
         is_garbage = True
+        log.warning(warning)
         return is_garbage
 
     if (datetime.fromisoformat(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() <= -172800.0:
