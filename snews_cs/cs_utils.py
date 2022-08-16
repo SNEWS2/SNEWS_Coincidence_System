@@ -1,5 +1,5 @@
 """
-Example initial dosctring
+Example initial docstring
 """
 from dotenv import load_dotenv
 from datetime import datetime
@@ -26,6 +26,9 @@ def set_env(env_path=None):
     env = env_path or default_env_path
     load_dotenv(env)
 
+def make_beat_directory(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
 # class TimeStuff:
 #     """ SNEWS format datetime objects
@@ -196,7 +199,7 @@ class CommandHandler:
                                         "Heartbeat": self.heartbeat_handle}
         self.input_message = message
         self.command = None
-        self.username = self.input_message.get("detector_name", "NoName")
+        self.username = self.input_message.get("detector_name", "TEST")
         # self.times = TimeStuff()
         self.entry = lambda : f"\n|{self.username}|"
 
@@ -222,13 +225,13 @@ class CommandHandler:
     def check_command(self, CoincDeciderInstance):
         if self.command in self.known_commands:
             msg = f"{self.entry()} {self.command} is passed!"
-            log.error(msg)
+            log.info(msg)
             return self.known_command_functions[self.command](CoincDeciderInstance)
-        else:
+        elif "CoincidenceTier" in self.command:
             # for now assume it is an observation message
             if "meta" not in self.input_message.keys():
                 msg = f"{self.entry()} message with no meta key received. Ignoring!"
-                log.error(msg)
+                log.warning(msg)
                 return False
             if "this is a test" in self.input_message['meta'].values():
                 is_test = True
@@ -249,11 +252,17 @@ class CommandHandler:
             if (not is_garbage) and is_correct_topic:
                 msg += "\t valid message\n"
                 log.info(msg)
+                # this is also a heartbeat
+                self.input_message["detector_status"] = "ON"
+                self.heartbeat_handle(CoincDeciderInstance)
                 return True
             else:
                 msg += "\t NOT a valid message\n"
                 log.warning(msg)
-                return  False
+                return False
+        else:
+            log.info(f"{self.entry()} {self.command} is passed, this is not handled by snews_cs")
+            return False
 
     def test_connection(self, CoincDeciderInstance):
         """ When received a test_connection key
@@ -324,8 +333,9 @@ class CommandHandler:
         return False
 
     def heartbeat_handle(self, CoincDeciderInstance):
-        msg = f"{self.entry()} Heartbeat Received (Not implemented Yet)!"
+        msg = f"{self.entry()} Heartbeat Received"
         log.info(msg)
+        CoincDeciderInstance.heartbeat.electrocardiogram(self.input_message)
         return False
 
     def display_logs(self, CoincDeciderInstance):
