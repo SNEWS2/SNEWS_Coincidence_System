@@ -1,4 +1,4 @@
-# from .cs_utils import TimeStuff
+from .cs_utils import set_env
 from datetime import datetime
 import sys
 
@@ -14,7 +14,8 @@ class CoincidenceTierAlert:
 
     """
 
-    # def __init__(self, env_path=None):
+    def __init__(self, env_path=None):
+        set_env(env_path)
         # self.times = TimeStuff(env_path)
 
     def id_format(self, num_detectors):

@@ -44,7 +44,7 @@ class AlertPublisher:
         # self.times = cs_utils.TimeStuff()
         self.verbose = verbose
         # self.time_str = lambda: self.times.get_snews_time()
-        self.time_str = datetime.utcnow().isoformat()
+        # self.time_str = lambda: datetime.utcnow().isoformat()
         self.storage = Storage(drop_db=False, use_local_db=use_local)
 
     def __enter__(self):
