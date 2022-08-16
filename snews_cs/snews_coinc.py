@@ -144,8 +144,8 @@ class CoincDecider:
         # compare the current nu time with all other on the sublist
         # message_nu_time = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
         message_nu_time = datetime.fromisoformat(message['neutrino_time'])
-        # nu_times = pd.to_datetime(sub_list.neutrino_time, format='%y/%m/%d %H:%M:%S:%f')
-        nu_times = datetime.fromisoformat(sub_list.neutrino_time)
+        nu_times = pd.to_datetime(sub_list.neutrino_time, format="%Y-%m-%dT%H:%M:%S.%f")
+        # nu_times = datetime.fromisoformat(sub_list.neutrino_time)
         delta_ts = ((message_nu_time - nu_times).dt.total_seconds()).values  # numpy array
         # check if signal is NOT coincident with the whole list
         if all(abs_del_t > self.coinc_threshold for abs_del_t in np.abs(delta_ts)):
