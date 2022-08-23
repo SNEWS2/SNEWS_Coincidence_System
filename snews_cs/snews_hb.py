@@ -12,6 +12,18 @@ import numpy as np
 # from .cs_utils import TimeStuff, set_env, make_beat_directory
 from .cs_utils import set_env, make_beat_directory
 
+def get_data_strings(df_input):
+    """ Convert datetime objects to strings
+
+    """
+    df = df_input.copy()
+    type_dtime = type(datetime.utcnow())
+    for col in df.columns:
+        for i in range(len(df)):
+            if type(df[col].iloc[i]) == type_dtime:
+                print(col, i, df_realistic[col].iloc[i])
+                df.at[i, col] = df.at[i, col].isotime()
+    return df
 
 class HeartBeat:
     """ Class to handle heartbeat message stream
@@ -108,7 +120,9 @@ class HeartBeat:
                 current version would ignore the previous logs and overwrite a new one
 
         """
-        curr_data = self.cache_df.to_json(orient='columns')
+        df = get_data_strings(self.cache_df)
+        curr_data = df.to_json(orient='columns')
+        # curr_data = self.cache_df.to_json(orient='columns')
         today = datetime.utcnow()
         today_str = datetime.strftime(today, "%y-%m-%d")
         output_json_name = os.path.join(self.beats_path, f"{today_str}_heartbeat_log.json")
@@ -173,8 +187,7 @@ class HeartBeat:
     def electrocardiogram(self, message):
         try:
             self.sanity_checks(message)
-            # message["Received Times"] = datetime.utcnow()
-            message["Received Times"] = datetime.utcnow().isoformat()
+            message["Received Times"] = datetime.utcnow() #.isoformat()
             self.make_entry(message)
             self.store_beats()
             self.drop_old_messages()

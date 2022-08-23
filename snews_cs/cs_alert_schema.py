@@ -31,7 +31,6 @@ class CoincidenceTierAlert:
                 The formatted id as a string
             
         """
-        # date_time = self.times.get_snews_time(fmt="%y/%m/%d %H:%M:%S:%f")
         date_time = datetime.utcnow().isoformat()
         if num_detectors == 2:
             return f'SNEWS_Coincidence_ALERT {date_time}'
@@ -60,7 +59,7 @@ class CoincidenceTierAlert:
                 "server_tag": data['server_tag'],
                 "false_alarm_probability": data['false_alarm_prob'],
                 "detector_names": data['detector_names'],
-                "sent_time": id.split(' ')[1]+' '+id.split(' ')[2],
+                "sent_time": id.split(' ')[1],
                 "p_values": data['p_vals'],
                 "neutrino_times": data['neutrino_times'],
                 "p_values average": data['p_val_avg'],
