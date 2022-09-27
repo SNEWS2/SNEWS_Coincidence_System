@@ -43,6 +43,7 @@ class CoincDecider:
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
+        self.initial_set = False
         self.alert = AlertPublisher(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
         # self.times = cs_utils.TimeStuff(env_path)
         if firedrill_mode:
@@ -64,29 +65,30 @@ class CoincDecider:
         self.in_list_already = False
         self.stash_time = 86400
 
-    # ------------------------------------------------------------------------------------------------------------------
-    def _is_old_message(self, message):
-        """
-        Checks if snews message is too old.
-
-        Parameters
-        ----------
-        message: dict
-            incoming SNEWS message
-
-        Returns
-        -------
-        True is message is older than stash time (24hrs)
-        """
-        curr_t = datetime.utcnow().isoformat()
-        # nu_t = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
-        nu_t = datetime.fromisoformat(message['neutrino_time'])
-
-        del_t = (curr_t - nu_t).total_seconds()
-        if del_t >= self.stash_time:
-            return True
-        else:
-            return False
+    ### This function is not used anywhere, and tries to subtract string from datetime
+    # # ------------------------------------------------------------------------------------------------------------------
+    # def _is_old_message(self, message):
+    #     """
+    #     Checks if snews message is too old.
+    #
+    #     Parameters
+    #     ----------
+    #     message: dict
+    #         incoming SNEWS message
+    #
+    #     Returns
+    #     -------
+    #     True is message is older than stash time (24hrs)
+    #     """
+    #     curr_t = datetime.utcnow().isoformat()
+    #     # nu_t = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
+    #     nu_t = datetime.fromisoformat(message['neutrino_time'])
+    #
+    #     del_t = (curr_t - nu_t).total_seconds()
+    #     if del_t >= self.stash_time:
+    #         return True
+    #     else:
+    #         return False
 
     # ------------------------------------------------------------------------------------------------------------------
     def append_message_to_df(self, message, delta_t, sub_list_num):
@@ -183,16 +185,11 @@ class CoincDecider:
     def _nu_delta_organizer(self, df):
         main_temp = pd.DataFrame()
         for sub_list in list(df['sub_list_num'].unique()):
-
-            # print(sub_list)
             temp = df.query(f'sub_list_num=={sub_list}')
-            # print(temp.columns)
             temp = temp.sort_values(by='neutrino_time').reset_index(drop=True)
             new_delta = []
             new_initial = temp['neutrino_time'][0]
             for time in temp['neutrino_time']:
-                # new_delta.append(
-                #     (self.times.str_to_datetime(time) - self.times.str_to_datetime(new_initial)).total_seconds())
                 new_delta.append(
                     (datetime.fromisoformat(time) - datetime.fromisoformat(new_initial)).total_seconds())
             temp['nu_delta_t'] = new_delta
@@ -222,11 +219,9 @@ class CoincDecider:
 
         Parameters
         ----------
-        initial_time: datetime object
-            initial time set my first neutrino signal
-        detector_name: str
-            Name of the detector that sets initial time
-        new_sub_list: int
+        message: `dict`
+            input observation message
+        new_sub_list: `int`
             label of new sub list
 
         """
@@ -234,16 +229,13 @@ class CoincDecider:
         other_df = self.cache_df.query(f'sub_list_num!={new_sub_list}').sort_values(by='neutrino_time').drop_duplicates(
             subset=['_id'])
         detector_name = message['detector_name']
-        # initial_time = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
-        initial_time = datetime.fromisoformat(message['nuetrino_time'])
+        initial_time = datetime.fromisoformat(message['neutrino_time'])
         other_df = other_df.query(f'detector_name != "{detector_name}"')
         new_list = self.cache_df.query(f'sub_list_num=={new_sub_list}')
 
         for index, row in other_df.iterrows():
-            # print(f'{index} {row["detector_name"]} this is my ini time {initial_time}')
             if row['detector_name'] in list(new_list['detector_name']):
                 continue
-            # nu_time = self.times.str_to_datetime(row['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
             nu_time = datetime.fromisoformat(row['neutrino_time'])
             del_t = (nu_time - initial_time).total_seconds()
             # (1)
@@ -251,7 +243,6 @@ class CoincDecider:
             if float(row['nu_delta_t']) != 0 and (0 > del_t >= -self.coinc_threshold):
                 if self._coincident_with_whole_list(message=row.copy(deep=False),
                                                     sub_list_num=new_sub_list, )[0] == 'EARLY_COINCIDENT':
-                    # print(f'{row["detector_name"]} is making new ini {del_t}')
                     initial_time = nu_time
                     new_row = row.copy(deep=False)
                     new_row['sub_list_num'] = new_sub_list
@@ -264,12 +255,10 @@ class CoincDecider:
                     pass
             # (2)
             if 0 < del_t <= self.coinc_threshold:
-                # print(f'delta within coinc_threshold, my del t is  {del_t}')
                 print(self._coincident_with_whole_list(message=row.copy(deep=False),
                                                        sub_list_num=new_sub_list, ))
                 if self._coincident_with_whole_list(message=row.copy(deep=False),
                                                     sub_list_num=new_sub_list, )[0] == 'COINCIDENT':
-                    # print(f'appending to {row["detector_name"]} new list {new_list} {del_t}')
                     new_row = row.copy(deep=False)
                     new_row['sub_list_num'] = new_sub_list
                     new_row['nu_delta_t'] = del_t
@@ -314,16 +303,15 @@ class CoincDecider:
         """
         coinc_with_list = self._coincident_with_whole_list(message, sub_list)
         if coinc_with_list[0] == 'ALREADY_IN_LIST':
-            # print('ALREADY_IN_LIST')
             self.in_list_already = True
             pass
         elif coinc_with_list[0] == 'NOT_COINCIDENT':
             pass
         elif coinc_with_list[0] == 'COINCIDENT':
-            # print('COINCIDENT')
+            # only when COINCIDENT delta_t is float
             delta_t = coinc_with_list[1]
             self.append_message_to_df(message, delta_t, sub_list)
-            # print(f'appending to {sub_list}')
+
 
         elif coinc_with_list[0] == 'EARLY_COINCIDENT':
             self.append_message_to_df(message, 0, sub_list)
@@ -360,10 +348,8 @@ class CoincDecider:
         self.in_list_already = False
         # (1)
         for sub_list in subs_list_nums:
-            # print(f'Checking sub list: {sub_list}')
             self._check_sub_lists(message=message, sub_list=sub_list)
         # (2)
-        # print(f'in_coincidence: {self.in_coincidence}')
         if not self.in_coincidence:
             # print('making  new list')
             new_sub_list = max(subs_list_nums,
@@ -378,11 +364,9 @@ class CoincDecider:
             print('we got something publishing an alert !')
             self._dump_redundant_list()
             # self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'received_time'])
-            print('line 359')
-            print(self.cache_df.columns)
             self.cache_df = self._nu_delta_organizer(self.cache_df)
             self.hype_mode_publish()
-            self.display_table()
+            # self.display_table()
 
     # ----------------------------------------------------------------------------------------------------------------
     def display_table(self):
@@ -397,7 +381,7 @@ class CoincDecider:
             sub_df = self.cache_df.query(f'sub_list_num=={sub_list}')
             sub_df = sub_df.drop(columns=['meta', 'machine_time', 'schema_version'])
             sub_df = sub_df.sort_values(by=['neutrino_time'])
-            # snews_bot.send_table(sub_df)
+            # snews_bot.send_table(sub_df) # no need to print the table on the server. Logs have the full content
             print(sub_df.to_markdown())
             print('=' * 168)
 
@@ -407,12 +391,7 @@ class CoincDecider:
         This method will publish an alert every time a new detector
         submits an observation message
 
-            Parameters
-            ----------
-            n_old_unique_count : `int`
-                the least number of detectors required for the hype publish
         """
-
         click.secho(f'{"=" * 100}', fg='bright_red')
         for sub_list in list(self.cache_df['sub_list_num'].unique()):
             _sub_df = self.cache_df.query(f'sub_list_num=={sub_list}')
@@ -433,7 +412,7 @@ class CoincDecider:
                 if self.send_email:
                     send_email(alert)
 
-        click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}\n', bg='bright_green', fg='red')
+        click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
         click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
         click.secho(f'{"=" * 100}', fg='bright_red')
 
@@ -443,31 +422,32 @@ class CoincDecider:
         #     print("Bot failed to send slack message")
         #     pass
 
-    # ------------------------------------------------------------------------------------------------------------------
-    def dump_old_messages(self, message):
-        """
-        WIP
-        Checks the time sent by the Updater, if any messages have a 24hrs difference from the updater time
-        they are thrown out of the df.
-
-        Parameters
-        ----------
-        message: dict
-            Updater message
-
-        """
-        current_sent_time = message['sent_time']
-
-        ind = 0
-        for latest_sent_time in self.cache_df['sent_time']:
-            latest_sent_time = datetime.strptime(latest_sent_time, '%d/%m/%y %H:%M:%S')
-            current_sent_time = datetime.strptime(current_sent_time, '%d/%m/%y %H:%M:%S')
-
-            del_t = (current_sent_time - latest_sent_time).total_seconds()
-            if del_t >= self.stash_time:
-                self.cache_df.drop(ind, inplace=True)
-            ind += 1
-        self.cache_df = self.cache_df.reset_index(drop=True)
+    ## NOT USED ANYWHERE
+    # # ------------------------------------------------------------------------------------------------------------------
+    # def dump_old_messages(self, message):
+    #     """
+    #     WIP
+    #     Checks the time sent by the Updater, if any messages have a 24hrs difference from the updater time
+    #     they are thrown out of the df.
+    #
+    #     Parameters
+    #     ----------
+    #     message: dict
+    #         Updater message
+    #
+    #     """
+    #     current_sent_time = message['sent_time']
+    #
+    #     ind = 0
+    #     for latest_sent_time in self.cache_df['sent_time']:
+    #         latest_sent_time = datetime.strptime(latest_sent_time, '%d/%m/%y %H:%M:%S')
+    #         current_sent_time = datetime.strptime(current_sent_time, '%d/%m/%y %H:%M:%S')
+    #
+    #         del_t = (current_sent_time - latest_sent_time).total_seconds()
+    #         if del_t >= self.stash_time:
+    #             self.cache_df.drop(ind, inplace=True)
+    #         ind += 1
+    #     self.cache_df = self.cache_df.reset_index(drop=True)
 
     # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
