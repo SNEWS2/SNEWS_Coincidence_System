@@ -44,7 +44,7 @@ class CoincDecider:
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
         self.alert = AlertPublisher(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
-        self.times = cs_utils.TimeStuff(env_path)
+        # self.times = cs_utils.TimeStuff(env_path)
         if firedrill_mode:
             self.observation_topic = os.getenv("FIREDRILL_OBSERVATION_TOPIC")
         else:
@@ -78,8 +78,9 @@ class CoincDecider:
         -------
         True is message is older than stash time (24hrs)
         """
-        curr_t = datetime.utcnow()
-        nu_t = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
+        curr_t = datetime.utcnow().isoformat()
+        # nu_t = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
+        nu_t = datetime.fromisoformat(message['neutrino_time'])
 
         del_t = (curr_t - nu_t).total_seconds()
         if del_t >= self.stash_time:
@@ -141,8 +142,10 @@ class CoincDecider:
             self.in_coincidence = True
             return 'ALREADY_IN_LIST',
         # compare the current nu time with all other on the sublist
-        message_nu_time = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
-        nu_times = pd.to_datetime(sub_list.neutrino_time, format='%y/%m/%d %H:%M:%S:%f')
+        # message_nu_time = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
+        message_nu_time = datetime.fromisoformat(message['neutrino_time'])
+        nu_times = pd.to_datetime(sub_list.neutrino_time, format="%Y-%m-%dT%H:%M:%S.%f")
+        # nu_times = datetime.fromisoformat(sub_list.neutrino_time)
         delta_ts = ((message_nu_time - nu_times).dt.total_seconds()).values  # numpy array
         # check if signal is NOT coincident with the whole list
         if all(abs_del_t > self.coinc_threshold for abs_del_t in np.abs(delta_ts)):
@@ -188,8 +191,10 @@ class CoincDecider:
             new_delta = []
             new_initial = temp['neutrino_time'][0]
             for time in temp['neutrino_time']:
+                # new_delta.append(
+                #     (self.times.str_to_datetime(time) - self.times.str_to_datetime(new_initial)).total_seconds())
                 new_delta.append(
-                    (self.times.str_to_datetime(time) - self.times.str_to_datetime(new_initial)).total_seconds())
+                    (datetime.fromisoformat(time) - datetime.fromisoformat(new_initial)).total_seconds())
             temp['nu_delta_t'] = new_delta
             main_temp = pd.concat([main_temp, temp])
         main_temp.sort_values(by=['sub_list_num', 'neutrino_time'], ascending=False, inplace=True)
@@ -229,7 +234,8 @@ class CoincDecider:
         other_df = self.cache_df.query(f'sub_list_num!={new_sub_list}').sort_values(by='neutrino_time').drop_duplicates(
             subset=['_id'])
         detector_name = message['detector_name']
-        initial_time = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
+        # initial_time = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
+        initial_time = datetime.fromisoformat(message['nuetrino_time'])
         other_df = other_df.query(f'detector_name != "{detector_name}"')
         new_list = self.cache_df.query(f'sub_list_num=={new_sub_list}')
 
@@ -237,7 +243,8 @@ class CoincDecider:
             # print(f'{index} {row["detector_name"]} this is my ini time {initial_time}')
             if row['detector_name'] in list(new_list['detector_name']):
                 continue
-            nu_time = self.times.str_to_datetime(row['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
+            # nu_time = self.times.str_to_datetime(row['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
+            nu_time = datetime.fromisoformat(row['neutrino_time'])
             del_t = (nu_time - initial_time).total_seconds()
             # (1)
             # make sure the signal is not an initial that its nu is earlier than new list's initial
@@ -475,7 +482,7 @@ class CoincDecider:
         """
         stream = Stream(until_eos=False)
         with stream.open(self.observation_topic, "r") as s:
-            _msg = click.style(f'{cs_utils.TimeStuff().get_snews_time()} Running Coincidence System for '
+            _msg = click.style(f'{datetime.utcnow().isoformat()} Running Coincidence System for '
                               f'{self.observation_topic}\n')
             print(_msg)
             for snews_message in s:
@@ -484,9 +491,9 @@ class CoincDecider:
                     go = handler.handle(self)
                 except Exception as e:
                     log.debug(f"Something crashed the server, here is the Exception raised\n{e}\n")
+                    go = False
                 if go:
-                    print(snews_message)
-                    snews_message['received_time'] = cs_utils.TimeStuff().get_snews_time()
+                    snews_message['received_time'] = datetime.utcnow().isoformat()
                     self.storage.insert_mgs(snews_message)
                     click.secho(f'{"-" * 57}', fg='bright_blue')
                     self._check_coincidence(message=snews_message)

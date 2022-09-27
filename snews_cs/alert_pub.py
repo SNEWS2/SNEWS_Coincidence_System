@@ -41,9 +41,10 @@ class AlertPublisher:
             self.alert_topic = os.getenv("FIREDRILL_ALERT_TOPIC")
         else:
             self.alert_topic = os.getenv("ALERT_TOPIC")
-        self.times = cs_utils.TimeStuff()
+        # self.times = cs_utils.TimeStuff()
         self.verbose = verbose
-        self.time_str = lambda: self.times.get_snews_time()
+        # self.time_str = lambda: self.times.get_snews_time()
+        # self.time_str = lambda: datetime.utcnow().isoformat()
         self.storage = Storage(drop_db=False, use_local_db=use_local)
 
     def __enter__(self):

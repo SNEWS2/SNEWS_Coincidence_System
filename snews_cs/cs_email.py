@@ -2,8 +2,9 @@ import os
 from datetime import datetime
 
 
-def current_time():
-    return datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
+# def current_time():
+    # return datetime.utcnow().strftime("%y/%m/%d %H:%M:%S:%f")
+    # return datetime.utcnow().isoformat()
 
 
 def send_email(alert_content):
@@ -15,4 +16,6 @@ def send_email(alert_content):
     # emails = 'sebastiantorreslara17@gmail.com'
     emails = 'snews2-test-ahabig@d.umn.edu'
     os.system(
-        f'echo "{pretty_alert}"| mail -s "SNEWS COINCIDENCE {current_time()}" {emails}')
+    #     f'echo "{pretty_alert}"| mail -s "SNEWS COINCIDENCE {current_time()}" {emails}')
+    # os.system(
+        f'echo "{pretty_alert}"| mail -s "SNEWS COINCIDENCE {datetime.utcnow().isoformat()}" {emails}')

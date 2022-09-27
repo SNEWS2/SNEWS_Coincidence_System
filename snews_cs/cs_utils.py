@@ -11,7 +11,6 @@ from .core.logging import getLogger
 
 log = getLogger(__name__)
 
-
 def set_env(env_path=None):
     """ Set environment parameters
 
@@ -31,28 +30,28 @@ def make_beat_directory(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-class TimeStuff:
-    """ SNEWS format datetime objects
+# class TimeStuff:
+#     """ SNEWS format datetime objects
 
-    """
+#     """
 
-    def __init__(self, env_path=None):
-        set_env(env_path)
-        self.snews_t_format = os.getenv("TIME_STRING_FORMAT")
-        self.hour_fmt = "%H:%M:%S"
-        self.date_fmt = "%y_%m_%d"
-        self.get_datetime = datetime.utcnow()
-        self.get_snews_time = lambda fmt=self.snews_t_format: datetime.utcnow().strftime(fmt)
-        self.get_hour = lambda fmt=self.hour_fmt: datetime.utcnow().strftime(fmt)
-        self.get_date = lambda fmt=self.date_fmt: datetime.utcnow().strftime(fmt)
+#     def __init__(self, env_path=None):
+#         set_env(env_path)
+#         self.snews_t_format = os.getenv("TIME_STRING_FORMAT")
+#         self.hour_fmt = "%H:%M:%S"
+#         self.date_fmt = "%y_%m_%d"
+#         self.get_datetime = datetime.utcnow()
+#         self.get_snews_time = lambda fmt=self.snews_t_format: datetime.utcnow().strftime(fmt)
+#         self.get_hour = lambda fmt=self.hour_fmt: datetime.utcnow().strftime(fmt)
+#         self.get_date = lambda fmt=self.date_fmt: datetime.utcnow().strftime(fmt)
 
-    def str_to_datetime(self, nu_time, fmt='%y/%m/%d %H:%M:%S:%f'):
-        """ string to datetime object """
-        return datetime.strptime(nu_time, fmt)
+#     def str_to_datetime(self, nu_time, fmt='%y/%m/%d %H:%M:%S:%f'):
+#         """ string to datetime object """
+#         return datetime.strptime(nu_time, fmt)
 
-    def str_to_hr(self, nu_time, fmt='%H:%M:%S:%f'):
-        """ string to datetime hour object """
-        return datetime.strptime(nu_time, fmt)
+#     def str_to_hr(self, nu_time, fmt='%H:%M:%S:%f'):
+#         """ string to datetime hour object """
+#         return datetime.strptime(nu_time, fmt)
 
 
 # TODO: Change to SNEWS_PT struc
@@ -98,7 +97,7 @@ def is_garbage_message(snews_message, is_test=False):
             True if message does not meet CS standards, else
 
     """
-    time = TimeStuff()
+    # time = TimeStuff()
     detector_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/detector_properties.json'))
     with open(detector_file) as file:
         snews_detectors = json.load(file)
@@ -115,6 +114,10 @@ def is_garbage_message(snews_message, is_test=False):
         warning += f'* Does not have required key: "neutrino_time"\n'
         is_garbage = True
         missing_key = True
+    # if 'p_val' not in message_key:
+    #     warning += f'* Does not have required key: "p_val"\n'
+    #     is_garbage = True
+    #     missing_key = True
     if missing_key:
         log.warning(warning)
         return is_garbage
@@ -145,24 +148,28 @@ def is_garbage_message(snews_message, is_test=False):
     shitty_nu_time = False
 
     try:
-        time.str_to_datetime(snews_message['neutrino_time'])
+        # time.str_to_datetime(snews_message['neutrino_time'])
+        datetime.fromisoformat(snews_message['neutrino_time'])
     except ValueError:
-        warning += f'* neutrino time: {snews_message["neutrino_time"]} does not match SNEWS CS format: "%y/%m/%d %H:%M:%S:%f"\n'
+        # warning += f'* neutrino time: {snews_message["neutrino_time"]} does not match SNEWS CS format: "%y/%m/%d %H:%M:%S:%f"\n'
+        warning += f'* neutrino time: {snews_message["neutrino_time"]} does not match SNEWS CS (ISO) format: "%Y-%m-%dT%H:%M:%S.%f"\n'
         shitty_nu_time = True
         is_garbage = True
-    if not shitty_nu_time:
-        if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() <= -172800.0:
-            warning += f'* neutrino time is more than 48 hrs olds !\n'
+        log.warning(warning)
+        return is_garbage
+
+    if (datetime.fromisoformat(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() <= -172800.0:
+        warning += f'* neutrino time is more than 48 hrs olds !\n'
+        shitty_nu_time = True
+        is_garbage = True
+
+    if (datetime.fromisoformat(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() > 0:
+        if is_test:
+            pass
+        else:
+            warning += f'* neutrino time comes from the future, please stop breaking causality\n'
             shitty_nu_time = True
             is_garbage = True
-
-        if (time.str_to_datetime(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() > 0:
-            if is_test:
-                pass
-            else:
-                warning += f'* neutrino time comes from the future, please stop breaking causality\n'
-                shitty_nu_time = True
-                is_garbage = True
 
     if shitty_nu_time:
         log.warning(warning)
@@ -182,7 +189,6 @@ class CommandHandler:
         - Get logs
         - Change Broker
     """
-
     def __init__(self, message):
         self.known_commands = ["test-connection", "test-scenarios",
                                "hard-reset", "Retraction", "broker-change", "Heartbeat"]
@@ -194,8 +200,8 @@ class CommandHandler:
         self.input_message = message
         self.command = None
         self.username = self.input_message.get("detector_name", "TEST")
-        self.times = TimeStuff()
-        self.entry = lambda: f"\n|{self.username}|"
+        # self.times = TimeStuff()
+        self.entry = lambda : f"\n|{self.username}|"
 
     def handle(self, CoincDeciderInstance):
         if not self.check_id():
@@ -305,8 +311,7 @@ class CommandHandler:
 
         if retrc_message['N_retract_latest'] == 'ALL':
             delete_n_many = CoincDeciderInstance.cache_df.groupby(by='detector_name').size().to_dict()[drop_detector]
-        msg = click.style(
-            f'{self.entry()} Dropping latest message(s) from {drop_detector}\nRetracting: {delete_n_many} messages\n')
+        msg = click.style(f'{self.entry()} Dropping latest message(s) from {drop_detector}\nRetracting: {delete_n_many} messages\n')
         log.info(msg)
         sorted_df = CoincDeciderInstance.cache_df.sort_values(by='received_time')
         for i in sorted_df.index:
