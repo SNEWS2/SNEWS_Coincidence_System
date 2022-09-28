@@ -32,8 +32,9 @@ def get_image(is_test, alert_data, topic):
 
     header = f"{test} *SUPERNOVA ALERT* {update}".center(100, '=')+topic_str+f"{tag}" + \
              f"False Alarm Probability={falseprob}\nissued from {server}"
-    giflink = "https://raw.githubusercontent.com/SNEWS2/hop-SNalert-app/snews2_dev/hop_comms/auxiliary/snalert.gif"
-    updatelink = "" #"https://www.ris.world/wp-content/uploads/2018/09/update.jpg"
+    giflink = "https://raw.githubusercontent.com/SNEWS2/SNEWS_Coincidence_System/main/snews_cs/auxiliary/snalert.gif"
+    updatelink = "https://raw.githubusercontent.com/SNEWS2/SNEWS_Coincidence_System/main/snews_cs/auxiliary/update_image.png"
+    #"https://www.ris.world/wp-content/uploads/2018/09/update.jpg"
     sendlink = updatelink if update else giflink
 
     im = \
