@@ -412,16 +412,15 @@ class CoincDecider:
                 pub.send(alert)
                 if self.send_email:
                     send_email(alert)
+                if self.send_on_slack:
+                    try:
+                        snews_bot.send_table(self.cache_df, self.is_test, alert_data, self.observation_topic)
+                    except Exception as e:
+                        print(f"Bot failed to send slack message \n{e}")
 
         click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
         click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
         click.secho(f'{"=" * 100}', fg='bright_red')
-
-        if self.send_on_slack:
-            try:
-                snews_bot.send_table(self.cache_df, self.is_test, alert_data, self.observation_topic)
-            except Exception as e:
-                print(f"Bot failed to send slack message \n{e}")
 
     ## NOT USED ANYWHERE
     # # ------------------------------------------------------------------------------------------------------------------
