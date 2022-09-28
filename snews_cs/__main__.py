@@ -51,7 +51,9 @@ def run_coincidence(local, firedrill, dropdb, email, slackbot):
         coinc.run_coincidence()
     except KeyboardInterrupt: 
         pass
-    finally: 
+    except Exception as e:
+        print(e)
+    finally:
         click.secho(f'\n{"="*30}DONE{"="*30}', fg='white', bg='green')
 
 if __name__ == "__main__":

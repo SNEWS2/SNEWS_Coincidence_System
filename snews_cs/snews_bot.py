@@ -20,7 +20,7 @@ alert_schema = CoincidenceTierAlert()
 
 def get_image(is_test, alert_data, topic):
     ## parse input
-    tag = '<!here>\n' if not is_test else ' '
+    tag = '<!here>\n' if not is_test else '\n'
     test = "TEST" if is_test else ""
     topic_str = f"\n> Broker: {topic.center(50,'-')}\n"
 

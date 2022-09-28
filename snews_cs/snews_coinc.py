@@ -458,6 +458,13 @@ class CoincDecider:
 
     # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
+        try:
+            self._run_coincidence()
+        except Exception as e:
+            print("\n\n?>>>>>",e)
+            self.run_coincidence()
+
+    def _run_coincidence(self):
         """
         As the name states this method runs the coincidence system.
         Starts by subscribing to the hop observation_topic.
