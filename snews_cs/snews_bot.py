@@ -22,7 +22,7 @@ def get_image(is_test, alert_data, topic):
     ## parse input
     tag = '<!here>\n' if not is_test else ' '
     test = "TEST" if is_test else ""
-    topic_str = f"\n Broker: {topic.center(50,'-')}\n"
+    topic_str = f"\n> Broker: {topic.center(50,'-')}\n"
 
     alert_data = alert_data or dict(server_tag="Unknown Server", _id="Unknown ID", false_alarm_prob="Unknown")
     update = True if "UPDATE" in alert_data['_id'] else False
@@ -30,8 +30,8 @@ def get_image(is_test, alert_data, topic):
     server = alert_data['server_tag']
     falseprob = alert_data['False Alarm Prob']
 
-    header = f"{test} *SUPERNOVA ALERT* {update}".center(100, '=')+topic_str+f"{tag}" + \
-             f"False Alarm Probability={falseprob}\nissued from {server}"
+    header = f"{test} *SUPERNOVA ALERT* {update}".center(60, '=')+topic_str+f"{tag}" + \
+             f"> False Alarm Probability= *{falseprob}*\n> Issued from {server}"
     giflink = "https://raw.githubusercontent.com/SNEWS2/SNEWS_Coincidence_System/main/snews_cs/auxiliary/snalert.gif"
     updatelink = "https://raw.githubusercontent.com/SNEWS2/SNEWS_Coincidence_System/main/snews_cs/auxiliary/update_image.png"
     #"https://www.ris.world/wp-content/uploads/2018/09/update.jpg"
