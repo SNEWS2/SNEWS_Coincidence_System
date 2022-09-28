@@ -258,8 +258,8 @@ class CoincDecider:
                     pass
             # (2)
             if 0 < del_t <= self.coinc_threshold:
-                print(self._coincident_with_whole_list(message=row.copy(deep=False),
-                                                       sub_list_num=new_sub_list, ))
+                # print(self._coincident_with_whole_list(message=row.copy(deep=False),
+                #                                        sub_list_num=new_sub_list, ))
                 if self._coincident_with_whole_list(message=row.copy(deep=False),
                                                     sub_list_num=new_sub_list, )[0] == 'COINCIDENT':
                     new_row = row.copy(deep=False)
@@ -364,7 +364,6 @@ class CoincDecider:
         # else:
         #     # not coincidence but maybe already in list
         if not self.in_list_already:
-            print('we got something publishing an alert !')
             self._dump_redundant_list()
             # self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'received_time'])
             self.cache_df = self._nu_delta_organizer(self.cache_df)
@@ -415,6 +414,7 @@ class CoincDecider:
                 if hashvalue in self.published_alerts:
                     ## This alert has already been published
                     continue
+                print('> We got something publishing an alert !')
                 pub.send(alert)
                 self.published_alerts.append(hashvalue)
                 if self.send_email:
@@ -425,9 +425,9 @@ class CoincDecider:
                     except Exception as e:
                         print(f"Bot failed to send slack message \n{e}")
 
-        click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
-        click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
-        click.secho(f'{"=" * 100}', fg='bright_red')
+                click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
+                click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
+                click.secho(f'{"=" * 100}', fg='bright_red')
 
     ## NOT USED ANYWHERE
     # # ------------------------------------------------------------------------------------------------------------------
