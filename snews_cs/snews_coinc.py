@@ -414,7 +414,7 @@ class CoincDecider:
                     send_email(alert)
                 if self.send_on_slack:
                     try:
-                        snews_bot.send_table(self.cache_df, self.is_test, alert_data, self.observation_topic)
+                        snews_bot.send_table(_sub_df, self.is_test, alert_data, self.observation_topic)
                     except Exception as e:
                         print(f"Bot failed to send slack message \n{e}")
 
