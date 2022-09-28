@@ -21,7 +21,7 @@ log = getLogger(__name__)
 class CoincDecider:
 
     def __init__(self, env_path=None, use_local_db=True, is_test=True, drop_db=False, firedrill_mode=True,
-                 hb_path=None, server_tag=None, send_email=False):
+                 hb_path=None, server_tag=None, send_email=False, send_on_slack=False):
         """Coincidence Decider class constructor
 
         Parameters
@@ -36,6 +36,7 @@ class CoincDecider:
         log.debug("Initializing CoincDecider\n")
         cs_utils.set_env(env_path)
         self.send_email = send_email
+        self.send_on_slack = send_on_slack
         self.hype_mode_ON = True
         self.hb_path = hb_path
         self.server_tag = server_tag
@@ -416,11 +417,11 @@ class CoincDecider:
         click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
         click.secho(f'{"=" * 100}', fg='bright_red')
 
-        # try:
-        #     snews_bot.send_table(self.cache_df, self.is_test)
-        # except:
-        #     print("Bot failed to send slack message")
-        #     pass
+        if self.send_on_slack:
+            try:
+                snews_bot.send_table(self.cache_df, self.is_test)
+            except Exception as e:
+                print(f"Bot failed to send slack message \n{e}")
 
     ## NOT USED ANYWHERE
     # # ------------------------------------------------------------------------------------------------------------------
