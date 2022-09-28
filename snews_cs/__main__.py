@@ -12,6 +12,7 @@ import click, os
 from . import __version__
 from . import cs_utils
 from . import snews_coinc
+from socket import gethostname
 
 
 @click.group(invoke_without_command=True)
@@ -39,12 +40,12 @@ def main(ctx, env):
 def run_coincidence(local, firedrill, dropdb, email, slackbot):
     """ Initiate Coincidence Decider 
     """
-    server_tag = os.getenv('hostname')
+    HOST = gethostname()
     coinc = snews_coinc.CoincDecider(use_local_db=local,
                                      drop_db=dropdb,
                                      firedrill_mode=firedrill,
                                      send_email=email,
-                                     server_tag=server_tag,
+                                     server_tag=HOST,
                                      send_on_slack=slackbot)
     try: 
         coinc.run_coincidence()
