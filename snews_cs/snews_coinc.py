@@ -13,7 +13,7 @@ from .core.logging import getLogger
 from .cs_email import send_email
 from .snews_hb import HeartBeat
 from .cs_stats import cache_false_alarm_rate
-import sys
+import sys, json
 
 log = getLogger(__name__)
 
@@ -56,6 +56,7 @@ class CoincDecider:
 
         self.cache_df = pd.DataFrame(columns=self.column_names)
         self.alert_schema = CoincidenceTierAlert(env_path)
+        self.published_alerts = []
 
         # handle heartbeat
         self.store_heartbeat = bool(os.getenv("STORE_HEARTBEAT", "True"))
@@ -123,6 +124,7 @@ class CoincDecider:
         del self.cache_df
         self.cache_df = pd.DataFrame(columns=self.column_names)
         self.initial_set = False
+        self.published_alerts = []
 
     # ------------------------------------------------------------------------------------------------------------------
     def _coincident_with_whole_list(self, message, sub_list_num, ):
@@ -409,7 +411,12 @@ class CoincDecider:
 
             with self.alert as pub:
                 alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
+                hashvalue = hash(json.dumps(alert['neutrino_times']))
+                if hashvalue in self.published_alerts:
+                    ## This alert has already been published
+                    continue
                 pub.send(alert)
+                self.published_alerts.append(hashvalue)
                 if self.send_email:
                     send_email(alert)
                 if self.send_on_slack:
