@@ -205,11 +205,11 @@ class CommandHandler:
                                         "hard-reset": self.hard_reset,
                                         "Retraction": self.retract,
                                         "broker-change": self.change_broker,
-                                        "Heartbeat": self.heartbeat_handle}
+                                        "Heartbeat": self.heartbeat_handle,
+                                        "display_heartbeats": self.display_heartbeats}
         self.input_message = message
         self.command = None
         self.username = self.input_message.get("detector_name", "TEST")
-        # self.times = TimeStuff()
         self.entry = lambda : f"\n|{self.username}|"
 
     def handle(self, CoincDeciderInstance):
@@ -350,11 +350,13 @@ class CommandHandler:
         log.info(msg)
         return False
 
-    def display_logs(self, CoincDeciderInstance):
+    def display_heartbeats(self, CoincDeciderInstance):
         auth = self._check_rights()
-        new_broker_name = self.input_message["_id"]
         if auth:
-            msg = click.style(f"{self.entry()} tried to display the logs but it is not implemented")
+            click.secho("\nCurrent heartbeats table as requested by the user\n")
+            print(CoincDeciderInstance.heartbeat.cache_df.to_markdown(), "\n\n")
+            msg = click.style(f"{self.entry()} asked for the heartbeat logs. Logs printed as stdout, user should check"
+                              f"the remote logs")
         else:
             msg = click.style(f"{self.entry()} tried to display the logs.")
         log.info(msg)
