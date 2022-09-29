@@ -180,7 +180,7 @@ class HeartBeat:
                  - latencies are reasonable
                  - At least one detector is operational
         """
-        print(f" >> Sanity checks not implemented yet! We don't track if the heartbeats stopped/slowed down")
+        print(f" >> Sanity checks not implemented yet! We don't track if the heartbeats stopped/slowed down\n")
         return None
 
     def electrocardiogram(self, message):

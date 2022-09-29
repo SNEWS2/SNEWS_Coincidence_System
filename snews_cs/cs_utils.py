@@ -199,14 +199,14 @@ class CommandHandler:
         - Change Broker
     """
     def __init__(self, message):
-        self.known_commands = ["test-connection", "test-scenarios",
-                               "hard-reset", "Retraction", "broker-change", "Heartbeat"]
+        self.known_commands = ["test-connection", "test-scenarios", "hard-reset",
+                               "Retraction", "broker-change", "Heartbeat", "display-heartbeats"]
         self.known_command_functions = {"test-connection": self.test_connection,
                                         "hard-reset": self.hard_reset,
                                         "Retraction": self.retract,
                                         "broker-change": self.change_broker,
                                         "Heartbeat": self.heartbeat_handle,
-                                        "display_heartbeats": self.display_heartbeats}
+                                        "display-heartbeats": self.display_heartbeats}
         self.input_message = message
         self.command = None
         self.username = self.input_message.get("detector_name", "TEST")
@@ -233,13 +233,13 @@ class CommandHandler:
 
     def check_command(self, CoincDeciderInstance):
         if self.command in self.known_commands:
-            msg = f"{self.entry()} {self.command} command is passed!"
+            msg = f"{self.entry()} {self.command} command is passed!\n"
             log.info(msg)
             return self.known_command_functions[self.command](CoincDeciderInstance)
         elif "CoincidenceTier" in self.command:
             # for now assume it is an observation message
             if "meta" not in self.input_message.keys():
-                msg = f"{self.entry()} message with no meta key received. Ignoring!"
+                msg = f"{self.entry()} message with no meta key received. Ignoring!\n"
                 log.warning(msg)
                 return False
             if "this is a test" in self.input_message['meta'].values():
@@ -270,7 +270,7 @@ class CommandHandler:
                 log.warning(msg)
                 return False
         else:
-            log.info(f"{self.entry()} {self.command} is passed, this is not handled by snews_cs")
+            log.info(f"{self.entry()} {self.command} is passed, this is not handled by snews_cs\n")
             return False
 
     def test_connection(self, CoincDeciderInstance):
@@ -302,16 +302,16 @@ class CommandHandler:
     def hard_reset(self, CoincDeciderInstance):
         if self._check_rights():
             CoincDeciderInstance.reset_df()
-            msg = click.style(f"{self.entry()} Cache restarted", fg='yellow')
+            msg = click.style(f"{self.entry()} Cache restarted\n", fg='yellow')
         else:
-            msg = click.style(f'{self.entry()} The user has no right to reset the cache', fg='yellow')
+            msg = click.style(f'{self.entry()} The user has no right to reset the cache\n', fg='yellow')
         log.info(f'{msg}\n')
         return False
 
     def retract(self, CoincDeciderInstance):
         retrc_message = self.input_message
         if not retrc_message.get('N_retract_latest', False):
-            msg = f"{self.entry()} Tried retracting message without 'N_retract_latest' key, setting to 'ALL'"
+            msg = f"{self.entry()} Tried retracting message without 'N_retract_latest' key, setting to 'ALL'\n"
             log.warning(msg)
             retrc_message['N_retract_latest'] = 'ALL'
 
@@ -334,9 +334,9 @@ class CommandHandler:
         auth = self._check_rights()
         new_broker_name = self.input_message["_id"]
         if auth:
-            msg = click.style(f"{self.entry()} tried to change the broker to '{new_broker_name}' but it is not implemented")
+            msg = click.style(f"{self.entry()} tried to change the broker to '{new_broker_name}' but it is not implemented.\n")
         else:
-            msg = click.style(f"{self.entry()} tried to change the broker to '{new_broker_name}'.")
+            msg = click.style(f"{self.entry()} tried to change the broker to '{new_broker_name}'.\n")
         log.info(msg)
         # raise NotImplementedError # do not crash the server
         return False
@@ -344,9 +344,9 @@ class CommandHandler:
     def heartbeat_handle(self, CoincDeciderInstance):
         success = CoincDeciderInstance.heartbeat.electrocardiogram(self.input_message)
         if success:
-            msg = f"{self.entry()} Heartbeat Received"
+            msg = f"{self.entry()} Heartbeat Received\n"
         else:
-            msg = f"{self.entry()} Heartbeat failed to process in electrocardiogram"
+            msg = f"{self.entry()} Heartbeat failed to process in electrocardiogram\n"
         log.info(msg)
         return False
 
@@ -356,8 +356,8 @@ class CommandHandler:
             click.secho("\nCurrent heartbeats table as requested by the user\n")
             print(CoincDeciderInstance.heartbeat.cache_df.to_markdown(), "\n\n")
             msg = click.style(f"{self.entry()} asked for the heartbeat logs. Logs printed as stdout, user should check"
-                              f"the remote logs")
+                              f"the remote logs\n")
         else:
-            msg = click.style(f"{self.entry()} tried to display the logs.")
+            msg = click.style(f"{self.entry()} tried to display the logs.\n")
         log.info(msg)
         return False
