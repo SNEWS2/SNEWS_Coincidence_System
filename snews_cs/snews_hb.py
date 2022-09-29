@@ -167,7 +167,7 @@ class HeartBeat:
         time_differences = np.array([(date - today).days for date in dates])
         older_than_limit = np.where(np.abs(time_differences) > self.delete_after)
         files = np.array(files)
-        print(f"> Things will be removed; {files[older_than_limit[0]]}")
+        # print(f"> Things will be removed; {files[older_than_limit[0]]}")
         # Actually remove things ?
 
     def display_table(self):
@@ -192,8 +192,10 @@ class HeartBeat:
             self.drop_old_messages()
             # self.display_table() # don't display at each heartbeat
             self.burn_logs()
+            return True
         except Exception as e:
             print(f"Something went terribly wrong \n {e}")
+            return False
 
 
 

@@ -233,7 +233,7 @@ class CommandHandler:
 
     def check_command(self, CoincDeciderInstance):
         if self.command in self.known_commands:
-            msg = f"{self.entry()} {self.command} is passed!"
+            msg = f"{self.entry()} {self.command} command is passed!"
             log.info(msg)
             return self.known_command_functions[self.command](CoincDeciderInstance)
         elif "CoincidenceTier" in self.command:
@@ -334,17 +334,20 @@ class CommandHandler:
         auth = self._check_rights()
         new_broker_name = self.input_message["_id"]
         if auth:
-            msg = click.style(f"{self.entry()} tried to change the broker but it is not implemented")
+            msg = click.style(f"{self.entry()} tried to change the broker to '{new_broker_name}' but it is not implemented")
         else:
-            msg = click.style(f"{self.entry()} tried to change the broker.")
+            msg = click.style(f"{self.entry()} tried to change the broker to '{new_broker_name}'.")
         log.info(msg)
         # raise NotImplementedError # do not crash the server
         return False
 
     def heartbeat_handle(self, CoincDeciderInstance):
-        msg = f"{self.entry()} Heartbeat Received"
+        success = CoincDeciderInstance.heartbeat.electrocardiogram(self.input_message)
+        if success:
+            msg = f"{self.entry()} Heartbeat Received"
+        else:
+            msg = f"{self.entry()} Heartbeat failed to process in electrocardiogram"
         log.info(msg)
-        CoincDeciderInstance.heartbeat.electrocardiogram(self.input_message)
         return False
 
     def display_logs(self, CoincDeciderInstance):
