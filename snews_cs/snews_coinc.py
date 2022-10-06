@@ -13,7 +13,7 @@ from .core.logging import getLogger
 from .cs_email import send_email
 from .snews_hb import HeartBeat
 from .cs_stats import cache_false_alarm_rate
-import sys
+import sys, json
 
 log = getLogger(__name__)
 
@@ -21,7 +21,7 @@ log = getLogger(__name__)
 class CoincDecider:
 
     def __init__(self, env_path=None, use_local_db=True, is_test=True, drop_db=False, firedrill_mode=True,
-                 hb_path=None, server_tag=None, send_email=False):
+                 hb_path=None, server_tag=None, send_email=False, send_on_slack=False):
         """Coincidence Decider class constructor
 
         Parameters
@@ -36,6 +36,7 @@ class CoincDecider:
         log.debug("Initializing CoincDecider\n")
         cs_utils.set_env(env_path)
         self.send_email = send_email
+        self.send_on_slack = send_on_slack
         self.hype_mode_ON = True
         self.hb_path = hb_path
         self.server_tag = server_tag
@@ -55,6 +56,7 @@ class CoincDecider:
 
         self.cache_df = pd.DataFrame(columns=self.column_names)
         self.alert_schema = CoincidenceTierAlert(env_path)
+        self.published_alerts = []
 
         # handle heartbeat
         self.store_heartbeat = bool(os.getenv("STORE_HEARTBEAT", "True"))
@@ -122,6 +124,7 @@ class CoincDecider:
         del self.cache_df
         self.cache_df = pd.DataFrame(columns=self.column_names)
         self.initial_set = False
+        self.published_alerts = []
 
     # ------------------------------------------------------------------------------------------------------------------
     def _coincident_with_whole_list(self, message, sub_list_num, ):
@@ -255,8 +258,8 @@ class CoincDecider:
                     pass
             # (2)
             if 0 < del_t <= self.coinc_threshold:
-                print(self._coincident_with_whole_list(message=row.copy(deep=False),
-                                                       sub_list_num=new_sub_list, ))
+                # print(self._coincident_with_whole_list(message=row.copy(deep=False),
+                #                                        sub_list_num=new_sub_list, ))
                 if self._coincident_with_whole_list(message=row.copy(deep=False),
                                                     sub_list_num=new_sub_list, )[0] == 'COINCIDENT':
                     new_row = row.copy(deep=False)
@@ -361,7 +364,6 @@ class CoincDecider:
         # else:
         #     # not coincidence but maybe already in list
         if not self.in_list_already:
-            print('we got something publishing an alert !')
             self._dump_redundant_list()
             # self.cache_df = self.cache_df.sort_values(by=['sub_list_num', 'received_time'])
             self.cache_df = self._nu_delta_organizer(self.cache_df)
@@ -408,19 +410,24 @@ class CoincDecider:
 
             with self.alert as pub:
                 alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
+                hashvalue = hash(json.dumps(alert['neutrino_times']))
+                if hashvalue in self.published_alerts:
+                    ## This alert has already been published
+                    continue
+                print('> We got something publishing an alert !')
                 pub.send(alert)
+                self.published_alerts.append(hashvalue)
                 if self.send_email:
                     send_email(alert)
+                if self.send_on_slack:
+                    try:
+                        snews_bot.send_table(_sub_df, self.is_test, alert_data, self.observation_topic)
+                    except Exception as e:
+                        print(f"Bot failed to send slack message \n{e}")
 
-        click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
-        click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
-        click.secho(f'{"=" * 100}', fg='bright_red')
-
-        # try:
-        #     snews_bot.send_table(self.cache_df, self.is_test)
-        # except:
-        #     print("Bot failed to send slack message")
-        #     pass
+                click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
+                click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
+                click.secho(f'{"=" * 100}', fg='bright_red')
 
     ## NOT USED ANYWHERE
     # # ------------------------------------------------------------------------------------------------------------------
@@ -451,6 +458,13 @@ class CoincDecider:
 
     # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
+        try:
+            self._run_coincidence()
+        except Exception as e:
+            print("\n\n?>>>>>",e)
+            self.run_coincidence()
+
+    def _run_coincidence(self):
         """
         As the name states this method runs the coincidence system.
         Starts by subscribing to the hop observation_topic.

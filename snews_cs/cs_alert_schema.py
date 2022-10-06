@@ -16,7 +16,6 @@ class CoincidenceTierAlert:
 
     def __init__(self, env_path=None):
         set_env(env_path)
-        # self.times = TimeStuff(env_path)
 
     def id_format(self, num_detectors):
         """ Returns formatted message ID
@@ -45,8 +44,6 @@ class CoincidenceTierAlert:
             ----------
             data : `named tuple`
                 cs_utils data tuple with predefined field.
-            sent_time : `str`
-                time as a string
             
             Returns
             -------
@@ -57,7 +54,7 @@ class CoincidenceTierAlert:
         id = self.id_format(len(data['detector_names']))
         return {"_id": id,
                 "server_tag": data['server_tag'],
-                "false_alarm_probability": data['false_alarm_prob'],
+                "False Alarm Prob": f"{data['false_alarm_prob']*100:.2f}%",
                 "detector_names": data['detector_names'],
                 "sent_time": id.split(' ')[1],
                 "p_values": data['p_vals'],

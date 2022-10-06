@@ -32,7 +32,7 @@ class AlertPublisher:
         auth: bool
             Use hop-auth credentials, defaults to True
         use_local: bool
-            Use local MongoClient, defaults to True
+            Use local MongoClient, defaults to False
         """
         cs_utils.set_env(env_path)
         self.auth = auth
@@ -41,10 +41,7 @@ class AlertPublisher:
             self.alert_topic = os.getenv("FIREDRILL_ALERT_TOPIC")
         else:
             self.alert_topic = os.getenv("ALERT_TOPIC")
-        # self.times = cs_utils.TimeStuff()
         self.verbose = verbose
-        # self.time_str = lambda: self.times.get_snews_time()
-        # self.time_str = lambda: datetime.utcnow().isoformat()
         self.storage = Storage(drop_db=False, use_local_db=use_local)
 
     def __enter__(self):
@@ -74,4 +71,11 @@ class AlertPublisher:
             click.secho(f'Sending {tier}', fg='bright_red')
             for k, v in message.items():
                 print(f'{k:<35s}:{v}')
-                
+
+# Display message prints out the following on the server logs
+#
+# SNEWS_Coincidence_ALERT 2022-09-28T08:21:21.954651
+# ----------------------------------------------------------------
+# Sending TEST ALERT
+#
+# maybe we can get rid of "Sending TEST ALERT" message

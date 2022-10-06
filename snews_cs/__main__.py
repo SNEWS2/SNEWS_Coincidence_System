@@ -12,6 +12,7 @@ import click, os
 from . import __version__
 from . import cs_utils
 from . import snews_coinc
+from socket import gethostname
 
 
 @click.group(invoke_without_command=True)
@@ -30,38 +31,30 @@ def main(ctx, env):
     cs_utils.set_env(env_path)
     ctx.obj['env'] = env
 
-
 @main.command()
 @click.option('--local/--no-local', default=True, show_default='True', help='Whether to use local database server or take from the env file')
 @click.option('--firedrill/--no-firedrill', default=True, show_default='True', help='Whether to use firedrill brokers or default ones')
-def run_coincidence(local, firedrill):
+@click.option('--dropdb/--no-dropdb', default=True, show_default='True', help='Whether to drop the current database')
+@click.option('--email/--no-email', default=True, show_default='True', help='Whether to send emails along with the alert')
+@click.option('--slackbot/--no-slackbot', default=True, show_default='True', help='Whether to send the alert on slack')
+def run_coincidence(local, firedrill, dropdb, email, slackbot):
     """ Initiate Coincidence Decider 
     """
-    coinc = snews_coinc.CoincDecider(use_local_db=local, firedrill_mode=firedrill)
+    HOST = gethostname()
+    coinc = snews_coinc.CoincDecider(use_local_db=local,
+                                     drop_db=dropdb,
+                                     firedrill_mode=firedrill,
+                                     send_email=email,
+                                     server_tag=HOST,
+                                     send_on_slack=slackbot)
     try: 
         coinc.run_coincidence()
     except KeyboardInterrupt: 
         pass
-    finally: 
+    except Exception as e:
+        print(e)
+    finally:
         click.secho(f'\n{"="*30}DONE{"="*30}', fg='white', bg='green')
-
-# Called automatically inside the coincidence script 
-# @main.command()
-# @click.option('--test/--no-test', default=True, show_default='True', help='should the bot tag the channel')
-# def run_slack_bot(test):
-#     """
-#     """
-#     test = 1 if test else 0
-#     os.system(f'python3 snews_bot.py {test}')
-
-# Format changed, would not work. Not needed
-# def display_message(message):
-#     click.secho(f'{"-" * 57}', fg='bright_blue')
-#     if message['_id'].split('_')[1] == 'FalseOBS':
-#         click.secho("It's okay, we all make mistakes".upper(), fg='magenta')
-#     for k, v in message.items():
-#         print(f'{k:<20s}:{v}')
-
 
 if __name__ == "__main__":
     main()
