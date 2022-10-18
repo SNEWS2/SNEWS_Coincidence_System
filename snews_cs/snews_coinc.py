@@ -51,6 +51,8 @@ class CoincDecider:
             self.observation_topic = os.getenv("FIREDRILL_OBSERVATION_TOPIC")
         else:
             self.observation_topic = os.getenv("OBSERVATION_TOPIC")
+        log.info(f"Set observation topic to {self.observation_topic}\n")
+
         self.column_names = ["_id", "detector_name", "received_time", "machine_time", "neutrino_time",
                              "p_val", "meta", "sub_list_num", "nu_delta_t"]
 
@@ -121,6 +123,7 @@ class CoincDecider:
         Resets coincidence arrays if coincidence is broken
 
         """
+        log.debug("reset_df() called. \n")
         del self.cache_df
         self.cache_df = pd.DataFrame(columns=self.column_names)
         self.initial_set = False
@@ -140,11 +143,13 @@ class CoincDecider:
             number of current sub list that _check_coincidence is on.
 
         """
+        log.debug("Checking coincident with whole list.\n")
         # first check if detector already in sublist
         sub_list = self.cache_df.query(f'sub_list_num=={sub_list_num}')
         sub_list_detectors = list(sub_list['detector_name'])
         if message['detector_name'] in sub_list_detectors:
             self.in_coincidence = True
+            log.debug("Message already in list.\n")
             return 'ALREADY_IN_LIST',
         # compare the current nu time with all other on the sublist
         # message_nu_time = self.times.str_to_datetime(message['neutrino_time'], fmt='%y/%m/%d %H:%M:%S:%f')
@@ -155,18 +160,22 @@ class CoincDecider:
         # check if signal is NOT coincident with the whole list
         if all(abs_del_t > self.coinc_threshold for abs_del_t in np.abs(delta_ts)):
             self.in_coincidence = False
+            log.debug("Not coincident with whole list.\n")
             return 'NOT_COINCIDENT',
         # check if signal is coincident with the whole list and arrives earlier
         elif all(0 > del_t >= -self.coinc_threshold for del_t in delta_ts):
             self.in_coincidence = True
+            log.debug("Early coincidence found.\n")
             return 'EARLY_COINCIDENT', np.insert(np.sort(np.abs(delta_ts)), 0, 0)
         # check if signal is coincident with the whole list
         elif all(abs_del_t <= self.coinc_threshold for abs_del_t in np.abs(delta_ts)):
             self.in_coincidence = True
+            log.debug("Coincidence found.\n")
             return 'COINCIDENT', delta_ts[0]
         # not sure if I need this
         else:
             self.in_coincidence = False
+            log.debug("No coincidence event found.")
             return 'NOT_COINCIDENT',
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -304,16 +313,21 @@ class CoincDecider:
 
 
         """
+        log.debug("Checking sub lists.\n")
         coinc_with_list = self._coincident_with_whole_list(message, sub_list)
         if coinc_with_list[0] == 'ALREADY_IN_LIST':
             self.in_list_already = True
+            log.debug("Message already in list.\n")
             pass
         elif coinc_with_list[0] == 'NOT_COINCIDENT':
+            log.debug("Not coincident.\n")
             pass
         elif coinc_with_list[0] == 'COINCIDENT':
             # only when COINCIDENT delta_t is float
             delta_t = coinc_with_list[1]
             self.append_message_to_df(message, delta_t, sub_list)
+            msg = f"Appending message {message} to sub_list {sub_list} with delta_t {delta_t}."
+            log.debug(msg)
 
 
         elif coinc_with_list[0] == 'EARLY_COINCIDENT':
@@ -325,6 +339,7 @@ class CoincDecider:
             self.cache_df = pd.concat([_sub_list, self.cache_df.query(f'sub_list_num!={sub_list}')],
                                       ignore_index=True)
             self.cache_df = self.cache_df.reset_index(drop=True)
+            log.debug(f"Early coincidence in sublist {sub_list}.\n")
 
     # ------------------------------------------------------------------------------------------------------------------
     def _check_coincidence(self, message, ):
