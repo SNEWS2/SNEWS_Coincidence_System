@@ -92,7 +92,7 @@ def data_cs_alert(p_vals=None,
     return dict(zip(keys, values))
 
 
-def is_garbage_message(snews_message, is_test=False):
+def is_snews_format(snews_message, is_test=False):
     """ This method checks to see if message meets SNEWS standards
 
     Parameters
@@ -106,7 +106,6 @@ def is_garbage_message(snews_message, is_test=False):
             True if message does not meet CS standards, else
 
     """
-    # time = TimeStuff()
     message_keys = snews_message.keys()
     missing_key = False
     contents_bad = False
@@ -115,6 +114,7 @@ def is_garbage_message(snews_message, is_test=False):
 
     log.debug(f"\nChecking message: {snews_message}\n")
     warning = f'The following Message does not meet SNEWS 2.0 standards!\n{snews_message}\n'
+    notvalid = "\t NOT a valid message\n"
 
     # Don't check reset messages or test connection messages for format
     if snews_message['_id'] == '0_hard-reset_' or snews_message['_id'] == '0_test-connection':
@@ -127,8 +127,7 @@ def is_garbage_message(snews_message, is_test=False):
             return True
         else:
             warning += f"Expected detector status to be 'ON' or 'OFF' got {snews_message['detector_status']}"
-            print(warning)
-            log.warning(warning)
+            log.warning(warning+notvalid)
             return False
 
     detector_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/detector_properties.json'))
@@ -153,8 +152,7 @@ def is_garbage_message(snews_message, is_test=False):
         snews_format = False
 
     if missing_key:
-        log.warning(warning)
-
+        log.warning(warning+notvalid)
         return snews_format
  
     # Check contents
@@ -177,50 +175,39 @@ def is_garbage_message(snews_message, is_test=False):
             warning += f'* neutrino time must be a str, type given: {type(snews_message["p_val"])}\n'
 
     if contents_bad:
-        log.warning(warning)
+        log.warning(warning+notvalid)
 
         return False
 
     # Time format check
     try:
-        datetime.fromisoformat(snews_message["neutrino_time"])
-
-        # Accept ":" as divider for fractions of a second but change it to "." for CS.
-        split_time = snews_message["neutrino_time"].split(":")
-
-        if len(split_time) == 4:
-            snews_message["neutrino_time"] = ".".join([":".join([split_time[:-1]]), split_time[-1]])
-
-            # Make sure it was the known issue ":" being used for fractions of a second.
-            datetime.fromisoformat(snews_message["neutrino_time"])
-
+        dateobj = datetime.fromisoformat(snews_message["neutrino_time"])
+        datestr = dateobj.isoformat()
+        snews_message["neutrino_time"] = datestr
     except:
         if snews_message["neutrino_time"] is not None:
             warning += f'* neutrino time: {snews_message["neutrino_time"]} does not match SNEWS 2.0 (ISO) format: "%Y-%m-%dT%H:%M:%S.%f"\n'
-            log.warning(warning)
+            log.warning(warning+notvalid)
 
             return False
 
     if snews_message['neutrino_time'] is not None:
         log.debug(f"\nChecking neutrino_time: {snews_message['neutrino_time']}\n")
-
         if (datetime.fromisoformat(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() <= -172800.0:
             if not "this is a test" in snews_message['meta'].values():
                 warning += f'* neutrino time is more than 48 hrs olds !\n'
                 time_bad = True
-                log.warning(warning)
+                log.warning(warning+notvalid)
 
         if (datetime.fromisoformat(snews_message['neutrino_time']) - datetime.utcnow()).total_seconds() > 0:
             if not "this is a test" in snews_message['meta'].values():
                 warning += f'* neutrino time comes from the future, please stop breaking causality\n'
                 time_bad = True
-                log.warning(warning)
+                log.warning(warning+notvalid)
 
     if time_bad:
-        log.warning(warning)
-
+        log.warning(warning+notvalid)
         return False
-
     return True
 
 
@@ -293,9 +280,9 @@ class CommandHandler:
                 msg = f"{self.entry()} {self.command} Observation Message Received!\n"
                 log.info(msg)
                 is_test = False
-            is_garbage = is_garbage_message(self.input_message, is_test=is_test)
+            is_snews_fmt = is_snews_format(self.input_message, is_test=is_test)
             is_correct_topic = (self.input_message['_id'].split('_')[1] == CoincDeciderInstance.topic_type)
-            if (not is_garbage) and is_correct_topic:
+            if is_snews_fmt and is_correct_topic:
                 msg += "\t valid message\n"
                 log.info(msg)
                 # this is also a heartbeat
@@ -303,8 +290,6 @@ class CommandHandler:
                 self.heartbeat_handle(CoincDeciderInstance)
                 return True
             else:
-                msg += "\t NOT a valid message\n"
-                log.warning(msg)
                 return False
         else:
             log.info(f"{self.entry()} {self.command} is passed, this is not handled by snews_cs\n")

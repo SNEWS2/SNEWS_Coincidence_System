@@ -444,33 +444,6 @@ class CoincDecider:
                 click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
                 click.secho(f'{"=" * 100}', fg='bright_red')
 
-    ## NOT USED ANYWHERE
-    # # ------------------------------------------------------------------------------------------------------------------
-    # def dump_old_messages(self, message):
-    #     """
-    #     WIP
-    #     Checks the time sent by the Updater, if any messages have a 24hrs difference from the updater time
-    #     they are thrown out of the df.
-    #
-    #     Parameters
-    #     ----------
-    #     message: dict
-    #         Updater message
-    #
-    #     """
-    #     current_sent_time = message['sent_time']
-    #
-    #     ind = 0
-    #     for latest_sent_time in self.cache_df['sent_time']:
-    #         latest_sent_time = datetime.strptime(latest_sent_time, '%d/%m/%y %H:%M:%S')
-    #         current_sent_time = datetime.strptime(current_sent_time, '%d/%m/%y %H:%M:%S')
-    #
-    #         del_t = (current_sent_time - latest_sent_time).total_seconds()
-    #         if del_t >= self.stash_time:
-    #             self.cache_df.drop(ind, inplace=True)
-    #         ind += 1
-    #     self.cache_df = self.cache_df.reset_index(drop=True)
-
     # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
         try:
