@@ -203,7 +203,7 @@ class CommandHandler:
                                "Retraction", "broker-change", "Heartbeat", "display-heartbeats"]
         self.known_command_functions = {"test-connection": self.test_connection,
                                         "hard-reset": self.hard_reset,
-                                        "Retraction": self.retract,
+                                        # "Retraction": self.retract,
                                         "broker-change": self.change_broker,
                                         "Heartbeat": self.heartbeat_handle,
                                         "display-heartbeats": self.display_heartbeats}
@@ -308,27 +308,28 @@ class CommandHandler:
         log.info(f'{msg}\n')
         return False
 
-    def retract(self, CoincDeciderInstance):
-        retrc_message = self.input_message
-        if not retrc_message.get('N_retract_latest', False):
-            msg = f"{self.entry()} Tried retracting message without 'N_retract_latest' key, setting to 'ALL'\n"
-            log.warning(msg)
-            retrc_message['N_retract_latest'] = 'ALL'
-
-        drop_detector = retrc_message['detector_name']
-        delete_n_many = retrc_message['N_retract_latest']
-
-        if retrc_message['N_retract_latest'] == 'ALL':
-            delete_n_many = CoincDeciderInstance.cache_df.groupby(by='detector_name').size().to_dict()[drop_detector]
-        msg = click.style(f'{self.entry()} Dropping latest message(s) from {drop_detector}\nRetracting: {delete_n_many} messages\n')
-        log.info(msg)
-        sorted_df = CoincDeciderInstance.cache_df.sort_values(by='received_time')
-        for i in sorted_df.index:
-            if delete_n_many > 0 and CoincDeciderInstance.cache_df.loc[i, 'detector_name'] == drop_detector:
-                CoincDeciderInstance.cache_df.drop(index=i, inplace=True)
-                delete_n_many -= 1
-        CoincDeciderInstance.cache_df = CoincDeciderInstance.cache_df.reset_index(drop=True)
-        return False
+    # HANDLED BY NEW BACKEND
+    # def retract(self, CoincDeciderInstance):
+    #     retrc_message = self.input_message
+    #     if not retrc_message.get('N_retract_latest', False):
+    #         msg = f"{self.entry()} Tried retracting message without 'N_retract_latest' key, setting to 'ALL'\n"
+    #         log.warning(msg)
+    #         retrc_message['N_retract_latest'] = 'ALL'
+    #
+    #     drop_detector = retrc_message['detector_name']
+    #     delete_n_many = retrc_message['N_retract_latest']
+    #
+    #     if retrc_message['N_retract_latest'] == 'ALL':
+    #         delete_n_many = CoincDeciderInstance.cache_df.groupby(by='detector_name').size().to_dict()[drop_detector]
+    #     msg = click.style(f'{self.entry()} Dropping latest message(s) from {drop_detector}\nRetracting: {delete_n_many} messages\n')
+    #     log.info(msg)
+    #     sorted_df = CoincDeciderInstance.cache_df.sort_values(by='received_time')
+    #     for i in sorted_df.index:
+    #         if delete_n_many > 0 and CoincDeciderInstance.cache_df.loc[i, 'detector_name'] == drop_detector:
+    #             CoincDeciderInstance.cache_df.drop(index=i, inplace=True)
+    #             delete_n_many -= 1
+    #     CoincDeciderInstance.cache_df = CoincDeciderInstance.cache_df.reset_index(drop=True)
+    #     return False
 
     def change_broker(self, CoincDeciderInstance):
         auth = self._check_rights()
