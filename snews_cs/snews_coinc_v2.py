@@ -8,7 +8,8 @@ import pandas as pd
 from hop import Stream
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
-from .cs_utils import CommandHandler
+# from .cs_utils import CommandHandler
+from .cs_remote_commands import CommandHandler
 from .core.logging import getLogger
 from .cs_email import send_email
 from .snews_hb import HeartBeat
@@ -27,7 +28,7 @@ class CoincidenceDataHandler:
 
     def add_to_cache(self, message):
         message['neutrino_time_as_datetime'] = datetime.fromisoformat(message['neutrino_time'])
-        if 'N_retract_latest' in message.keys():
+        if 'n_retract_latest' in message.keys():
             print('RETRACTING MESSAGE FROM')
             self.cache_retraction(retraction_message=message)
         if message['detector_name'] in self.cache['detector_name'].to_list():
