@@ -147,7 +147,7 @@ class CommandHandler:
         self.entry = f"\n|{self.username}|"
 
     def check_message_format(self):
-        formatter = SnewsFormat(self.input_message)
+        formatter = SnewsFormat(self.input_message, log=log)
         return formatter()
 
     def handle(self, CoincDeciderInstance):
