@@ -239,13 +239,17 @@ class CoincidenceDataHandler:
         detector_ind = self.cache.query('detector_name==@message["detector_name"]').index.to_list()
         # old_nu_times = self.cache['neutrino_time_as_datetime'][detector_ind]
         for ind in detector_ind:
-            nu_time = self.cache['neutrino_time_as_datetime'][ind]
-            if abs(nu_time - message['neutrino_time_as_datetime']) > 10.0:
+            sub_tag = self.cache['sub_group'][ind]
+            initial_time = self.cache.query('sub_group==@sub_tag')['neutrino_time_as_datetime'].min()
+            if abs((message['neutrino_time_as_datetime']-initial_time).total_seconds()) > 10.0:
                 continue
             else:
-                self.cache.at[ind, 'neutrino_time_as_datetime'] = message['neutrino_time_as_datetime']
-                self.cache.at[ind, 'neutrino_time'] = message['neutrino_time']
+                for key in message.keys():
+                    self.cache.at[ind, key] = message[key]
+                self.cache.at[ind, 'neutrino_time_delta'] = (
+                            message['neutrino_time_as_datetime'] - initial_time).total_seconds()
                 self.updated.append(self.cache['sub_group'][ind])
+
         if len(self.updated) != 0:
             sub_tags = self.cache['sub_group'].unique()
             sub_tags = [i for i in sub_tags if i in self.updated]
@@ -266,8 +270,7 @@ class CoincidenceDataHandler:
         retraction_message : dict
             SNEWS retraction message
 
-        Returns
-        -------
+
 
         """
         if retraction_message['retract_id'] is not None:
@@ -362,9 +365,12 @@ class CoincidenceDistributor:
                 false_alarm_prob = cache_false_alarm_rate(cache_sub_list=_sub_df, hb_cache=self.heartbeat.cache_df)
                 alert_data = cs_utils.data_cs_alert(
                     p_vals=p_vals,
-                    p_val_avg=p_vals_avg, sub_list_num=updated_sub,
-                    nu_times=nu_times, detector_names=detector_names,
-                    false_alarm_prob=false_alarm_prob, server_tag=self.server_tag,
+                    p_val_avg=p_vals_avg,
+                    sub_list_num=updated_sub,
+                    nu_times=nu_times,
+                    detector_names=detector_names,
+                    false_alarm_prob=false_alarm_prob,
+                    server_tag=self.server_tag,
                     alert_type=alert_type)
 
                 with self.alert as pub:
