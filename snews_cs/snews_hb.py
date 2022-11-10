@@ -9,6 +9,9 @@ import pandas as pd
 from datetime import datetime, timedelta
 import numpy as np
 from .cs_utils import set_env, make_beat_directory
+from .core.logging import getLogger
+log = getLogger(__name__)
+
 
 def get_data_strings(df_input):
     """ Convert datetime objects to strings
@@ -30,9 +33,11 @@ class HeartBeat:
         """
         :param store: `bool`
         """
+        log.info("\t> Heartbeat Instance is created.")
         set_env(env_path)
         self.store = store
         self.beats_path = os.path.join(os.path.dirname(__file__), "../beats")
+        log.info(f"\t> Heartbeats are stored in {self.beats_path}.")
         make_beat_directory(self.beats_path)
         self.stash_time = float(os.getenv("HB_STASH_TIME", "24")) # hours
         self.delete_after = float(os.getenv("HB_DELETE_AFTER", "7")) # days
@@ -41,11 +46,8 @@ class HeartBeat:
         else:
             self.heartbeat_topic = os.getenv("OBSERVATION_TOPIC")
 
-        # self.times = TimeStuff()
         self.now = datetime.utcnow().isoformat()
-        # self.hr = self.times.get_hour()
         self.hr = self.now.split('T')[1][:2]
-        # self.date = self.times.get_date()
         self.date = self.now.split('T')[0]
         self.column_names = ["Received Times", "Detector", "Stamped Times", "Latency", "Time After Last", "Status"]
         self.cache_df = pd.DataFrame(columns=self.column_names)
@@ -53,20 +55,23 @@ class HeartBeat:
     def make_entry(self, message):
         """ Make an entry in the cache df using new message
         """
-        msg = {"Received Times": message["Received Times"], "Detector": message["detector_name"],
+        msg = {"Received Times": message["Received Times"],
+               "Detector": message["detector_name"],
                "Status": message["detector_status"]}
-        # stamped_time_obj = self.times.str_to_datetime(message["sent_time"], fmt="%y/%m/%d %H:%M:%S:%f")
+
         stamped_time_obj = datetime.fromisoformat(message["sent_time"])
         msg["Stamped Times"] = stamped_time_obj
         msg["Latency"] = msg["Received Times"] - msg["Stamped Times"]
+
         # check the last message of given detector
         detector_df = self.cache_df[self.cache_df["Detector"]==msg['Detector']]
         if len(detector_df):
             msg["Time After Last"] = msg["Received Times"] - detector_df["Received Times"].max()
         else:
             msg["Time After Last"] = timedelta(0)
-        a = pd.DataFrame([msg])
-        self.cache_df = pd.concat([self.cache_df, a], ignore_index = True)
+
+        # add this new entry to cache
+        self.cache_df = pd.concat([self.cache_df, pd.DataFrame([msg])], ignore_index=True)
 
     def store_beats(self):
         """ log the heartbeats, and save locally
@@ -118,9 +123,8 @@ class HeartBeat:
                 current version would ignore the previous logs and overwrite a new one
 
         """
-        df = get_data_strings(self.cache_df)
+        df = get_data_strings(self.cache_df) # the object types need to be converted for json
         curr_data = df.to_json(orient='columns')
-        # curr_data = self.cache_df.to_json(orient='columns')
         today = datetime.utcnow()
         today_str = datetime.strftime(today, "%y-%m-%d")
         output_json_name = os.path.join(self.beats_path, f"{today_str}_heartbeat_log.json")
@@ -152,7 +156,8 @@ class HeartBeat:
         today = datetime.strptime(today_str, "%y-%m-%d")
         existing_logs = os.listdir(self.beats_path)
         if self.store:
-            existing_logs = np.array([x for x in existing_logs if x.endswith('.json') or x.endswith('.csv')])
+            existing_logs = np.array([x for x in existing_logs if (x.endswith('.json') or x.endswith('.csv')) and
+                                      ("complete_heartbeat_log.csv" not in x)])
 
         # take only dates
         dates_str = [i.split('/')[-1].split("_heartbeat")[0] for i in existing_logs]
@@ -167,8 +172,10 @@ class HeartBeat:
         time_differences = np.array([(date - today).days for date in dates])
         older_than_limit = np.where(np.abs(time_differences) > self.delete_after)
         files = np.array(files)
-        # print(f"> Things will be removed; {files[older_than_limit[0]]}")
-        # Actually remove things ?
+        log.debug(f"\t> Things will be removed; {files[older_than_limit[0]]}")
+        for file in files[older_than_limit[0]]:
+            os.remove(file)
+            log.debug(f"\t> {file} deleted.")
 
     def display_table(self):
         print(f"\nCurrent cache \n{'=' * 133}\n{self.cache_df.to_markdown()}\n{'=' * 133}\n")
@@ -180,8 +187,8 @@ class HeartBeat:
                  - latencies are reasonable
                  - At least one detector is operational
         """
+        log.error(f"\t> Sanity checks not implemented yet! We don't track if the heartbeats stopped/slowed down.")
         print(f" >> Sanity checks not implemented yet! We don't track if the heartbeats stopped/slowed down\n")
-        return None
 
     def electrocardiogram(self, message):
         try:
@@ -190,10 +197,11 @@ class HeartBeat:
             self.make_entry(message)
             self.store_beats()
             self.drop_old_messages()
-            # self.display_table() # don't display at each heartbeat
             self.burn_logs()
+            # if all successful, return True. Not logging each time, not to overcrowd
             return True
         except Exception as e:
+            log.error(f"\t Some heartbeats didn't make it\n{e}\n")
             print(f"Something went terribly wrong \n {e}")
             return False
 
