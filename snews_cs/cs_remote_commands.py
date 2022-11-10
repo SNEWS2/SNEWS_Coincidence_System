@@ -1,11 +1,10 @@
-
 import os
 import json
 import click
 from snews_pt.snews_format_checker import SnewsFormat
 from .core.logging import getLogger
-log = getLogger(__name__)
 
+log = getLogger(__name__)
 
 """
 Command Handler should take care of the stability of the input message
@@ -15,24 +14,27 @@ Only if it is not a tier message and a command should invoke 'Commands'
 
 """
 
-# TODO: Retract handling, broker change?
+known_commands = [
+    "test-connection",
+    "hard-reset",
+    "broker-change",
+    "Heartbeat",
+    "display-heartbeats",
+    # "Retraction"
+]
 
-known_commands = ["test-connection",
-                  "hard-reset",
-                  "broker-change",
-                  "Heartbeat",
-                  "display-heartbeats",
-                  "Retraction"]
 
 class Commands:
     """ Class for remote commands"""
+
     def __init__(self):
         self.known_command_functions = {"test-connection": self.test_connection,
                                         "hard-reset": self.hard_reset,
                                         "broker-change": self.change_broker,
                                         "Heartbeat": self.heartbeat_handle,
                                         "display-heartbeats": self.display_heartbeats,
-                                        "Retraction":self.retract_message}
+                                        # "Retraction":self.retract_message
+                                        }
         self.passw = os.getenv('snews_cs_admin_pass', 'False')
 
     def _check_rights(self, message):
@@ -77,7 +79,6 @@ class Commands:
             s.write(msg)
             log.info(f"\t> Connection Tested. 'Received' message is reinserted to stream.")
 
-
     def hard_reset(self, message, CoincDeciderInstance):
         """ Authorized User (passing a correct password)
         """
@@ -89,7 +90,6 @@ class Commands:
             return None
         else:
             log.debug("\t> Cache wanted to be reset. User is NOT authorized.")
-
 
     def change_broker(self, message, CoincDeciderInstance):
         try:
@@ -120,9 +120,10 @@ class Commands:
         else:
             log.error("\t> User wants to display the Heartbeat table. User is NOT authorized.")
 
-    def retract_message(self, message, CoincDeciderInstance):
-        log.debug(f"\t> Retracting message.. -NOT Implemented Yet!")
-        return None
+    # def retract_message(self, message, CoincDeciderInstance):
+    #     log.debug(f"\t> Retracting message.. -NOT Implemented Yet!")
+    #     return None
+
 
 class CommandHandler:
     """ class to handle the manual command issued by the admins
@@ -164,7 +165,7 @@ class CommandHandler:
 
         # check what the _id field specifies
         self.command_name = self.input_message['_id'].split('_')[1]
-        return self.check_command(CoincDeciderInstance) # GO / NO-GO
+        return self.check_command(CoincDeciderInstance)  # GO / NO-GO
 
     def check_command(self, CoincDeciderInstance):
         # if it is a Remote-Command, find and execute it
@@ -184,6 +185,3 @@ class CommandHandler:
         else:
             log.error(f"\t> {self.command_name} is received, coincidence check is NO-GO!\n")
             return False
-
-
-
