@@ -8,7 +8,8 @@ import pandas as pd
 from hop import Stream
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
-from .cs_utils import CommandHandler
+# from .cs_utils import CommandHandler
+from .cs_remote_commands import CommandHandler
 from .core.logging import getLogger
 from .cs_email import send_email
 from .snews_hb import HeartBeat
@@ -46,7 +47,7 @@ class CoincidenceDataHandler:
         """
         message['neutrino_time_as_datetime'] = datetime.fromisoformat(message['neutrino_time'])
         # retraction
-        if 'N_retract_latest' in message.keys():
+        if 'n_retract_latest' in message.keys():
             print('RETRACTING MESSAGE FROM')
             self.cache_retraction(retraction_message=message)
         # update
@@ -82,7 +83,6 @@ class CoincidenceDataHandler:
             message['sub_group'] = 0
             temp = pd.DataFrame([message])
             self.cache = pd.concat([self.cache, temp], ignore_index=True)
-            # self.current_cache_state = {1:1}
         else:
             self._check_coinc_in_subgroups(message)
 
@@ -201,8 +201,19 @@ class CoincidenceDataHandler:
         self.cache = self.cache.sort_values(by=['sub_group', 'neutrino_time_as_datetime']).reset_index(drop=True)
 
     def _fix_deltas(self, sub_df):
-        # for sub_tag in self.cache['sub_group'].unique():
-        #     sub_df = self.cache.query('sub_group == @sub_tag')
+        """
+
+        Parameters
+        ----------
+        sub_df : Dataframe
+            Sub cache
+
+        Returns
+        -------
+        sub_df : Dataframe
+            Sub cache with fixed nu time deltas
+
+        """
         initial_time = sub_df['neutrino_time_as_datetime'].min()
         sub_df = sub_df.drop(column='neutrino_time_delta', axis=0)
         sub_df['neutrino_time_delta'] = (sub_df['neutrino_time_as_datetime'] - initial_time).dt.total_seconds()
@@ -334,6 +345,10 @@ class CoincidenceDistributor:
             print('=' * 168)
 
     def update_message_alert(self):
+        """
+        This method will send out an alert if the CoincedenceData
+
+        """
         if len(self.coinc_data.updated) == 0:
             pass
         else:
