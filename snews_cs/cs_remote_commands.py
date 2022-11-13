@@ -20,7 +20,6 @@ known_commands = [
     "broker-change",
     "Heartbeat",
     "display-heartbeats",
-    # "Retraction"
 ]
 
 
@@ -33,7 +32,6 @@ class Commands:
                                         "broker-change": self.change_broker,
                                         "Heartbeat": self.heartbeat_handle,
                                         "display-heartbeats": self.display_heartbeats,
-                                        # "Retraction":self.retract_message
                                         }
         self.passw = os.getenv('snews_cs_admin_pass', 'False')
 
@@ -42,6 +40,7 @@ class Commands:
             if message['pass'] == self.passw:
                 return True
             else:
+                log.error(f"\t> Authorization check failed")
                 return False
         except Exception as e:
             log.error(f"\t> Authorization check failed\n{e}")
@@ -160,8 +159,8 @@ class CommandHandler:
         else:
             # if passed, there has to be an _id field
             log.info(f"\t> Message is in SnewsFormat. '_id':{self.input_message['_id']} ")
-            self.is_test = self.input_message['meta']['is_test']
-            log.info(f"\t> Received Message is {'NOT' if not self.is_test else ''} test message!")
+            self.is_test = self.input_message['meta'].get('is_test', False)
+            log.info(f"\t> Received Message is {'NOT' if not self.is_test else ''} a test message!")
 
         # check what the _id field specifies
         self.command_name = self.input_message['_id'].split('_')[1]
