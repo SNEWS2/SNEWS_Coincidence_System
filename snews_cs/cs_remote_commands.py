@@ -20,6 +20,7 @@ known_commands = [
     "broker-change",
     "Heartbeat",
     "display-heartbeats",
+    "Retraction"
 ]
 
 
@@ -32,8 +33,9 @@ class Commands:
                                         "broker-change": self.change_broker,
                                         "Heartbeat": self.heartbeat_handle,
                                         "display-heartbeats": self.display_heartbeats,
-                                        }
+                                        "Retraction":self.retract_message}
         self.passw = os.getenv('snews_cs_admin_pass', 'False')
+        self.default_no_go = True
 
     def _check_rights(self, message):
         try:
@@ -56,6 +58,9 @@ class Commands:
         command = self.known_command_functions[command_name]
         # execute that function
         command(message, CoincDeciderInstance)
+        # return default NO-GO, this is only changed if the message is Retraction!
+        # for retraction message we need to let it enter the cache. So updated alerts can be checked
+        return self.default_no_go
 
     def test_connection(self, message, CoincDeciderInstance):
         """ When received a test_connection key
@@ -119,9 +124,10 @@ class Commands:
         else:
             log.error("\t> User wants to display the Heartbeat table. User is NOT authorized.")
 
-    # def retract_message(self, message, CoincDeciderInstance):
-    #     log.debug(f"\t> Retracting message.. -NOT Implemented Yet!")
-    #     return None
+    def retract_message(self, message, CoincDeciderInstance):
+        log.info(f"\t> Retracting message in the snews_coinc.\n"
+                  f"This requires a GO so that message can be added and compared in the cache!")
+        self.default_no_go = False
 
 
 class CommandHandler:
@@ -151,7 +157,7 @@ class CommandHandler:
         return formatter()
 
     def handle(self, CoincDeciderInstance):
-        log.debug(f"\t> Handling message..\n{self.input_json}\n")
+        log.debug(f"\t> Handling message..\n")
         # check if the message in stream has SnewsFormat
         if not self.check_message_format():
             log.error("\t> Message not in SnewsFormat! NO-GO")
@@ -171,9 +177,10 @@ class CommandHandler:
         # return No-Go so that it doesn't try to check for coincidence
         if self.command_name in known_commands:
             log.info(f"\t> {self.command_name} command is passed!\n")
-            self.Command_Executer.execute(self.command_name, self.input_message, CoincDeciderInstance)
-            log.info(f"\t> {self.command_name} command Executed coincidence check is NO-GO!\n")
-            return False
+            go = self.Command_Executer.execute(self.command_name, self.input_message, CoincDeciderInstance)
+            go_nogo = "NO-" if not go else ""
+            log.info(f"\t> {self.command_name} command Executed coincidence check is {go_nogo}GO!\n")
+            return go
 
         # if it is a CoincidenceTier message, give a Go
         elif self.command_name == "CoincidenceTier":
