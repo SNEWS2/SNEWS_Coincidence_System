@@ -12,6 +12,11 @@ from .core.logging import getLogger
 
 log = getLogger(__name__)
 
+# Check if detector name is in registered list.
+detector_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/detector_properties.json'))
+with open(detector_file) as file:
+    snews_detectors = json.load(file)
+snews_detectors = list(snews_detectors.keys())
 
 def get_data_strings(df_input):
     """ Convert datetime objects to strings
@@ -26,6 +31,9 @@ def get_data_strings(df_input):
                 df.at[i, col] = df.at[i, col].isotime()
     return df
 
+
+## TODO: make a list of internal heartbeats, and send us = SERVER heartbeats.
+# How many times a day can server log these heartbeats, (what is the livetime of server)
 
 class HeartBeat:
     """ Class to handle heartbeat message stream
@@ -48,9 +56,6 @@ class HeartBeat:
         else:
             self.heartbeat_topic = os.getenv("OBSERVATION_TOPIC")
 
-        self.now = datetime.utcnow().isoformat()
-        self.hr = self.now.split('T')[1][:2]
-        self.date = self.now.split('T')[0]
         self.column_names = ["Received Times", "Detector", "Stamped Times", "Latency", "Time After Last", "Status"]
         self.cache_df = pd.DataFrame(columns=self.column_names)
 
@@ -68,9 +73,9 @@ class HeartBeat:
         # check the last message of given detector
         detector_df = self.cache_df[self.cache_df["Detector"] == msg['Detector']]
         if len(detector_df):
-            msg["Time After Last"] = msg["Received Times"] - detector_df["Received Times"].max()
+            msg["Time After Last"] = (msg["Received Times"] - detector_df["Received Times"].max()).total_seconds()
         else:
-            msg["Time After Last"] = timedelta(0)
+            msg["Time After Last"] = 0 #timedelta(0)
 
         # add this new entry to cache
         self.cache_df = pd.concat([self.cache_df, pd.DataFrame([msg])], ignore_index=True)
@@ -94,24 +99,37 @@ class HeartBeat:
         self.store_beats()
         curr_time = datetime.utcnow()
         existing_times = self.cache_df["Received Times"]
-        del_t = (curr_time - existing_times).dt.total_seconds() / 60 / 60
-        locs = np.where(del_t < self.stash_time)[0]
+        del_t = (curr_time - existing_times).dt.total_seconds() / 60 / 60 # in hours
+        locs = np.where(del_t < self.stash_time)[0] # keep only times within stash time e.g. 24 hours
         self.cache_df = self.cache_df.reset_index(drop=True).loc[locs]
         self.cache_df.sort_values(by=['Received Times'], inplace=True)
+
+    def update_cache_csv(self):
+        """ The daily csv file is kept as a file per day
+            For heartbeat checks I need one that mirrors the current cache.
+        """
+        mirror_csv = os.path.join(self.beats_path, f"cached_heartbeats_mirror.csv")
+        if os.path.exists(mirror_csv):
+            self.cache_df.to_csv(mirror_csv, mode='a', header=False, index=False)
+        else:
+            self.cache_df.to_csv(mirror_csv, mode='w', header=True, index=False)
 
     def dump_csv(self):
         """ dump a local csv file once a day
             and keep appending the messages within that day
             into the same csv file
 
+            Note:
+                This is a temporary back up of the data. Ideally, we need only update_cache_csv
+
         """
         today = datetime.utcnow()
         today_str = datetime.strftime(today, "%y-%m-%d")
         output_csv_name = os.path.join(self.beats_path, f"{today_str}_heartbeat_log.csv")
         if os.path.exists(output_csv_name):
-            self.cache_df.to_csv(output_csv_name, mode='a', header=True)
+            self.cache_df.to_csv(output_csv_name, mode='a', header=False, index=False)
         else:
-            self.cache_df.to_csv(output_csv_name, mode='w', header=True)
+            self.cache_df.to_csv(output_csv_name, mode='w', header=True, index=False)
 
     def dump_JSON(self):
         """ dump a local JSON file once a day
@@ -158,7 +176,7 @@ class HeartBeat:
         today = datetime.strptime(today_str, "%y-%m-%d")
         existing_logs = os.listdir(self.beats_path)
         if self.store:
-            existing_logs = np.array([x for x in existing_logs if (x.endswith('.json') or x.endswith('.csv')) and
+            existing_logs = np.array([x for x in existing_logs if (x.endswith('log.json') or x.endswith('log.csv')) and
                                       ("complete_heartbeat_log.csv" not in x)])
 
         # take only dates
@@ -182,6 +200,7 @@ class HeartBeat:
     def display_table(self):
         print(f"\nCurrent cache \n{'=' * 133}\n{self.cache_df.to_markdown()}\n{'=' * 133}\n")
 
+
     def sanity_checks(self, message):
         """ check if the message will crash the server
             Check  the following
@@ -189,19 +208,39 @@ class HeartBeat:
                  - latencies are reasonable
                  - At least one detector is operational
         """
-        log.error(f"\t> Sanity checks not implemented yet! We don't track if the heartbeats stopped/slowed down.")
-        print(f" >> Sanity checks not implemented yet! We don't track if the heartbeats stopped/slowed down\n")
+        issue = "no issue"
+        for key in ['Received Times', 'detector_name', 'detector_status']:
+            if key not in message.keys():
+               issue = f" {key} is not in message keys"
+        if issue == "no issue":
+            if not isinstance(message['Received Times'], datetime):
+                issue = f" {message['Received Times']} is not a datetime object"
+            if not message['detector_status'].lower() in ['on','off']:
+                issue = f" {message['detector_status']} is neither ON nor OFF"
+            if not message['detector_name'] in snews_detectors:
+                issue = f" {message['detector_name']} is not a valid detector"
+
+        if issue == "no issue":
+            # do not log each time
+            return True
+        else:
+            log.error(f"\t> {message} is received at snews_hb.py but not valid.")
+            return False
+
 
     def electrocardiogram(self, message):
         try:
-            self.sanity_checks(message)
             message["Received Times"] = datetime.utcnow()
-            self.make_entry(message)
-            self.store_beats()
-            self.drop_old_messages()
-            self.burn_logs()
-            # if all successful, return True. Not logging each time, not to overcrowd
-            return True
+            if self.sanity_checks(message):
+                self.make_entry(message)
+                self.store_beats()
+                self.update_cache_csv()
+                self.drop_old_messages()
+                self.burn_logs()
+                # if all successful, return True. Not logging each time, not to overcrowd
+                return True
+            else:
+                return False
         except Exception as e:
             log.error(f"\t Some heartbeats didn't make it\n{e}\n")
             print(f"Something went terribly wrong \n {e}")
