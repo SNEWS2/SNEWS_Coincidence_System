@@ -11,7 +11,8 @@
 import click, os
 from . import __version__
 from . import cs_utils
-from . import snews_coinc
+from . import snews_coinc_v2 as snews_coinc
+from . heartbeat_feedbacks import FeedBack
 from socket import gethostname
 
 
@@ -41,12 +42,17 @@ def run_coincidence(local, firedrill, dropdb, email, slackbot):
     """ Initiate Coincidence Decider 
     """
     HOST = gethostname()
-    coinc = snews_coinc.CoincDecider(use_local_db=local,
+    # coinc = snews_coinc.CoincDecider(use_local_db=local,
+    #                                  drop_db=dropdb,
+    #                                  firedrill_mode=firedrill,
+    #                                  send_email=email,
+    #                                  server_tag=HOST,
+    #                                  send_on_slack=slackbot)
+    coinc = snews_coinc.CoincidenceDistributor(use_local_db=local,
                                      drop_db=dropdb,
                                      firedrill_mode=firedrill,
                                      send_email=email,
-                                     server_tag=HOST,
-                                     send_on_slack=slackbot)
+                                     server_tag=HOST)
     try: 
         coinc.run_coincidence()
     except KeyboardInterrupt: 
@@ -55,6 +61,17 @@ def run_coincidence(local, firedrill, dropdb, email, slackbot):
         print(e)
     finally:
         click.secho(f'\n{"="*30}DONE{"="*30}', fg='white', bg='green')
+
+@main.command()
+@click.option('--firedrill/--no-firedrill', default=True, show_default='True', help='Whether to use firedrill brokers or default ones')
+def run_feedback(firedrill):
+    """ Start the feedback checks
+    """
+    feedback = FeedBack()
+    click.secho(f'\nInvoking Feedback search\n', fg='white', bg='green')
+    feedback()
+
+
 
 if __name__ == "__main__":
     main()
