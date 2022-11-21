@@ -18,7 +18,7 @@ import sys
 
 log = getLogger(__name__)
 
-
+# TODO: duplicate for a test-cache. Do not drop actual cache each time there are tests
 class CoincidenceDataHandler:
     """
     This class handles all the incoming data to the SNEWS CS Cache,
@@ -47,7 +47,7 @@ class CoincidenceDataHandler:
         """
         message['neutrino_time_as_datetime'] = datetime.fromisoformat(message['neutrino_time'])
         # retraction
-        if 'n_retract_latest' in message.keys():
+        if 'N_retract_latest' in message.keys():
             print('RETRACTING MESSAGE FROM')
             self.cache_retraction(retraction_message=message)
         # update
@@ -292,7 +292,7 @@ class CoincidenceDataHandler:
 
 class CoincidenceDistributor:
 
-    def __init__(self, env_path=None, use_local_db=True, is_test=True, drop_db=False, firedrill_mode=True,
+    def __init__(self, env_path=None, use_local_db=True, drop_db=False, firedrill_mode=True,
                  hb_path=None, server_tag=None, send_email=False):
         """This class is in charge of sending alerts to SNEWS when CS is triggered
 
@@ -302,8 +302,7 @@ class CoincidenceDistributor:
             path to env file, defaults to '/auxiliary/test-config.env'
         use_local_db:
             tells CoincDecider to use local MongoClient, defaults to True
-        is_test: bool
-            tells CoincDecider if it's running in test mode,
+
         """
         log.debug("Initializing CoincDecider\n")
         cs_utils.set_env(env_path)
@@ -326,7 +325,6 @@ class CoincidenceDistributor:
         self.store_heartbeat = bool(os.getenv("STORE_HEARTBEAT", "True"))
         self.heartbeat = HeartBeat(env_path=env_path, firedrill_mode=firedrill_mode)
 
-        self.is_test = is_test
         self.stash_time = 86400
         self.coinc_data = CoincidenceDataHandler()
 
@@ -425,6 +423,8 @@ class CoincidenceDistributor:
 
         self.coinc_data.old_count = new_count
 
+
+
     # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
         """
@@ -442,6 +442,7 @@ class CoincidenceDistributor:
                                f'{self.observation_topic}\n')
             print(_msg)
             for snews_message in s:
+                print("[DEBUG] >>>>> \n", snews_message, "\n")
                 handler = CommandHandler(snews_message)
                 try:
                     go = handler.handle(self)
