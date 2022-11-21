@@ -35,7 +35,7 @@ class Commands:
                                         "display-heartbeats": self.display_heartbeats,
                                         "Retraction":self.retract_message}
         self.passw = os.getenv('snews_cs_admin_pass', 'False')
-        self.default_no_go = True
+        # self.default_no_go = True
 
     def _check_rights(self, message):
         try:
@@ -60,7 +60,7 @@ class Commands:
         command(message, CoincDeciderInstance)
         # return default NO-GO, this is only changed if the message is Retraction!
         # for retraction message we need to let it enter the cache. So updated alerts can be checked
-        return self.default_no_go
+        # return self.default_no_go
 
     def test_connection(self, message, CoincDeciderInstance):
         """ When received a test_connection key
@@ -127,7 +127,7 @@ class Commands:
     def retract_message(self, message, CoincDeciderInstance):
         log.info(f"\t> Retracting message in the snews_coinc.\n"
                   f"This requires a GO so that message can be added and compared in the cache!")
-        self.default_no_go = False
+        # self.default_no_go = False
 
 
 class CommandHandler:
@@ -177,14 +177,18 @@ class CommandHandler:
         # return No-Go so that it doesn't try to check for coincidence
         if self.command_name in known_commands:
             log.info(f"\t> {self.command_name} command is passed!\n")
-            go = self.Command_Executer.execute(self.command_name, self.input_message, CoincDeciderInstance)
-            go_nogo = "NO-" if not go else ""
-            log.info(f"\t> {self.command_name} command Executed coincidence check is {go_nogo}GO!\n")
-            return go
+            self.Command_Executer.execute(self.command_name, self.input_message, CoincDeciderInstance)
+            if self.command_name == "Retraction":
+                log.info(f"\t> {self.command_name} command executed coincidence check is still a GO!\n")
+                # it is a retraction message, requires to return a GO
+                return True
+            else:
+                log.info(f"\t> {self.command_name} command executed coincidence check is a NO-GO!\n")
+                return False
 
-        # if it is a CoincidenceTier message, give a Go
-        elif self.command_name == "CoincidenceTier":
-            log.info(f"\t> Coincidence Tier message is received, coincidence check is GO!\n")
+        # if it is a CoincidenceTier message or a Retraction Message, give a Go
+        elif self.command_name in ["CoincidenceTier", "Retraction"]:
+            log.info(f"\t> {self.command_name} message is received, coincidence check is GO!\n")
             return True
 
         # if it is something else (e.g. SigTier) log it and return No-Go for coincidence check
