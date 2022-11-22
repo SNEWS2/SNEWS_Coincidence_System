@@ -45,11 +45,13 @@ class CoincidenceDataHandler:
 
 
         """
-        message['neutrino_time_as_datetime'] = datetime.fromisoformat(message['neutrino_time'])
+
         # retraction
-        if 'N_retract_latest' in message.keys():
+        if 'retract_latest' in message.keys():
             print('RETRACTING MESSAGE FROM')
             self.cache_retraction(retraction_message=message)
+            return 0
+        message['neutrino_time_as_datetime'] = datetime.fromisoformat(message['neutrino_time'])
         # update
         if message['detector_name'] in self.cache['detector_name'].to_list():
             self._update_message(message)
@@ -273,18 +275,25 @@ class CoincidenceDataHandler:
 
 
         """
-        if retraction_message['retract_id'] is not None:
+        if 'retract_id' in retraction_message.keys():
             self.cache = self.cache.query('_id!=@retraction_message["retract_id"]')
         else:
             retracted_name = retraction_message['detector_name']
             self.cache = self.cache.query('detector_name!=@retracted_name')
         # in case retracted message was an initial
+        if len(self.cache) == 0:
+            return 0
         for sub_tag in self.cache['sub_group'].unique():
             other_sub = self.cache.query('sub_group == @sub_tag')
-            if other_sub['neutrino_time_delta'] != 0:
-                new_initial_time = other_sub['neutrino_time_as_datetime'].min()
-                other_sub = other_sub.drop('neutrino_time_delta', axis=0)
-                other_sub['neutrino_time_delta'] = other_sub['neutrino_time_as_datetime'] - new_initial_time
+            if other_sub['neutrino_time_delta'].min() != 0.0:
+                if len(other_sub) == 1:
+                    other_sub = other_sub.drop(columns=['neutrino_time_delta'])
+                    other_sub['neutrino_time_delta'] = [0]
+
+                else:
+                    new_initial_time = other_sub['neutrino_time_as_datetime'].min()
+                    other_sub = other_sub.drop(columns=['neutrino_time_delta'])
+                    other_sub['neutrino_time_delta'] = (other_sub['neutrino_time_as_datetime'] - new_initial_time).dt.total_seconds()
                 self.cache = self.cache.query('sub_group!=@sub_tag')
                 self.cache = pd.concat([self.cache, other_sub], ignore_index=True)
                 self.cache = self.cache.sort_values(by='neutrino_time').reset_index()
@@ -394,8 +403,8 @@ class CoincidenceDistributor:
             # for sub_list in list(self.coinc_data.cache['sub_list_num'].unique()):
             _sub_df = self.coinc_data.cache.query('sub_group==@_sub_group')
             # self.display_table()
-            if len(_sub_df) == 1:
-                continue
+            # if len(_sub_df) == 1 and new_message_count > 0:
+            #     continue
             click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
             click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
             click.secho(f'{"=" * 100}', fg='bright_red')
@@ -405,7 +414,7 @@ class CoincidenceDistributor:
             detector_names = _sub_df['detector_name'].to_list()
             false_alarm_prob = cache_false_alarm_rate(cache_sub_list=_sub_df, hb_cache=self.heartbeat.cache_df)
             alert_type = 'NEW_MESSAGE'
-            if new_message_count < 0:
+            if new_message_count <= -1:
                 alert_type = 'RETRACTION'
             # logic for update declaration
 
