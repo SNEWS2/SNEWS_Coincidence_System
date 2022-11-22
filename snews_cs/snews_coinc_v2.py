@@ -18,6 +18,7 @@ import sys
 
 log = getLogger(__name__)
 
+
 # TODO: duplicate for a test-cache. Do not drop actual cache each time there are tests
 class CoincidenceDataHandler:
     """
@@ -129,7 +130,8 @@ class CoincidenceDataHandler:
             temp_cache = pd.concat([self.cache, message_as_cache], ignore_index=True)
             temp_cache = temp_cache.drop_duplicates(subset=['detector_name', 'neutrino_time'])
 
-            temp_cache['neutrino_time_delta'] = (temp_cache['neutrino_time_as_datetime'] - new_ini_t).dt.total_seconds()
+            temp_cache['neutrino_time_delta'] = (
+                    pd.to_datetime(temp_cache['neutrino_time_as_datetime']) - new_ini_t).dt.total_seconds()
             # Make two subgroup one for early signal and post
             new_sub_group_early = temp_cache.query('-10 <= neutrino_time_delta <= 0')
             new_sub_group_post = temp_cache.query('0 <= neutrino_time_delta <= 10.0')
@@ -163,19 +165,16 @@ class CoincidenceDataHandler:
             False if sub group is unique
 
         """
-        names = sub_group['detector_name']
-        t = sub_group['neutrino_time']
+
+        ids = sub_group['_id']
+
         if len(sub_group) == 1:
             return True
         for sub_tag in self.cache['sub_group'].unique():
             other_sub = self.cache.query('sub_group == @sub_tag')
-            check_name = names.isin(other_sub['detector_name'])
-            check_t = names.isin(other_sub['neutrino_time'])
+            check_ids = ids.isin(other_sub['_id'])
 
-            all_t_redundant = check_t.eq(True).all()
-            all_names_redundant = check_name.eq(True).all()
-
-            if all_names_redundant and all_t_redundant:
+            if check_ids.eq(True).all():
                 return True
 
         return False
@@ -218,7 +217,8 @@ class CoincidenceDataHandler:
         """
         initial_time = sub_df['neutrino_time_as_datetime'].min()
         sub_df = sub_df.drop(column='neutrino_time_delta', axis=0)
-        sub_df['neutrino_time_delta'] = (sub_df['neutrino_time_as_datetime'] - initial_time).dt.total_seconds()
+        sub_df['neutrino_time_delta'] = (
+                    pd.to_datetime(sub_df['neutrino_time_as_datetime']) - initial_time).dt.total_seconds()
         sub_df = sub_df.sort_values(by=['neutrino_time_as_datetime'])
         return sub_df
 
@@ -243,13 +243,13 @@ class CoincidenceDataHandler:
         for ind in detector_ind:
             sub_tag = self.cache['sub_group'][ind]
             initial_time = self.cache.query('sub_group==@sub_tag')['neutrino_time_as_datetime'].min()
-            if abs((message['neutrino_time_as_datetime']-initial_time).total_seconds()) > 10.0:
+            if abs((message['neutrino_time_as_datetime'] - initial_time).total_seconds()) > 10.0:
                 continue
             else:
                 for key in message.keys():
                     self.cache.at[ind, key] = message[key]
                 self.cache.at[ind, 'neutrino_time_delta'] = (
-                            message['neutrino_time_as_datetime'] - initial_time).total_seconds()
+                        message['neutrino_time_as_datetime'] - initial_time).total_seconds()
                 self.updated.append(self.cache['sub_group'][ind])
 
         if len(self.updated) != 0:
@@ -291,9 +291,10 @@ class CoincidenceDataHandler:
                     other_sub['neutrino_time_delta'] = [0]
 
                 else:
-                    new_initial_time = other_sub['neutrino_time_as_datetime'].min()
+                    new_initial_time = pd.to_datetime(other_sub['neutrino_time_as_datetime'].min())
                     other_sub = other_sub.drop(columns=['neutrino_time_delta'])
-                    other_sub['neutrino_time_delta'] = (other_sub['neutrino_time_as_datetime'] - new_initial_time).dt.total_seconds()
+                    other_sub['neutrino_time_delta'] = (pd.to_datetime(
+                        other_sub['neutrino_time_as_datetime']) - new_initial_time).dt.total_seconds()
                 self.cache = self.cache.query('sub_group!=@sub_tag')
                 self.cache = pd.concat([self.cache, other_sub], ignore_index=True)
                 self.cache = self.cache.sort_values(by='neutrino_time').reset_index()
@@ -400,39 +401,43 @@ class CoincidenceDistributor:
         for _sub_group, new_message_count in (new_count - self.coinc_data.old_count).iteritems():
             if new_message_count == 0:
                 continue
-            # for sub_list in list(self.coinc_data.cache['sub_list_num'].unique()):
+
             _sub_df = self.coinc_data.cache.query('sub_group==@_sub_group')
-            # self.display_table()
-            # if len(_sub_df) == 1 and new_message_count > 0:
-            #     continue
-            click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
-            click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
-            click.secho(f'{"=" * 100}', fg='bright_red')
-            p_vals = _sub_df['p_val'].to_list()
-            p_vals_avg = np.round(_sub_df['p_val'].mean(), decimals=5)
-            nu_times = _sub_df['neutrino_time'].to_list()
-            detector_names = _sub_df['detector_name'].to_list()
-            false_alarm_prob = cache_false_alarm_rate(cache_sub_list=_sub_df, hb_cache=self.heartbeat.cache_df)
-            alert_type = 'NEW_MESSAGE'
+
+            if len(_sub_df) == 1 and new_message_count <= 0:
+                alert_type = 'INITIAL MESSAGE'
             if new_message_count <= -1:
                 alert_type = 'RETRACTION'
-            # logic for update declaration
+            else:
+                alert_type = 'NEW_MESSAGE'
+                click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
+                click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
+                click.secho(f'{"=" * 100}', fg='bright_red')
+            if alert_type != 'INITIAL MESSAGE':
+                p_vals = _sub_df['p_val'].to_list()
+                p_vals_avg = np.round(_sub_df['p_val'].mean(), decimals=5)
+                nu_times = _sub_df['neutrino_time'].to_list()
+                detector_names = _sub_df['detector_name'].to_list()
+                false_alarm_prob = cache_false_alarm_rate(cache_sub_list=_sub_df, hb_cache=self.heartbeat.cache_df)
 
-            alert_data = cs_utils.data_cs_alert(p_vals=p_vals, p_val_avg=p_vals_avg, sub_list_num=_sub_group,
-                                                nu_times=nu_times, detector_names=detector_names,
-                                                false_alarm_prob=false_alarm_prob, server_tag=self.server_tag,
-                                                alert_type=alert_type)
+                alert_data = cs_utils.data_cs_alert(
+                    p_vals=p_vals,
+                    p_val_avg=p_vals_avg,
+                    sub_list_num=_sub_group,
+                    nu_times=nu_times,
+                    detector_names=detector_names,
+                    false_alarm_prob=false_alarm_prob,
+                    server_tag=self.server_tag,
+                    alert_type=alert_type)
 
-            with self.alert as pub:
-                alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
-                print(alert)
-                pub.send(alert)
-                if self.send_email:
-                    send_email(alert)
+                with self.alert as pub:
+                    alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
+                    print(alert)
+                    pub.send(alert)
+                    if self.send_email:
+                        send_email(alert)
 
         self.coinc_data.old_count = new_count
-
-
 
     # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
