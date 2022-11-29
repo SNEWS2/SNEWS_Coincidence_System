@@ -266,13 +266,10 @@ class CoincidenceDataHandler:
 
     def cache_retraction(self, retraction_message):
         """
-
         Parameters
         ----------
         retraction_message : dict
             SNEWS retraction message
-
-
 
         """
         if 'retract_id' in retraction_message.keys():
@@ -336,6 +333,15 @@ class CoincidenceDistributor:
         self.heartbeat = HeartBeat(env_path=env_path, firedrill_mode=firedrill_mode)
 
         self.stash_time = 86400
+        self.coinc_data = CoincidenceDataHandler()
+
+    def clear_cache(self):
+        """ When a reset cache is passed, recreate the
+            CoincidenceDataHandler instance
+
+        """
+        log.info("Resetting the cache.")
+        del self.coinc_data
         self.coinc_data = CoincidenceDataHandler()
 
     # ----------------------------------------------------------------------------------------------------------------
