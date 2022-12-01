@@ -38,8 +38,8 @@ class FeedBack:
             self.last_feedback_time[k] = datetime(2022, 1, 1)
         self.day_in_min = 1440
         self.running_min = 0
-        self.contact_intervals = get_intervals()
-        self.contact_running_hours = {k:0 for k in self.contact_intervals.keys()}
+        # self.contact_intervals = get_intervals()
+        # self.contact_running_hours = {k:0 for k in self.contact_intervals.keys()}
 
     def __call__(self):
         """ Continuously run and check expected heartbeats every minute
@@ -66,20 +66,16 @@ class FeedBack:
             if (self.running_min % 60) == 0:
                 self.running_min = 0  # reset the counter
 
-                for detector, interval in self.contact_intervals.items():
-                    self.contact_running_hours[detector] += 1
-                    if (self.contact_running_hours[detector] % interval) == 0:
-                        # check frequencies, and send feedback
-                        self.check_frequencies(df, detector)
-                        # Reset the running hours
-                        self.contact_running_hours[detector] = 0
-
-            # ### temp
-            # for detector, interval in self.contact_intervals.items():
-            #     print(">>> Checking frequencies")
-            #     self.check_frequencies(df, detector)
-            # ### temp
-
+                # # better make this upon request
+                # for detector, interval in self.contact_intervals.items():
+                #     ## print(">>> Checking frequencies") # temp for quick checks
+                #     ## self.check_frequencies(df, detector)
+                #     self.contact_running_hours[detector] += 1
+                #     if (self.contact_running_hours[detector] % interval) == 0:
+                #         # check frequencies, and send feedback
+                #         check_frequencies(df, detector)
+                #         # Reset the running hours
+                #         self.contact_running_hours[detector] = 0
 
 
     def control(self, df):
@@ -127,56 +123,59 @@ class FeedBack:
                    f" Is everything alright? Do you wanna talk about it?"
             print("[DEBUG] >>>>> \n",text, "\n")
             # send warning to detector
-            # send_warning_mail(detector, text)
+            send_warning_mail(detector, text)
             self.last_feedback_time[detector] = last_hb
         return None
 
-
-    def check_frequencies(self, df, detector):
-        """ Create a plot with latency and heartbeat frequencies
-        """
-        now_str = datetime.utcnow().strftime("%Y-%m-%d_%HH%MM")
-        mean = np.mean(df['Time After Last'])
-        std = np.std(df['Time After Last'])
-        last_hb = df['Received Times'].values[-1]  # this is a numpy.datetime
-        last_hb = pd.to_datetime(last_hb)  # we have to convert it to datetime.datetime
-        text = f" Your heartbeat frequency is every {mean:.2f}+/-{std:2f} sec\n" \
-               f" The last heartbeat received at {last_hb} \n" \
-               f" The received heartbeat frequency, together with the computed latency" \
-               f" is plotted, and sent in the attachment.\n" \
-               f" The next feedback will be send in {self.contact_intervals[detector]} hours."
-        attachment = f"{detector}_{now_str}.png"
-        print("plotting...")
-        print(df, "\n\n", detector, "\n\n", attachment)
-        plot_beats(df, detector, attachment)  # create a plot to send
-        # send_feedback_mail(detector, attachment, text)
-        print("[DEBUG] >>>>> \n",text, "\n")
-        print("Check the created plot-->", os.path.join(beats_path, attachment))
-
     def check_enough_detectors(self):
+        """ Constantly check to make sure there is at least two
+            detector taking data. If not, send a warning to everyone.
+        """
         pass
 
-def get_intervals():
-    """ Read the contact list and parse
-        Expected format "24H" with 'H' indicating hour
-        if None, no feedback will be provided
+def check_frequencies(df, detector, given_contact=None):
+    """ Create a plot with latency and heartbeat frequencies
+        and send it via emails
     """
-    interval_dict = dict()
-    for detector in contact_list.keys():
-        interval = contact_list[detector]['feedback interval']
-        if interval == 'None':
-            continue
-        else:
-            try:
-                hour_interval = interval.split("H")[0]
-                interval_dict[detector] = int(hour_interval)
-            except Exception as e:
-                log.warning(f"\t> {detector} has a feedback interval which is in wrong format"
-                            f"\t> Expected format like-'24H' got {interval}\n{e}")
-    return interval_dict
+    now_str = datetime.utcnow().strftime("%Y-%m-%d_%HH%MM")
+    mean = np.mean(df['Time After Last'])
+    std = np.std(df['Time After Last'])
+    last_hb = df['Received Times'].values[-1]  # this is a numpy.datetime
+    last_hb = pd.to_datetime(last_hb)  # we have to convert it to datetime.datetime
+    text = f" Your heartbeat frequency is every {mean:.2f}+/-{std:2f} sec\n" \
+           f" The last heartbeat received at {last_hb} \n" \
+           f" The received heartbeat frequency, together with the computed latency" \
+           f" is plotted, and sent in the attachment.\n"
+           # f" The next feedback will be send in {self.contact_intervals[detector]} hours."
+    attachment = f"{detector}_{now_str}.png"
+    plot_beats(df, detector, attachment)  # create a plot to send
+    send_feedback_mail(detector, attachment, text, given_contact=given_contact)
+    return attachment
+
+
+# def get_intervals():
+#     """ Read the contact list and parse
+#         Expected format "24H" with 'H' indicating hour
+#         if None, no feedback will be provided
+#     """
+#     interval_dict = dict()
+#     for detector in contact_list.keys():
+#         interval = contact_list[detector]['feedback interval']
+#         if interval == 'None':
+#             continue
+#         else:
+#             try:
+#                 hour_interval = interval.split("H")[0]
+#                 interval_dict[detector] = int(hour_interval)
+#             except Exception as e:
+#                 log.warning(f"\t> {detector} has a feedback interval which is in wrong format"
+#                             f"\t> Expected format like-'24H' got {interval}\n{e}")
+#     return interval_dict
 
 
 def plot_beats(df, detector, figname):
+    """ Requires QT libraries: sudo apt-get install qt5-default
+    """
     fig, ax = plt.subplots(figsize=(12, 3))
     latency = pd.to_timedelta(df['Latency'].values).total_seconds()
     received_times = df['Received Times']
