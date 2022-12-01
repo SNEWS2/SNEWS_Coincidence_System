@@ -192,9 +192,10 @@ class HeartBeat:
         time_differences = np.array([(date - today).days for date in dates])
         older_than_limit = np.where(np.abs(time_differences) > self.delete_after)
         files = np.array(files)
-        log.debug(f"\t> Things will be removed; {files[older_than_limit[0]]}")
+        log.debug(f"\t> The following logs are older than {self.delete_after} days and will be removed; \n{files[older_than_limit[0]]}")
         for file in files[older_than_limit[0]]:
-            os.remove(file)
+            filepath = os.path.join(self.beats_path, file)
+            os.remove(filepath)
             log.debug(f"\t> {file} deleted.")
 
     def display_table(self):
