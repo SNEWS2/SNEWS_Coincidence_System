@@ -171,3 +171,35 @@ def plot_beats(df, detector, figname):
     ax2.set_ylabel('Latency [sec]\nReceived at server - Sent from local', color='magenta')
     ax.set_title(f"HB data for {detector}, last 24hr")
     plt.savefig(os.path.join(beats_path, figname))
+
+def delete_old_figures():
+    """ Remove the old feedback figures from the server
+        the duration set in the configuration file
+    """
+    delete_after = timedelta(days=int(os.getenv("REMOVE_FIGURES_AFTER")))
+    now = datetime.utcnow()
+
+    # the times of existing figures
+    existing_figures = os.listdir(beats_path)
+    existing_figures = np.array([x for x in existing_figures if x.endswith('.png')])
+    # take only dates
+    dates_str = ["_".join(i.split('/')[-1].split("_")[1:]).split('.png')[0] for i in existing_figures]
+    dates, files = [], []
+    for d_str, logfile in zip(dates_str, existing_figures):
+        try:
+            dates.append(datetime.strptime(d_str, "%Y-%m-%d_%HH%MM"))
+            files.append(logfile)
+        except Exception as e:
+            log.error(f"\t> Something went wrong during deletion of old figures \n\t{e}")
+            continue
+
+    time_differences = np.array([date - now for date in dates])
+    older_than_limit = np.where(np.abs(time_differences) > delete_after)
+    files = np.array(files)
+    log.debug(f"\t> The following feedback figures are older than "
+              f"{int(os.getenv('REMOVE_FIGURES_AFTER'))} days and will be removed; "
+              f"\n\t{files[older_than_limit[0]]}")
+    for file in files[older_than_limit[0]]:
+        filepath = os.path.join(beats_path, file)
+        os.remove(filepath)
+        log.debug(f"\t> {file} deleted.")
