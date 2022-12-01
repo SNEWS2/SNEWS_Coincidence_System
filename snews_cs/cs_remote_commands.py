@@ -3,7 +3,7 @@ import json
 import click
 from snews_pt.snews_format_checker import SnewsFormat
 import pandas as pd
-from .heartbeat_feedbacks import check_frequencies
+from .heartbeat_feedbacks import check_frequencies, delete_old_figures
 from .core.logging import getLogger
 
 log = getLogger(__name__)
@@ -162,6 +162,8 @@ class Commands:
             log.error(f"\t> None of the the given email: {given_mail} is registered, ignoring all!")
             return None
         # next check if request from a valid user
+        # TODO: here first decrypt with the private key of the server
+        # TODO: the pass should be first encrypted with the public key of the server
         experiment_password = contact_list[detector]["detector_pass"]
         if given_pass == experiment_password:
             log.debug(f"\t> {detector} Requested Heartbeat Feedback")
@@ -172,6 +174,9 @@ class Commands:
             log.info(f"\t> The feedback file: {filename} is sent to the registered mails for {detector}")
         else:
             log.error(f"\t> {detector} Requested Heartbeat Feedback, passed password `message['pass']` is incorrect!")
+        # delete old feedback figures
+        delete_old_figures()
+        log.debug("\t> Old figures are deleted.")
 
 
 class CommandHandler:
