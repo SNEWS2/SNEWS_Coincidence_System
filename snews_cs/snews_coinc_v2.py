@@ -216,7 +216,7 @@ class CoincidenceDataHandler:
 
         """
         initial_time = sub_df['neutrino_time_as_datetime'].min()
-        sub_df = sub_df.drop(column='neutrino_time_delta', axis=0)
+        sub_df = sub_df.drop(columns='neutrino_time_delta', axis=0)
         sub_df['neutrino_time_delta'] = (
                     pd.to_datetime(sub_df['neutrino_time_as_datetime']) - initial_time).dt.total_seconds()
         sub_df = sub_df.sort_values(by=['neutrino_time_as_datetime'])
@@ -340,7 +340,7 @@ class CoincidenceDistributor:
             CoincidenceDataHandler instance
 
         """
-        log.info("Resetting the cache.")
+        log.info("\t > [RESET] Resetting the cache.")
         del self.coinc_data
         self.coinc_data = CoincidenceDataHandler()
 
@@ -440,8 +440,8 @@ class CoincidenceDistributor:
                     alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
                     print(alert)
                     pub.send(alert)
-                    if self.send_email:
-                        send_email(alert)
+                    # if self.send_email:
+                    #     send_email(alert)
 
         self.coinc_data.old_count = new_count
 
