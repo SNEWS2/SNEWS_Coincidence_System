@@ -8,7 +8,6 @@ import pandas as pd
 from hop import Stream
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
-# from .cs_utils import CommandHandler
 from .cs_remote_commands import CommandHandler
 from .core.logging import getLogger
 from .cs_email import send_email
@@ -467,7 +466,7 @@ class CoincidenceDistributor:
                 try:
                     go = handler.handle(self)
                 except Exception as e:
-                    log.debug(f"Something crashed the server, here is the Exception raised\n{e}\n")
+                    log.error(f"Something crashed the server, here is the Exception raised\n{e}\n")
                     go = False
                 if go:
                     snews_message['received_time'] = datetime.utcnow().isoformat()
