@@ -2,6 +2,8 @@ import os
 import json
 import click
 from snews_pt.snews_format_checker import SnewsFormat
+import pandas as pd
+from .heartbeat_feedbacks import check_frequencies
 from .core.logging import getLogger
 
 log = getLogger(__name__)
@@ -20,10 +22,19 @@ known_commands = [
     "broker-change",
     "Heartbeat",
     "display-heartbeats",
-    "Retraction"
+    "Retraction",
+    "Get-Feedback"
 ]
 
+contact_list_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/contact_list.json'))
+with open(contact_list_file) as file:
+    contact_list = json.load(file)
 
+# this csv file is mirroring the existing heartbeat cache
+beats_path = os.path.join(os.path.dirname(__file__), "../beats")
+csv_path = os.path.join(beats_path, f"cached_heartbeats_mirror.csv")
+
+# should I allow people to change their passwords? I can use simple encryption: from cryptography.fernet import Fernet
 class Commands:
     """ Class for remote commands"""
 
@@ -33,9 +44,9 @@ class Commands:
                                         "broker-change": self.change_broker,
                                         "Heartbeat": self.heartbeat_handle,
                                         "display-heartbeats": self.display_heartbeats,
-                                        "Retraction":self.retract_message}
+                                        "Retraction":self.retract_message,
+                                        "Get-Feedback":self.send_feedback}
         self.passw = os.getenv('snews_cs_admin_pass', 'False')
-        # self.default_no_go = True
 
     def _check_rights(self, message):
         try:
@@ -60,7 +71,6 @@ class Commands:
         command(message, CoincDeciderInstance)
         # return default NO-GO, this is only changed if the message is Retraction!
         # for retraction message we need to let it enter the cache. So updated alerts can be checked
-        # return self.default_no_go
 
     def test_connection(self, message, CoincDeciderInstance):
         """ When received a test_connection key
@@ -71,7 +81,7 @@ class Commands:
         log.debug("\t> Executing Test Connection Command.")
         # it might be the second bounce, if so, log and exit
         if message["status"] == "received":
-            log.debug("\n> Confirm Received.")
+            log.debug("\t> Confirm Received.")
             return None
 
         from hop import Stream
@@ -89,7 +99,8 @@ class Commands:
         authorized = self._check_rights(message)
         if authorized:
             log.info("\t> Cache wanted to be reset. User is authorized.")
-            CoincDeciderInstance.reset_df()
+            # CoincDeciderInstance.reset_df()
+            CoincDeciderInstance.clear_cache()
             log.info("\t> Cache is reset.")
             return None
         else:
@@ -125,9 +136,42 @@ class Commands:
             log.error("\t> User wants to display the Heartbeat table. User is NOT authorized.")
 
     def retract_message(self, message, CoincDeciderInstance):
-        log.info(f"\t> Retracting message in the snews_coinc.\n"
-                  f"This requires a GO so that message can be added and compared in the cache!")
-        # self.default_no_go = False
+        log.info(f"\t> Retracting message in the snews_coinc.")
+                  # f"This requires a GO so that message can be added and compared in the cache!")
+
+    def send_feedback(self, message, CoincDeciderInstance):
+        """ If password is correct, send an email with a feedback from past 24H
+            multiple mails are allowed by separating semicolon ";"
+        """
+        given_pass = message.get('pass', None)
+        given_mail = message.get('email', None)
+        if (given_pass == None) or (given_mail == None):
+            log.error(f"\t> No email or pass is given, ignoring.")
+            return None
+
+        # first check if request email is in our list
+        detector = message['detector_name']
+        none_valid = True
+        given_mail = given_mail.split(";")
+        for email in given_mail:
+            if not email in contact_list[detector]["emails"]:
+                log.error(f"\t> The given email: {email} is not registered for {detector}!")
+            else:
+                none_valid = False
+        if none_valid:
+            log.error(f"\t> None of the the given email: {given_mail} is registered, ignoring all!")
+            return None
+        # next check if request from a valid user
+        experiment_password = contact_list[detector]["detector_pass"]
+        if given_pass == experiment_password:
+            log.debug(f"\t> {detector} Requested Heartbeat Feedback")
+            # load the current heartbeat df and create a plot
+            df = pd.read_csv(csv_path, parse_dates=['Received Times'], )
+            # send an email with the plot
+            filename = check_frequencies(df, detector, given_contact=given_mail)
+            log.info(f"\t> The feedback file: {filename} is sent to the registered mails for {detector}")
+        else:
+            log.error(f"\t> {detector} Requested Heartbeat Feedback, passed password `message['pass']` is incorrect!")
 
 
 class CommandHandler:
@@ -166,7 +210,7 @@ class CommandHandler:
             # if passed, there has to be an _id field
             log.info(f"\t> Message is in SnewsFormat. '_id':{self.input_message['_id']} ")
             self.is_test = self.input_message['meta'].get('is_test', False)
-            log.info(f"\t> Received Message is {'NOT' if not self.is_test else ''} a test message!")
+            log.info(f"\t> Received Message is {'NOT ' if not self.is_test else ''}a test message!")
 
         # check what the _id field specifies
         self.command_name = self.input_message['_id'].split('_')[1]
@@ -176,19 +220,19 @@ class CommandHandler:
         # if it is a Remote-Command, find and execute it
         # return No-Go so that it doesn't try to check for coincidence
         if self.command_name in known_commands:
-            log.info(f"\t> {self.command_name} command is passed!\n")
+            log.info(f"\t> [COMMAND] {self.command_name} command is passed!")
             self.Command_Executer.execute(self.command_name, self.input_message, CoincDeciderInstance)
             if self.command_name == "Retraction":
-                log.info(f"\t> {self.command_name} command executed coincidence check is still a GO!\n")
+                log.info(f"\t> {self.command_name} command executed coincidence check is still a GO!")
                 # it is a retraction message, requires to return a GO
                 return True
             else:
-                log.info(f"\t> {self.command_name} command executed coincidence check is a NO-GO!\n")
+                log.info(f"\t> {self.command_name} command executed coincidence check is a NO-GO!")
                 return False
 
         # if it is a CoincidenceTier message or a Retraction Message, give a Go
         elif self.command_name in ["CoincidenceTier", "Retraction"]:
-            log.info(f"\t> {self.command_name} message is received, coincidence check is GO!\n")
+            log.info(f"\t> {self.command_name} message is received, coincidence check is GO!")
             return True
 
         # if it is something else (e.g. SigTier) log it and return No-Go for coincidence check
