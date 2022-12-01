@@ -38,8 +38,6 @@ class FeedBack:
             self.last_feedback_time[k] = datetime(2022, 1, 1)
         self.day_in_min = 1440
         self.running_min = 0
-        # self.contact_intervals = get_intervals()
-        # self.contact_running_hours = {k:0 for k in self.contact_intervals.keys()}
 
     def __call__(self):
         """ Continuously run and check expected heartbeats every minute
@@ -66,17 +64,6 @@ class FeedBack:
             if (self.running_min % 60) == 0:
                 self.running_min = 0  # reset the counter
 
-                # # better make this upon request
-                # for detector, interval in self.contact_intervals.items():
-                #     ## print(">>> Checking frequencies") # temp for quick checks
-                #     ## self.check_frequencies(df, detector)
-                #     self.contact_running_hours[detector] += 1
-                #     if (self.contact_running_hours[detector] % interval) == 0:
-                #         # check frequencies, and send feedback
-                #         check_frequencies(df, detector)
-                #         # Reset the running hours
-                #         self.contact_running_hours[detector] = 0
-
 
     def control(self, df):
         """ Check the current cache, check if any detector
@@ -90,6 +77,12 @@ class FeedBack:
 
         for detector in data['Detector'].unique():
             detector_df = data.query('Detector==@detector')
+            # For a given detector, if already sent an email,
+            # ignore the beats before that email. Otherwise, the same cause would ruin the statistics.
+            after_last_hb =  self.last_feedback_time[detector]
+            detector_df = detector_df[detector_df['Received Times'] > after_last_hb]
+            detector_df.sort_values('Received Times', inplace=True)
+
             if len(detector_df) < 5:
                 # not enough statistics, skip.
                 print("[DEBUG] >>>>> len=",len(detector_df), "Not enough")
@@ -151,26 +144,6 @@ def check_frequencies(df, detector, given_contact=None):
     plot_beats(df, detector, attachment)  # create a plot to send
     send_feedback_mail(detector, attachment, text, given_contact=given_contact)
     return attachment
-
-
-# def get_intervals():
-#     """ Read the contact list and parse
-#         Expected format "24H" with 'H' indicating hour
-#         if None, no feedback will be provided
-#     """
-#     interval_dict = dict()
-#     for detector in contact_list.keys():
-#         interval = contact_list[detector]['feedback interval']
-#         if interval == 'None':
-#             continue
-#         else:
-#             try:
-#                 hour_interval = interval.split("H")[0]
-#                 interval_dict[detector] = int(hour_interval)
-#             except Exception as e:
-#                 log.warning(f"\t> {detector} has a feedback interval which is in wrong format"
-#                             f"\t> Expected format like-'24H' got {interval}\n{e}")
-#     return interval_dict
 
 
 def plot_beats(df, detector, figname):
