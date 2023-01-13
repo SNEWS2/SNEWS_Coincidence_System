@@ -53,6 +53,7 @@ class CoincidenceTierAlert:
         """
         id = self.id_format(len(data['detector_names']))
         return {"_id": id,
+                "alert_type":data['alert_type'],
                 "server_tag": data['server_tag'],
                 "False Alarm Prob": f"{data['false_alarm_prob']*100:.2f}%",
                 "detector_names": data['detector_names'],
