@@ -42,12 +42,6 @@ def run_coincidence(local, firedrill, dropdb, email, slackbot):
     """ Initiate Coincidence Decider 
     """
     HOST = gethostname()
-    # coinc = snews_coinc.CoincDecider(use_local_db=local,
-    #                                  drop_db=dropdb,
-    #                                  firedrill_mode=firedrill,
-    #                                  send_email=email,
-    #                                  server_tag=HOST,
-    #                                  send_on_slack=slackbot)
     coinc = snews_coinc.CoincidenceDistributor(use_local_db=local,
                                      drop_db=dropdb,
                                      firedrill_mode=firedrill,
