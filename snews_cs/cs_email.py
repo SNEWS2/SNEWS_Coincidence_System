@@ -17,6 +17,8 @@ with open(contact_list_file) as file:
 
 
 def send_email(alert_content):
+    """ Send the SNEWS alert via e-mail
+    """
     # echo "This is not the same message as before" | mail -s "Echo test email" someone@example.com
     pretty_alert = ''
     for k, v in alert_content.items():
@@ -42,6 +44,7 @@ base_msg="'smtps://$USER:$PASSWORD@smtp.gmail.com' mutt " \
 def send_feedback_mail(detector, attachment, message_content=None, given_contact=None):
     """ Send feedback email to authorized, requested users
     """
+    # Accept a contact list (e-mail(s)) # mail addresses already checked
     if type(given_contact) != list:
         contacts = list(given_contact)
     else:
@@ -77,13 +80,15 @@ def send_warning_mail(detector, message_content=None):
     message_content = message_content or ""
     if len(contacts) > 0:
         for contact in contacts:
-            mail = base_msg.format(sender=sender,
+            mail = base_warning.format(sender=sender,
                                    detector=detector,
                                    contact=contact,
                                    message_content=message_content)
             # os.system(mail)
             print(mail)
         log.info(f"\t\t> Warning Sent to {contacts}\n")
+
+
 
 #### sudo apt-get install sendmail
 #################### TEST
