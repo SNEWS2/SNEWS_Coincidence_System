@@ -199,6 +199,10 @@ class HeartBeat:
             log.debug(f"\t> {file} deleted.")
 
     def display_table(self):
+        """ When printed out, these table can be read from the purdue servers
+            -only- by admins.
+
+        """
         print(f"\nCurrent cache \n{'=' * 133}\n{self.cache_df.to_markdown()}\n{'=' * 133}\n")
 
 
