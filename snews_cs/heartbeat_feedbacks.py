@@ -38,6 +38,7 @@ class FeedBack:
             self.last_feedback_time[k] = datetime(2022, 1, 1)
         self.day_in_min = 1440
         self.running_min = 0
+        log.info(f"\t> Heartbeat tracking initiated.")
 
     def __call__(self):
         """ Continuously run and check expected heartbeats every minute
@@ -63,6 +64,7 @@ class FeedBack:
             # and check if it has been feedback time for any detector.
             if (self.running_min % 60) == 0:
                 self.running_min = 0  # reset the counter
+                delete_old_figures()
 
 
     def control(self, df):
@@ -126,10 +128,12 @@ class FeedBack:
         """
         pass
 
-def check_frequencies(df, detector, given_contact=None):
+def check_frequencies_and_send_mail(detector, given_contact=None):
     """ Create a plot with latency and heartbeat frequencies
         and send it via emails
     """
+    df = pd.read_csv(csv_path, parse_dates=['Received Times'], )
+    df.query("Detector==@detector", inplace=True)
     now_str = datetime.utcnow().strftime("%Y-%m-%d_%HH%MM")
     mean = np.mean(df['Time After Last'])
     std = np.std(df['Time After Last'])

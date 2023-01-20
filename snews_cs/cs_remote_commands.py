@@ -3,7 +3,7 @@ import json
 import click
 from snews_pt.snews_format_checker import SnewsFormat
 import pandas as pd
-from .heartbeat_feedbacks import check_frequencies, delete_old_figures
+from .heartbeat_feedbacks import check_frequencies_and_send_mail, delete_old_figures
 from .core.logging import getLogger
 
 log = getLogger(__name__)
@@ -140,44 +140,40 @@ class Commands:
                   # f"This requires a GO so that message can be added and compared in the cache!")
 
     def send_feedback(self, message, CoincDeciderInstance):
-        """ If password is correct, send an email with a feedback from past 24H
+        """ Check the user and pre-compiled email list
+            send an email with a feedback from past 24H
             multiple mails are allowed by separating semicolon ";"
+            Expected message format
+            message = {'_id': '0_Get-Feedback',
+                       'email': email_address,
+                       'detector_name': detector_name,
+                       'meta': {}}
         """
-        given_pass = message.get('pass', None)
         given_mail = message.get('email', None)
-        if (given_pass == None) or (given_mail == None):
-            log.error(f"\t> No email or pass is given, ignoring.")
+        if given_mail is None:
+            log.error(f"\t> No email is given, ignoring.")
             return None
 
         # first check if request email is in our list
         detector = message['detector_name']
         none_valid = True
-        given_mail = given_mail.split(";")
+        # avoid empty lines, and allow multiple emails
+        given_mail =  [mail.strip() for mail in given_mail.split(";") if len(mail.strip())]
+        print(f"> [DEBUG] These mails are passed {'; '.join(given_mail)} for detector: {detector}")
         for email in given_mail:
             if not email in contact_list[detector]["emails"]:
                 log.error(f"\t> The given email: {email} is not registered for {detector}!")
+                print(f"> [DEBUG] The given email: {email} is not registered for {detector}!")
             else:
                 none_valid = False
         if none_valid:
-            log.error(f"\t> None of the the given email: {given_mail} is registered, ignoring all!")
+            log.error(f"\t> None of the the given email: {';'.join(given_mail)} is registered, ignoring all!")
             return None
-        # next check if request from a valid user
-        # TODO: here first decrypt with the private key of the server
-        # TODO: the pass should be first encrypted with the public key of the server
-        experiment_password = contact_list[detector]["detector_pass"]
-        if given_pass == experiment_password:
-            log.debug(f"\t> {detector} Requested Heartbeat Feedback")
-            # load the current heartbeat df and create a plot
-            df = pd.read_csv(csv_path, parse_dates=['Received Times'], )
-            # send an email with the plot
-            filename = check_frequencies(df, detector, given_contact=given_mail)
-            log.info(f"\t> The feedback file: {filename} is sent to the registered mails for {detector}")
-        else:
-            log.error(f"\t> {detector} Requested Heartbeat Feedback, passed password `message['pass']` is incorrect!")
-        # delete old feedback figures
-        delete_old_figures()
-        log.debug("\t> Old figures are deleted.")
-
+        try:
+            attachment_name = check_frequencies_and_send_mail(detector, given_contact=given_mail)
+            log.info(f"\t> The feedback file: {attachment_name} is sent to the registered mails for {detector}")
+        except Exception as e:
+            log.info(f"\t> Something went wrong for {detector}, couldn't send mail, see the exception;\n{e}")
 
 class CommandHandler:
     """ class to handle the manual command issued by the admins
@@ -189,6 +185,7 @@ class CommandHandler:
             - Testing-purpose submissions
             - Get logs
             - Change Broker
+            - Request Feedback
         """
 
     def __init__(self, message):
@@ -242,5 +239,5 @@ class CommandHandler:
 
         # if it is something else (e.g. SigTier) log it and return No-Go for coincidence check
         else:
-            log.error(f"\t> {self.command_name} is received, coincidence check is NO-GO!\n")
+            log.error(f"\t> {self.command_name} is received (NOT KNOWN), coincidence check is NO-GO!\n")
             return False
