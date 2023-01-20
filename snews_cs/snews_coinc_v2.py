@@ -237,7 +237,9 @@ class CoincidenceDataHandler:
         update_message = f'UPDATING MESSAGE FROM: {message["detector_name"]}'
 
         print(update_message)
-        detector_ind = self.cache.query('detector_name==@message["detector_name"]').index.to_list()
+        update_detector = message["detector_name"]
+        detector_ind = self.cache.query(f'detector_name==@update_detector').index.to_list()
+        print(detector_ind)
         # old_nu_times = self.cache['neutrino_time_as_datetime'][detector_ind]
         for ind in detector_ind:
             sub_tag = self.cache['sub_group'][ind]
@@ -409,8 +411,9 @@ class CoincidenceDistributor:
 
             _sub_df = self.coinc_data.cache.query('sub_group==@_sub_group')
 
-            if len(_sub_df) == 1 and new_message_count <= 0:
-                alert_type = 'INITIAL MESSAGE'
+            if len(_sub_df['detector_name']) >= 1:
+                print('skipping alert this is an inital message')
+                continue
             if new_message_count <= -1:
                 alert_type = 'RETRACTION'
             else:
