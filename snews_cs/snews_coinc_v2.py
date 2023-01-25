@@ -411,10 +411,9 @@ class CoincidenceDistributor:
 
             _sub_df = self.coinc_data.cache.query('sub_group==@_sub_group')
 
-            if len(_sub_df['detector_name']) >= 1:
-                print('skipping alert this is an inital message')
-                continue
-            if new_message_count <= -1:
+            if len(_sub_df['detector_name']) == 1 and new_message_count ==1:
+                alert_type = 'INITIAL MESSAGE'
+            elif new_message_count <= -1:
                 alert_type = 'RETRACTION'
             else:
                 alert_type = 'NEW_MESSAGE'
