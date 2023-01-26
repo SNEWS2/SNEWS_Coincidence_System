@@ -30,16 +30,22 @@ def send_email(alert_content):
     log.info(f"\t\t> SNEWS Alert mail was sent at {datetime.utcnow().isoformat()} to {emails}")
 
 
-base_msg="'smtps://$USER:$PASSWORD@smtp.gmail.com' mutt " \
-         "  -F /dev/null " \
-         "  -e 'set from={sender}' " \
-         "  -e 'set smtp_url=$SMTP_URL' " \
-         "  -s 'SNEWS Server Feedback for %detector' " \
-         "  -a {attachment} --  " \
-         "  {contact} << EOM " \
-         " Dear {detector}, Attached {attachment} please find the feedback information," \
-         " {message_content}" \
-         " Provided by the SNEWS server. --Cheers EOM"
+base_msg_mutt = "'smtps://$USER:$PASSWORD@smtp.gmail.com' mutt " \
+                 "  -F /dev/null " \
+                 "  -e 'set from={sender}' " \
+                 "  -e 'set smtp_url=$SMTP_URL' " \
+                 "  -s 'SNEWS Server Feedback for %detector' " \
+                 "  -a {attachment} --  " \
+                 "  {contact} << EOM " \
+                 " Dear {detector}, Attached {attachment} please find the feedback information," \
+                 " {message_content}" \
+                 " Provided by the SNEWS server. --Cheers EOM"
+
+base_msg = "echo {message_content} | " \
+           "mail " \
+           "-s 'SNEWS COINCIDENCE {timenow}' " \
+           "-A {attachment}" \
+           "{contact}"
 
 def send_feedback_mail(detector, attachment, message_content=None, given_contact=None):
     """ Send feedback email to authorized, requested users
@@ -53,82 +59,60 @@ def send_feedback_mail(detector, attachment, message_content=None, given_contact
     message_content = message_content or ""
     if len(contacts) > 0:
         for contact in contacts:
-            mail = base_msg.format(sender=sender,
-                                   detector=detector,
-                                   attachment=os.path.join(beats_path, attachment),
-                                   contact=contact,
-                                   message_content=message_content)
-            # os.system(mail)
-            print(mail)
+            try:
+                mail = base_msg_mutt.format(sender=sender,
+                                            detector=detector,
+                                            attachment=os.path.join(beats_path, attachment),
+                                            contact=contact,
+                                            message_content=message_content)
+                os.system(mail)
+            except Exception as e:
+                log.error(f"\t>mutt didn't work {e}\n\t>Trying basic mail..")
+                time = datetime.utcnow().isoformat()
+                mail = base_msg.format(message_content=message_content,
+                                       timenow=time,
+                                       attachment=attachment,
+                                       contact=contact)
+                os.system(mail)
         log.info(f"\t\t> Feedback Sent to {contacts} for {detector}")
     else:
         log.info(f"\t\t> Feedback mail is requested for {detector}. However, there are no contacts added.")
 
 
-base_warning="'smtps://user:password@smtp.gmail.com' mutt " \
-             "  -F /dev/null " \
-             "  -e 'set from={sender}' " \
-             "  -e 'set smtp_url=$SMTP_URL' " \
-             "  -s 'SNEWS Server Heartbeat for {detector} is skipped!' " \
-             "  {contact} << EOM " \
-             " Dear {detector}, " \
-             " {message_content}" \
-             " Provided by the SNEWS server. --Cheers EOM"
+base_warning_mutt = "'smtps://user:password@smtp.gmail.com' mutt " \
+                     "  -F /dev/null " \
+                     "  -e 'set from={sender}' " \
+                     "  -e 'set smtp_url=$SMTP_URL' " \
+                     "  -s 'SNEWS Server Heartbeat for {detector} is skipped!' " \
+                     "  {contact} << EOM " \
+                     " Dear {detector}, " \
+                     " {message_content}" \
+                     " Provided by the SNEWS server. --Cheers EOM"
+
+base_warning = "echo {message_content} | " \
+               "mail " \
+               "-s 'SNEWS Server Heartbeat for {detector} is skipped!' " \
+               "{contact}"
 
 def send_warning_mail(detector, message_content=None):
     contacts = contact_list[detector]["emails"]
     message_content = message_content or ""
     if len(contacts) > 0:
         for contact in contacts:
-            mail = base_warning.format(sender=sender,
-                                   detector=detector,
-                                   contact=contact,
-                                   message_content=message_content)
-            # os.system(mail)
-            print(mail)
-        log.info(f"\t\t> Warning Sent to {contacts}\n")
-
+            try:
+                mail = base_warning_mutt.format(sender=sender,
+                                                detector=detector,
+                                                contact=contact,
+                                                message_content=message_content)
+                os.system(mail)
+            except Exception as e:
+                log.error(f"\t>mutt didn't work {e}\n\t>Trying basic mail..")
+                mail = base_warning.format(message_content=message_content,
+                                           detector=detector,
+                                           contact=contact)
+                os.system(mail)
+        log.info(f"\t\t> Warning Sent to {contacts} for {detector}\n")
 
 
 #### sudo apt-get install sendmail
-#################### TEST
-test_warning="'smtps://{user}:{password}@smtp.gmail.com' mutt " \
-             "  -F /dev/null " \
-             "  -e 'set from={sender}' " \
-             "  -e 'set smtp_url=$SMTP_URL' " \
-             "  -s 'SNEWS Server Heartbeat for %detector is skipped!' " \
-             "  Melih << EOM " \
-             " Dear {detector}, " \
-             " {message_content}" \
-             " Provided by the SNEWS server. --Cheers EOM"
 
-def send_test_mail(user, password, sender='Melih'):
-    mail = base_msg.format(user=user,
-                           password=password,
-                           sender=sender,
-                           detector="XENONnT",
-                           message_content="Random message_content")
-    # os.system(mail)
-
-    # Import smtplib for the actual sending function
-    import smtplib
-    # Import the email modules we'll need
-    from email.mime.text import MIMEText
-
-    # Open a plain text file for reading.  For this example, assume that
-    # the text file contains only ASCII characters.
-    # with open(textfile, 'rb') as fp:
-        # Create a text/plain message
-    msg = MIMEText("Some random text") #MIMEText(fp.read())
-
-    # me == the sender's email address
-    # you == the recipient's email address
-    msg['Subject'] = 'The contents of some file' #% textfile
-    msg['From'] = "kara@kit.edu"
-    msg['To'] = "mlh-kara@hotmail.com"
-
-    # Send the message via our own SMTP server, but don't include the
-    # envelope header.
-    s = smtplib.SMTP('localhost')
-    s.sendmail("kara@kit.edu", ["mlh-kara@hotmail.com"], msg.as_string())
-    s.quit()
