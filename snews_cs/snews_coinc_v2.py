@@ -369,22 +369,28 @@ class CoincidenceDistributor:
                 nu_times = _sub_df['neutrino_time'].to_list()
                 detector_names = _sub_df['detector_name'].to_list()
                 false_alarm_prob = cache_false_alarm_rate(cache_sub_list=_sub_df, hb_cache=self.heartbeat.cache_df)
-                alert_data = cs_utils.data_cs_alert(
-                    p_vals=p_vals,
-                    p_val_avg=p_vals_avg,
-                    sub_list_num=updated_sub,
-                    nu_times=nu_times,
-                    detector_names=detector_names,
-                    false_alarm_prob=false_alarm_prob,
-                    server_tag=self.server_tag,
-                    alert_type=alert_type)
+
+                alert_data = dict(p_vals=p_vals,
+                                  p_val_avg=p_vals_avg,
+                                  sub_list_num=updated_sub,
+                                  neutrino_times=nu_times,
+                                  detector_names=detector_names,
+                                  false_alarm_prob=false_alarm_prob,
+                                  server_tag=self.server_tag,
+                                  alert_type=alert_type)
+
 
                 with self.alert as pub:
                     alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
-                    # print(alert)
                     pub.send(alert)
                     if self.send_email:
                         send_email(alert)
+                    if self.send_slack:
+                        snews_bot.send_table(alert_data,
+                                             alert,
+                                             is_test=True,
+                                             topic=self.observation_topic)
+
             log.debug('\t> An alert is updated!')
             self.coinc_data.updated = []
 
@@ -421,25 +427,23 @@ class CoincidenceDistributor:
                 detector_names = _sub_df['detector_name'].to_list()
                 false_alarm_prob = cache_false_alarm_rate(cache_sub_list=_sub_df, hb_cache=self.heartbeat.cache_df)
 
-                # highly redundant !!!
-                alert_data = cs_utils.data_cs_alert(
-                    p_vals=p_vals,
-                    p_val_avg=p_vals_avg,
-                    sub_list_num=_sub_group,
-                    nu_times=nu_times,
-                    detector_names=detector_names,
-                    false_alarm_prob=false_alarm_prob,
-                    server_tag=self.server_tag,
-                    alert_type=alert_type)
+                alert_data = dict(p_vals=p_vals,
+                                  p_val_avg=p_vals_avg,
+                                  sub_list_num=_sub_group,
+                                  neutrino_times=nu_times,
+                                  detector_names=detector_names,
+                                  false_alarm_prob=false_alarm_prob,
+                                  server_tag=self.server_tag,
+                                  alert_type=alert_type)
 
                 with self.alert as pub:
                     alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
-                    # print(alert)
                     pub.send(alert)
                     if self.send_email:
                         send_email(alert)
                     if self.send_slack:
-                        snews_bot.send_table(alert,
+                        snews_bot.send_table(alert_data,
+                                             alert,
                                              is_test=True,
                                              topic=self.observation_topic)
 
