@@ -43,10 +43,11 @@ def run_coincidence(local, firedrill, dropdb, email, slackbot):
     """
     HOST = gethostname()
     coinc = snews_coinc.CoincidenceDistributor(use_local_db=local,
-                                     drop_db=dropdb,
-                                     firedrill_mode=firedrill,
-                                     send_email=email,
-                                     server_tag=HOST)
+                                               drop_db=dropdb,
+                                               firedrill_mode=firedrill,
+                                               server_tag=HOST,
+                                               send_email=email,
+                                               send_slack=slackbot)
     try: 
         coinc.run_coincidence()
     except KeyboardInterrupt: 
