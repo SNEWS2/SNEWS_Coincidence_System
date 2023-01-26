@@ -63,20 +63,15 @@ class CoincidenceDataHandler:
 
     def _manage_cache(self, message):
         """
-        This methods will add a new message to cache, checks if:
+        This method will add a new message to cache, checks if:
 
             A)It is an initial message (to the entire cache) or if it:
-
             B)Forms a new sub-group (sends message to _check_coinc_in_subgroups)
-
             C)Is confident to a sub-group (sends message to _check_coinc_in_subgroups)
 
         Parameters
         ----------
         message
-
-        Returns
-        -------
 
         """
         if len(self.cache) == 0:
@@ -149,8 +144,6 @@ class CoincidenceDataHandler:
 
     def _check_for_redundancies(self, sub_group):
         """Checks if sub group is redundant
-
-
         Parameters
         ----------
         sub_group : dataframe
@@ -160,11 +153,9 @@ class CoincidenceDataHandler:
         -------
         bool
             True if sub group is redundant
-
             False if sub group is unique
 
         """
-
         ids = sub_group['_id']
 
         if len(sub_group) == 1:
@@ -172,10 +163,8 @@ class CoincidenceDataHandler:
         for sub_tag in self.cache['sub_group'].unique():
             other_sub = self.cache.query('sub_group == @sub_tag')
             check_ids = ids.isin(other_sub['_id'])
-
             if check_ids.eq(True).all():
                 return True
-
         return False
 
     def _organize_cache(self, sub_group):
@@ -187,7 +176,6 @@ class CoincidenceDataHandler:
         ----------
         sub_group : dataframe
             Sub group
-
 
         """
         if self._check_for_redundancies(sub_group):
@@ -202,7 +190,6 @@ class CoincidenceDataHandler:
 
     def _fix_deltas(self, sub_df):
         """
-
         Parameters
         ----------
         sub_df : Dataframe
@@ -224,7 +211,6 @@ class CoincidenceDataHandler:
     def _update_message(self, message):
         """ This method updates the p_val and neutrino of a detector in cache.
 
-
         Parameters
         ----------
         message : dict
@@ -234,12 +220,10 @@ class CoincidenceDataHandler:
         -------
 
         """
-        update_message = f'UPDATING MESSAGE FROM: {message["detector_name"]}'
-
-        print(update_message)
         update_detector = message["detector_name"]
+        update_message = f'\t> UPDATING MESSAGE FROM: {update_detector}'
+        log.info(update_message)
         detector_ind = self.cache.query(f'detector_name==@update_detector').index.to_list()
-        print(detector_ind)
         # old_nu_times = self.cache['neutrino_time_as_datetime'][detector_ind]
         for ind in detector_ind:
             sub_tag = self.cache['sub_group'][ind]
@@ -275,9 +259,11 @@ class CoincidenceDataHandler:
         """
         if 'retract_id' in retraction_message.keys():
             self.cache = self.cache.query('_id!=@retraction_message["retract_id"]')
+            logstr = retraction_message["retract_id"]
         else:
             retracted_name = retraction_message['detector_name']
             self.cache = self.cache.query('detector_name!=@retracted_name')
+            logstr = retracted_name
         # in case retracted message was an initial
         if len(self.cache) == 0:
             return 0
@@ -296,25 +282,29 @@ class CoincidenceDataHandler:
                 self.cache = self.cache.query('sub_group!=@sub_tag')
                 self.cache = pd.concat([self.cache, other_sub], ignore_index=True)
                 self.cache = self.cache.sort_values(by='neutrino_time').reset_index()
+        log.info(f"\t> Retracted {logstr}")
 
 
 class CoincidenceDistributor:
 
-    def __init__(self, env_path=None, use_local_db=True, drop_db=False, firedrill_mode=True,
-                 hb_path=None, server_tag=None, send_email=False):
+    def __init__(self, env_path=None, use_local_db=True, drop_db=False, firedrill_mode=True, hb_path=None,
+                 server_tag=None, send_email=False, send_slack=True):
         """This class is in charge of sending alerts to SNEWS when CS is triggered
 
         Parameters
         ----------
-        env_path : str
+        env_path : `str`
             path to env file, defaults to '/auxiliary/test-config.env'
-        use_local_db:
+        use_local_db: `bool`
             tells CoincDecider to use local MongoClient, defaults to True
+        send_slack: `bool`
+            Whether to send alerts on slack
 
         """
         log.debug("Initializing CoincDecider\n")
         cs_utils.set_env(env_path)
         self.send_email = send_email
+        self.send_slack = send_slack
         self.hype_mode_ON = True
         self.hb_path = hb_path
         self.server_tag = server_tag
@@ -348,7 +338,7 @@ class CoincidenceDistributor:
     # ----------------------------------------------------------------------------------------------------------------
     def display_table(self):
         """
-        Display each sub list individually using a markdown table and sends to slack channel.
+        Display each sub list individually using a markdown table.
 
         """
         click.secho(
@@ -364,13 +354,14 @@ class CoincidenceDistributor:
 
     def update_message_alert(self):
         """
-        This method will send out an alert if the CoincedenceData
+        This method will send out an alert if the CoincidenceData
 
         """
         if len(self.coinc_data.updated) == 0:
             pass
         else:
             alert_type = 'UPDATE'
+            log.debug('\t> An UPDATE message is received')
             for updated_sub in self.coinc_data.updated:
                 _sub_df = self.coinc_data.cache.query('sub_group==@updated_sub')
                 p_vals = _sub_df['p_val'].to_list()
@@ -390,10 +381,11 @@ class CoincidenceDistributor:
 
                 with self.alert as pub:
                     alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
-                    print(alert)
+                    # print(alert)
                     pub.send(alert)
                     if self.send_email:
                         send_email(alert)
+            log.debug('\t> An alert is updated!')
             self.coinc_data.updated = []
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -410,16 +402,18 @@ class CoincidenceDistributor:
                 continue
 
             _sub_df = self.coinc_data.cache.query('sub_group==@_sub_group')
-
-            if len(_sub_df['detector_name']) == 1 and new_message_count ==1:
+            # if empty, new_message_count returns a NaN
+            if len(_sub_df['detector_name']) == 1 and (new_message_count==1 or pd.isna(new_message_count)):
                 alert_type = 'INITIAL MESSAGE'
+                log.debug(f'\t> Initial message in sub group:{_sub_group}')
             elif new_message_count <= -1:
                 alert_type = 'RETRACTION'
             else:
                 alert_type = 'NEW_MESSAGE'
                 click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
-                click.secho(f'{"Published an Alert!!!".upper():^100}\n', bg='bright_green', fg='red')
+                click.secho(f'{"Published an Alert!!!".upper():^100}', bg='bright_green', fg='red')
                 click.secho(f'{"=" * 100}', fg='bright_red')
+
             if alert_type != 'INITIAL MESSAGE':
                 p_vals = _sub_df['p_val'].to_list()
                 p_vals_avg = np.round(_sub_df['p_val'].mean(), decimals=5)
@@ -427,6 +421,7 @@ class CoincidenceDistributor:
                 detector_names = _sub_df['detector_name'].to_list()
                 false_alarm_prob = cache_false_alarm_rate(cache_sub_list=_sub_df, hb_cache=self.heartbeat.cache_df)
 
+                # highly redundant !!!
                 alert_data = cs_utils.data_cs_alert(
                     p_vals=p_vals,
                     p_val_avg=p_vals_avg,
@@ -439,11 +434,16 @@ class CoincidenceDistributor:
 
                 with self.alert as pub:
                     alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
-                    print(alert)
+                    # print(alert)
                     pub.send(alert)
-                    # if self.send_email:
-                    #     send_email(alert)
+                    if self.send_email:
+                        send_email(alert)
+                    if self.send_slack:
+                        snews_bot.send_table(alert,
+                                             is_test=True,
+                                             topic=self.observation_topic)
 
+                log.info(f"\t> An alert was published: {alert_type} !")
         self.coinc_data.old_count = new_count
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -459,11 +459,9 @@ class CoincidenceDistributor:
         """
         stream = Stream(until_eos=False)
         with stream.open(self.observation_topic, "r") as s:
-            _msg = click.style(f'{datetime.utcnow().isoformat()} Running Coincidence System for '
-                               f'{self.observation_topic}\n')
-            print(_msg)
+            click.secho(f'{datetime.utcnow().isoformat()} Running Coincidence System for '
+                        f'{self.observation_topic}\n')
             for snews_message in s:
-                print("[DEBUG] >>>>> \n", snews_message, "\n")
                 handler = CommandHandler(snews_message)
                 try:
                     go = handler.handle(self)
@@ -474,7 +472,7 @@ class CoincidenceDistributor:
                     snews_message['received_time'] = datetime.utcnow().isoformat()
                     click.secho(f'{"-" * 57}', fg='bright_blue')
                     self.coinc_data.add_to_cache(message=snews_message)
-                    self.display_table()
+                    # self.display_table() ## don't display on the server
                     self.hype_mode_publish()
                     self.update_message_alert()
                     self.storage.insert_mgs(snews_message)
