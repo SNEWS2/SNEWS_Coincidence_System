@@ -58,13 +58,15 @@ class HeartBeat:
 
         self.column_names = ["Received Times", "Detector", "Stamped Times", "Latency", "Time After Last", "Status"]
         self.cache_df = pd.DataFrame(columns=self.column_names)
+        self._last_row = pd.DataFrame(columns=self.column_names) #pd.Series(index=self.column_names)
 
     def make_entry(self, message):
         """ Make an entry in the cache df using new message
+            # NOTE:
+            since we create last row separately, the sequence matters
         """
         msg = {"Received Times": message["Received Times"],
-               "Detector": message["detector_name"],
-               "Status": message["detector_status"]}
+               "Detector": message["detector_name"]}
 
         stamped_time_obj = datetime.fromisoformat(message["sent_time"])
         msg["Stamped Times"] = stamped_time_obj
@@ -77,15 +79,17 @@ class HeartBeat:
         else:
             msg["Time After Last"] = 0 #timedelta(0)
 
+        msg["Status"] = message["detector_status"]
+        self._last_row = pd.DataFrame([msg])
         # add this new entry to cache
-        self.cache_df = pd.concat([self.cache_df, pd.DataFrame([msg])], ignore_index=True)
+        self.cache_df = pd.concat([self.cache_df, self._last_row], ignore_index=True)
 
     def store_beats(self):
         """ log the heartbeats, and save locally
 
         """
         # for now store one master csv in any case
-        self.master_csv()
+        self.store_master_csv()
         if self.store:
             self.dump_csv()
             self.dump_JSON()
@@ -96,7 +100,7 @@ class HeartBeat:
 
         """
         # first store a csv/JSON before dumping anything
-        self.store_beats()
+        # self.store_beats()
         curr_time = datetime.utcnow()
         existing_times = self.cache_df["Received Times"]
         del_t = (curr_time - existing_times).dt.total_seconds() / 60 / 60 # in hours
@@ -110,7 +114,8 @@ class HeartBeat:
         """
         mirror_csv = os.path.join(self.beats_path, f"cached_heartbeats_mirror.csv")
         if os.path.exists(mirror_csv):
-            self.cache_df.to_csv(mirror_csv, mode='a', header=False, index=False)
+            # append only the last row
+            self._last_row.to_csv(mirror_csv, mode='a', header=False, index=False)
         else:
             self.cache_df.to_csv(mirror_csv, mode='w', header=True, index=False)
 
@@ -127,7 +132,7 @@ class HeartBeat:
         today_str = datetime.strftime(today, "%y-%m-%d")
         output_csv_name = os.path.join(self.beats_path, f"{today_str}_heartbeat_log.csv")
         if os.path.exists(output_csv_name):
-            self.cache_df.to_csv(output_csv_name, mode='a', header=False, index=False)
+            self._last_row.to_csv(output_csv_name, mode='a', header=False, index=False)
         else:
             self.cache_df.to_csv(output_csv_name, mode='w', header=True, index=False)
 
@@ -156,16 +161,16 @@ class HeartBeat:
             file.seek(0)
             json.dump(curr_data, file, indent=4)
 
-    def master_csv(self):
+    def store_master_csv(self):
         """ For now, also keep a csv that doesn't distinguish dates
             Append and save everything
 
         """
         master_csv = os.path.join(self.beats_path, f"complete_heartbeat_log.csv")
         if os.path.exists(master_csv):
-            self.cache_df.to_csv(master_csv, mode='a', header=True)
+            self._last_row.to_csv(master_csv, mode='a', header=False, index=False)
         else:
-            self.cache_df.to_csv(master_csv, mode='w', header=True)
+            self.cache_df.to_csv(master_csv, mode='w', header=True, index=False)
 
     def burn_logs(self):
         """ Remove the logs after pre-decided time
