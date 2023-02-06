@@ -112,11 +112,12 @@ class FeedBack:
                 # this warning has already been sent! Skip it
                 return None
             expected_hb = last_hb + timedelta(seconds=float(mean))  # +/- std
-            text = f" Your ({detector}) heartbeat frequency is every {mean:.2f}+/-{std:.2f} sec\n" \
+            text = f" Your -{detector}- heartbeat frequency is every {mean:.2f}+/-{std:.2f} sec\n" \
                    f" Expected a heartbeat at {expected_hb.isoformat()} +/- {std:.2f} sec\n" \
                    f" Since last heartbeat there has been {since_lasthb.total_seconds():.2f} sec\n" \
                    f" Is everything alright? Do you wanna talk about it?"
-            print("[DEBUG] >>>>> \n",text, "\n")
+            # print("[DEBUG] >>>>> \n",text, "\n")
+            print(f"[DEBUG] >>>>> Warning for {detector} is created, trying to send.")
             # send warning to detector
             send_warning_mail(detector, text)
             self.last_feedback_time[detector] = last_hb
