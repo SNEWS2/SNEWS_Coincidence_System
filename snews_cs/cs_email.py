@@ -15,7 +15,7 @@ contact_list_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'aux
 with open(contact_list_file) as file:
     contact_list = json.load(file)
 
-
+### SNEWS Alert
 def send_email(alert_content):
     """ Send the SNEWS alert via e-mail
     """
@@ -30,6 +30,21 @@ def send_email(alert_content):
     log.info(f"\t\t> SNEWS Alert mail was sent at {datetime.utcnow().isoformat()} to {emails}")
 
 
+def _mail_sender(mails):
+    """ Send the emails generated
+        Try sending via mutt, if doesn't work try regular `mail` app
+    """
+    for i, mail in enumerate(mails):
+        # try sending either of the mails
+        try:
+            os.system(mail)
+            # break if successful
+            log.info(f"\t\t\t> mail successfully sent.")
+            break
+        except Exception as e:
+            log.error(f"\t> {i} attempt didn't work {e}\n")
+
+### FEEDBACK EMAIL
 base_msg_mutt = "'smtps://$USER:$PASSWORD@smtp.gmail.com' mutt " \
                  "  -F /dev/null " \
                  "  -e 'set from={sender}' " \
@@ -59,26 +74,24 @@ def send_feedback_mail(detector, attachment, message_content=None, given_contact
     message_content = message_content or ""
     if len(contacts) > 0:
         for contact in contacts:
-            try:
-                mail = base_msg_mutt.format(sender=sender,
+            # format messages
+            mail_mutt = base_msg_mutt.format(sender=sender,
                                             detector=detector,
                                             attachment=os.path.join(beats_path, attachment),
                                             contact=contact,
                                             message_content=message_content)
-                os.system(mail)
-            except Exception as e:
-                log.error(f"\t>mutt didn't work {e}\n\t>Trying basic mail..")
-                time = datetime.utcnow().isoformat()
-                mail = base_msg.format(message_content=message_content,
-                                       timenow=time,
-                                       attachment=attachment,
-                                       contact=contact)
-                os.system(mail)
-        log.info(f"\t\t> Feedback Sent to {contacts} for {detector}")
+            time = datetime.utcnow().isoformat()
+            mail_regular = base_msg.format(message_content=message_content,
+                                           timenow=time,
+                                           attachment=attachment,
+                                           contact=contact)
+
+            log.info(f"\t\t> Trying to send feedback to {contact} for {detector}")
+            _mail_sender([mail_mutt, mail_regular])
     else:
         log.info(f"\t\t> Feedback mail is requested for {detector}. However, there are no contacts added.")
 
-
+### Send WARNING message
 base_warning_mutt = "'smtps://user:password@smtp.gmail.com' mutt " \
                      "  -F /dev/null " \
                      "  -e 'set from={sender}' " \
@@ -95,24 +108,24 @@ base_warning = "echo {message_content} | " \
                "{contact}"
 
 def send_warning_mail(detector, message_content=None):
+    """ Send warning mail when a heartbeat is skipped
+        This function is invoked within the feedback script
+    """
     contacts = contact_list[detector]["emails"]
     message_content = message_content or ""
     if len(contacts) > 0:
         for contact in contacts:
-            try:
-                mail = base_warning_mutt.format(sender=sender,
-                                                detector=detector,
-                                                contact=contact,
-                                                message_content=message_content)
-                os.system(mail)
-            except Exception as e:
-                log.error(f"\t>mutt didn't work {e}\n\t>Trying basic mail..")
-                mail = base_warning.format(message_content=message_content,
-                                           detector=detector,
-                                           contact=contact)
-                os.system(mail)
-        log.info(f"\t\t> Warning Sent to {contacts} for {detector}\n")
-
+            mail_mutt = base_warning_mutt.format(sender=sender,
+                                                 detector=detector,
+                                                 contact=contact,
+                                                 message_content=message_content)
+            mail_regular = base_warning.format(message_content=message_content,
+                                               detector=detector,
+                                               contact=contact)
+            log.info(f"\t\t> Trying to send warning to {contact} for {detector}\n")
+            _mail_sender([mail_mutt, mail_regular])
+    else:
+        log.info(f"\t\t> Warning is triggered for {detector}. However, there are no contacts added.")
 
 #### sudo apt-get install sendmail
 
