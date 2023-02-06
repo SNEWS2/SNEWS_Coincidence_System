@@ -7,11 +7,8 @@ Authors:
 Melih Kara
 Sebastian Torres-Lara
 """
-import hop, sys, time, os, json, click
+import os, click
 from hop import Stream
-from datetime import datetime
-from collections import namedtuple
-from dotenv import load_dotenv
 from . import cs_utils
 from .snews_db import Storage
 
@@ -65,7 +62,7 @@ class AlertPublisher:
 
     def display_message(self, message):
         if self.verbose:
-            print(message['_id'])
+            # print(message['_id'])
             tier = 'TEST ALERT'
             click.secho(f'{"-" * 64}', fg='bright_blue')
             click.secho(f'Sending {tier}', fg='bright_red')
