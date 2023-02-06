@@ -37,7 +37,6 @@ class CoincidenceDataHandler:
         """
         Takes in SNEWS message and checks if it is a retraction, update or new addition to cache.
         This is the 'core' function of CoincidenceDataHandler
-
         Parameters
         ----------
         message : dict
@@ -87,6 +86,7 @@ class CoincidenceDataHandler:
         """ This method either:
 
             A)Adds Message to an existing sub-group, if coincident with the initial signal
+
 
             B) If it is not coincident with any sub groups it creates two new sub groups,
             setting the message as their initial time.
