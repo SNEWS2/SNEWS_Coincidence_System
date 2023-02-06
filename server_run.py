@@ -1,4 +1,4 @@
-from snews_cs.snews_coinc_v2 import CoincidenceDistributor
+from snews_cs.snews_coinc import CoincidenceDistributor
 import hop
 from socket import gethostname
 

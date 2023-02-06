@@ -11,7 +11,7 @@
 import click, os
 from . import __version__
 from . import cs_utils
-from . import snews_coinc_v2 as snews_coinc
+from . import snews_coinc as snews_coinc
 from . heartbeat_feedbacks import FeedBack
 from socket import gethostname
 
