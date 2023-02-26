@@ -466,7 +466,7 @@ class CoincidenceDistributor:
             click.secho(f'{datetime.utcnow().isoformat()} Running Coincidence System for '
                         f'{self.observation_topic}\n')
             for snews_message in s:
-                handler = CommandHandler(snews_message)
+                handler = CommandHandler(snews_message.content)
                 try:
                     go = handler.handle(self)
                 except Exception as e:
