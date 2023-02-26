@@ -466,7 +466,12 @@ class CoincidenceDistributor:
             click.secho(f'{datetime.utcnow().isoformat()} Running Coincidence System for '
                         f'{self.observation_topic}\n')
             for snews_message in s:
-                handler = CommandHandler(snews_message.content)
+                log.debug(f"\nReceived message: {snews_message}\n")
+                try:
+                    handler = CommandHandler(snews_message)
+                except ValueError as ve:
+                    log.debug(f"\nMessage value error\n{ve}\nTrying model.content access.\n")
+                    handler = CommandHandler(snews_message.content)
                 try:
                     go = handler.handle(self)
                 except Exception as e:
