@@ -189,7 +189,10 @@ class CommandHandler:
         """
 
     def __init__(self, message):
-        self.input_message = message
+        try:
+            self.input_message = message
+        except:
+            self.input_message = message.content
         self.input_json = json.dumps(message, sort_keys=True, indent=4)
         self.command_name = None
         self.is_test = False
