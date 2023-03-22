@@ -1,11 +1,16 @@
 import os
 import json
 import click
-from hop.models import JSONBlob
 from snews_pt.snews_format_checker import SnewsFormat
 import pandas as pd
 from .heartbeat_feedbacks import check_frequencies_and_send_mail, delete_old_figures
 from .core.logging import getLogger
+
+try:
+    from hop.models import JSONBlob
+    hop8 = True
+except ImportError:
+    hop8 = False
 
 log = getLogger(__name__)
 
@@ -191,7 +196,7 @@ class CommandHandler:
 
     def __init__(self, message):
         
-        if isinstance(message, JSONBlob):
+        if hop8:
             message = message.content
 
         self.input_message = message

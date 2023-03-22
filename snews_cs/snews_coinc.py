@@ -6,7 +6,6 @@ from .alert_pub import AlertPublisher
 import numpy as np
 import pandas as pd
 from hop import Stream
-from hop.models import JSONBlob
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
 from .cs_remote_commands import CommandHandler
@@ -15,6 +14,12 @@ from .cs_email import send_email
 from .snews_hb import HeartBeat
 from .cs_stats import cache_false_alarm_rate
 import sys
+
+try:
+    from hop.models import JSONBlob
+    hop8 = True
+except ImportError:
+    hop8 = False
 
 log = getLogger(__name__)
 
@@ -469,7 +474,7 @@ class CoincidenceDistributor:
             for snews_message in s:
                 log.debug(f"\nReceived message: {snews_message}\n")
 
-                if isinstance(snews_message, JSONBlob):
+                if hop8:
                     snews_message = snews_message.content
 
                 handler = CommandHandler(snews_message)
@@ -480,7 +485,7 @@ class CoincidenceDistributor:
                     log.error(f"Something crashed the server, here is the Exception raised\n{e}\n")
                     go = False
                 if go:
-                    if isinstance(snews_message, JSONBlob):
+                    if hop8:
                         snews_message = snews_message.content
 
                     snews_message['received_time'] = datetime.utcnow().isoformat()
