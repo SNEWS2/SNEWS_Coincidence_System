@@ -1,6 +1,7 @@
 import os
 import json
 import click
+from hop.models import JSONBlob
 from snews_pt.snews_format_checker import SnewsFormat
 import pandas as pd
 from .heartbeat_feedbacks import check_frequencies_and_send_mail, delete_old_figures
@@ -189,10 +190,11 @@ class CommandHandler:
         """
 
     def __init__(self, message):
-        try:
-            self.input_message = message
-        except:
-            self.input_message = message.content
+        
+        if isinstance(message, JSONBlob):
+            message = message.content
+
+        self.input_message = message
         self.input_json = json.dumps(message, sort_keys=True, indent=4)
         self.command_name = None
         self.is_test = False

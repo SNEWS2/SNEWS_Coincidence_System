@@ -6,6 +6,7 @@ from .alert_pub import AlertPublisher
 import numpy as np
 import pandas as pd
 from hop import Stream
+from hop.models import JSONBlob
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
 from .cs_remote_commands import CommandHandler
@@ -467,28 +468,24 @@ class CoincidenceDistributor:
                         f'{self.observation_topic}\n')
             for snews_message in s:
                 log.debug(f"\nReceived message: {snews_message}\n")
-                try:
-                    handler = CommandHandler(snews_message)
-                except TypeError as te:
-                    log.debug(f"\nMessage value error\n{te}\nTrying model.content access.\n")
-                    handler = CommandHandler(snews_message.content)
-                # except ValueError as ve:
-                #     log.debug(f"\nMessage value error\n{ve}\nTrying model.content access.\n")
-                #     handler = CommandHandler(snews_message.content)
+
+                if isinstance(snews_message, JSONBlob):
+                    snews_message = snews_message.content
+
+                handler = CommandHandler(snews_message)
+
                 try:
                     go = handler.handle(self)
                 except Exception as e:
                     log.error(f"Something crashed the server, here is the Exception raised\n{e}\n")
                     go = False
                 if go:
-                    try:
-                        snews_message['received_time'] = datetime.utcnow().isoformat()
-                        click.secho(f'{"-" * 57}', fg='bright_blue')
-                        self.coinc_data.add_to_cache(message=snews_message)
-                    except TypeError as te:
-                        snews_message.content['received_time'] = datetime.utcnow().isoformat()
-                        click.secho(f'{"-" * 57}', fg='bright_blue')
-                        self.coinc_data.add_to_cache(message=snews_message.content)
+                    if isinstance(snews_message, JSONBlob):
+                        snews_message = snews_message.content
+
+                    snews_message['received_time'] = datetime.utcnow().isoformat()
+                    click.secho(f'{"-" * 57}', fg='bright_blue')
+                    self.coinc_data.add_to_cache(message=snews_message)
 
                     # self.display_table() ## don't display on the server
                     self.hype_mode_publish()
