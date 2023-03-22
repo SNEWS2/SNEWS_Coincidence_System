@@ -14,12 +14,8 @@ from .cs_email import send_email
 from .snews_hb import HeartBeat
 from .cs_stats import cache_false_alarm_rate
 import sys
+from hop.models import JSONBlob
 
-try:
-    from hop.models import JSONBlob
-    hop8 = True
-except ImportError:
-    hop8 = False
 
 log = getLogger(__name__)
 
@@ -447,11 +443,11 @@ class CoincidenceDistributor:
                     pub.send(alert)
                     if self.send_email:
                         send_email(alert)
-                    if self.send_slack:
-                        snews_bot.send_table(alert_data,
-                                             alert,
-                                             is_test=True,
-                                             topic=self.observation_topic)
+                    # if self.send_slack:
+                    #     snews_bot.send_table(alert_data,
+                    #                          alert,
+                    #                          is_test=True,
+                    #                          topic=self.observation_topic)
 
                 log.info(f"\t> An alert was published: {alert_type} !")
         self.coinc_data.old_count = new_count
@@ -474,7 +470,7 @@ class CoincidenceDistributor:
             for snews_message in s:
                 log.debug(f"\nReceived message: {snews_message}\n")
 
-                if hop8:
+                if isinstance(snews_message, JSONBlob):
                     snews_message = snews_message.content
 
                 handler = CommandHandler(snews_message)
@@ -485,9 +481,7 @@ class CoincidenceDistributor:
                     log.error(f"Something crashed the server, here is the Exception raised\n{e}\n")
                     go = False
                 if go:
-                    if hop8:
-                        snews_message = snews_message.content
-
+                    snews_message = snews_message.content
                     snews_message['received_time'] = datetime.utcnow().isoformat()
                     click.secho(f'{"-" * 57}', fg='bright_blue')
                     self.coinc_data.add_to_cache(message=snews_message)

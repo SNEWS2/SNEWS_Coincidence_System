@@ -5,12 +5,7 @@ from snews_pt.snews_format_checker import SnewsFormat
 import pandas as pd
 from .heartbeat_feedbacks import check_frequencies_and_send_mail, delete_old_figures
 from .core.logging import getLogger
-
-try:
-    from hop.models import JSONBlob
-    hop8 = True
-except ImportError:
-    hop8 = False
+from hop.models import JSONBlob
 
 log = getLogger(__name__)
 
@@ -196,8 +191,8 @@ class CommandHandler:
 
     def __init__(self, message):
         
-        if hop8:
-            message = message.content
+        # if hop8:
+        #     message = message.content
 
         self.input_message = message
         self.input_json = json.dumps(message, sort_keys=True, indent=4)
