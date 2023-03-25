@@ -15,7 +15,7 @@ version = version_match.group(1)
 
 # requirements
 install_requires = [
-    "hop-client=0.5.0",
+    "hop-client=0.8.0",
     "jsonschema=4.4.0",
     "numpy=1.22.2",
     "pymongo=4.0.2",
