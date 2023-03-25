@@ -191,8 +191,6 @@ class CommandHandler:
 
     def __init__(self, message):
         
-        # if hop8:
-        #     message = message.content
 
         self.input_message = message
         self.input_json = json.dumps(message, sort_keys=True, indent=4)

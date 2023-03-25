@@ -14,7 +14,6 @@ from .cs_email import send_email
 from .snews_hb import HeartBeat
 from .cs_stats import cache_false_alarm_rate
 import sys
-from hop.models import JSONBlob
 
 
 log = getLogger(__name__)
@@ -443,11 +442,11 @@ class CoincidenceDistributor:
                     pub.send(alert)
                     if self.send_email:
                         send_email(alert)
-                    # if self.send_slack:
-                    #     snews_bot.send_table(alert_data,
-                    #                          alert,
-                    #                          is_test=True,
-                    #                          topic=self.observation_topic)
+                    if self.send_slack:
+                        snews_bot.send_table(alert_data,
+                                             alert,
+                                             is_test=True,
+                                             topic=self.observation_topic)
 
                 log.info(f"\t> An alert was published: {alert_type} !")
         self.coinc_data.old_count = new_count
@@ -467,11 +466,12 @@ class CoincidenceDistributor:
         with stream.open(self.observation_topic, "r") as s:
             click.secho(f'{datetime.utcnow().isoformat()} Running Coincidence System for '
                         f'{self.observation_topic}\n')
+            
             for snews_message in s:
-                log.debug(f"\nReceived message: {snews_message}\n")
+                # Access content from JSONBlob
+                snews_message = snews_message.content
 
-                if isinstance(snews_message, JSONBlob):
-                    snews_message = snews_message.content
+                log.debug(f"\nReceived message: {snews_message}\n")
 
                 handler = CommandHandler(snews_message)
 
@@ -481,7 +481,6 @@ class CoincidenceDistributor:
                     log.error(f"Something crashed the server, here is the Exception raised\n{e}\n")
                     go = False
                 if go:
-                    snews_message = snews_message.content
                     snews_message['received_time'] = datetime.utcnow().isoformat()
                     click.secho(f'{"-" * 57}', fg='bright_blue')
                     self.coinc_data.add_to_cache(message=snews_message)
@@ -489,5 +488,5 @@ class CoincidenceDistributor:
                     # self.display_table() ## don't display on the server
                     self.hype_mode_publish()
                     self.update_message_alert()
-                    # self.storage.insert_mgs(snews_message)
+                    self.storage.insert_mgs(snews_message)
                     sys.stdout.flush()
