@@ -1,5 +1,5 @@
 from . import cs_utils
-from .snews_db import Storage
+# from .snews_db import Storage
 import os, click
 from datetime import datetime
 from .alert_pub import AlertPublisher
@@ -14,6 +14,7 @@ from .cs_email import send_email
 from .snews_hb import HeartBeat
 from .cs_stats import cache_false_alarm_rate
 import sys
+
 
 log = getLogger(__name__)
 
@@ -308,7 +309,7 @@ class CoincidenceDistributor:
         self.hype_mode_ON = True
         self.hb_path = hb_path
         self.server_tag = server_tag
-        self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
+        # self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
@@ -465,8 +466,15 @@ class CoincidenceDistributor:
         with stream.open(self.observation_topic, "r") as s:
             click.secho(f'{datetime.utcnow().isoformat()} Running Coincidence System for '
                         f'{self.observation_topic}\n')
+            
             for snews_message in s:
+                # Access content from JSONBlob
+                snews_message = snews_message.content
+
+                log.debug(f"\nReceived message: {snews_message}\n")
+
                 handler = CommandHandler(snews_message)
+
                 try:
                     go = handler.handle(self)
                 except Exception as e:
@@ -476,6 +484,7 @@ class CoincidenceDistributor:
                     snews_message['received_time'] = datetime.utcnow().isoformat()
                     click.secho(f'{"-" * 57}', fg='bright_blue')
                     self.coinc_data.add_to_cache(message=snews_message)
+
                     # self.display_table() ## don't display on the server
                     self.hype_mode_publish()
                     self.update_message_alert()

@@ -5,6 +5,7 @@ from snews_pt.snews_format_checker import SnewsFormat
 import pandas as pd
 from .heartbeat_feedbacks import check_frequencies_and_send_mail, delete_old_figures
 from .core.logging import getLogger
+from hop.models import JSONBlob
 
 log = getLogger(__name__)
 
@@ -189,6 +190,8 @@ class CommandHandler:
         """
 
     def __init__(self, message):
+        
+
         self.input_message = message
         self.input_json = json.dumps(message, sort_keys=True, indent=4)
         self.command_name = None
