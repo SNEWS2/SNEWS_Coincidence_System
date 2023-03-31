@@ -1,5 +1,5 @@
 from . import cs_utils
-# from .snews_db import Storage
+from .snews_db import Storage
 import os, click
 from datetime import datetime
 from .alert_pub import AlertPublisher
@@ -309,7 +309,7 @@ class CoincidenceDistributor:
         self.hype_mode_ON = True
         self.hb_path = hb_path
         self.server_tag = server_tag
-        # self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
+        self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
@@ -486,6 +486,7 @@ class CoincidenceDistributor:
                     self.coinc_data.add_to_cache(message=snews_message)
 
                     # self.display_table() ## don't display on the server
+                    # print(f"\n\n\n {snews_message} \n\n\n")
                     self.hype_mode_publish()
                     self.update_message_alert()
                     self.storage.insert_mgs(snews_message)
