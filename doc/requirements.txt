@@ -1,3 +1,4 @@
+adc-streaming>=1.2.0
 click~=8.1.2
 configparser==5.2.0
 docutils==0.17.1

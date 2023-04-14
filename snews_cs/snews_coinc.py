@@ -1,20 +1,25 @@
-from . import cs_utils
-# from .snews_db import Storage
-import os, click
+import click
+import os
+import random
+import sys
+import time
 from datetime import datetime
-from .alert_pub import AlertPublisher
+
+import adc.errors
 import numpy as np
 import pandas as pd
 from hop import Stream
-from . import snews_bot
-from .cs_alert_schema import CoincidenceTierAlert
-from .cs_remote_commands import CommandHandler
-from .core.logging import getLogger
-from .cs_email import send_email
-from .snews_hb import HeartBeat
-from .cs_stats import cache_false_alarm_rate
-import sys
 
+from . import cs_utils
+from . import snews_bot
+from .alert_pub import AlertPublisher
+from .core.logging import getLogger
+from .cs_alert_schema import CoincidenceTierAlert
+from .cs_email import send_email
+from .cs_remote_commands import CommandHandler
+from .cs_stats import cache_false_alarm_rate
+from .snews_db import Storage
+from .snews_hb import HeartBeat
 
 log = getLogger(__name__)
 
@@ -309,7 +314,7 @@ class CoincidenceDistributor:
         self.hype_mode_ON = True
         self.hb_path = hb_path
         self.server_tag = server_tag
-        # self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
+        self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
@@ -461,32 +466,38 @@ class CoincidenceDistributor:
         * other commands include "test-connection", "test-scenarios",
                 "hard-reset", "Retraction",
 
+        ****
+        Reconnect logic and retryable errors thanks to Spencer Nelson (https://github.com/spenczar)
+        https://github.com/scimma/hop-client/issues/140
+
+        TODO - error_count should "decay", as we will likely see clusters of retryable kafkaexceptions
+               during service interruption events.
         """
-        stream = Stream(until_eos=False)
-        with stream.open(self.observation_topic, "r") as s:
-            click.secho(f'{datetime.utcnow().isoformat()} Running Coincidence System for '
-                        f'{self.observation_topic}\n')
-            
-            for snews_message in s:
-                # Access content from JSONBlob
-                snews_message = snews_message.content
+        error_count = 0
+        while True:
+            try:
+                stream = Stream(until_eos=False)
+                with stream.open(self.observation_topic, "r") as s:
+                    click.secho(f'{datetime.utcnow().isoformat()} (re)Initializing Coincidence System for '
+                                f'{self.observation_topic}\n')
+                    for snews_message in s:
+                        handler = CommandHandler(snews_message)
+                        if handler.handle(self):
+                            error_count = 0
+                            snews_message['received_time'] = datetime.utcnow().isoformat()
+                            click.secho(f'{"-" * 57}', fg='bright_blue')
+                            self.coinc_data.add_to_cache(message=snews_message)
+                            # self.display_table() ## don't display on the server
+                            self.hype_mode_publish()
+                            self.update_message_alert()
+                            self.storage.insert_mgs(snews_message)
+                            sys.stdout.flush()
 
-                log.debug(f"\nReceived message: {snews_message}\n")
-
-                handler = CommandHandler(snews_message)
-
-                try:
-                    go = handler.handle(self)
-                except Exception as e:
+            except adc.errors.KafkaException as e:
+                if e.retriable:
+                    # sleep with exponential backoff and a bit of jitter.
+                    time.sleep((1.5 ** error_count) * (1 + random.random()) / 2)
+                else:
                     log.error(f"Something crashed the server, here is the Exception raised\n{e}\n")
-                    go = False
-                if go:
-                    snews_message['received_time'] = datetime.utcnow().isoformat()
-                    click.secho(f'{"-" * 57}', fg='bright_blue')
-                    self.coinc_data.add_to_cache(message=snews_message)
-
-                    # self.display_table() ## don't display on the server
-                    self.hype_mode_publish()
-                    self.update_message_alert()
-                    self.storage.insert_mgs(snews_message)
-                    sys.stdout.flush()
+            except Exception as e:
+                log.error(f"Something crashed the server, here is the Exception raised\n{e}\n")
