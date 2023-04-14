@@ -1,25 +1,20 @@
-import click
-import os
-import random
-import sys
-import time
+from . import cs_utils
+# from .snews_db import Storage
+import os, click
 from datetime import datetime
-
-import adc.errors
+from .alert_pub import AlertPublisher
 import numpy as np
 import pandas as pd
 from hop import Stream
-
-from . import cs_utils
 from . import snews_bot
-from .alert_pub import AlertPublisher
-from .core.logging import getLogger
 from .cs_alert_schema import CoincidenceTierAlert
-from .cs_email import send_email
 from .cs_remote_commands import CommandHandler
-from .cs_stats import cache_false_alarm_rate
-from .snews_db import Storage
+from .core.logging import getLogger
+from .cs_email import send_email
 from .snews_hb import HeartBeat
+from .cs_stats import cache_false_alarm_rate
+import sys
+
 
 log = getLogger(__name__)
 
@@ -314,7 +309,7 @@ class CoincidenceDistributor:
         self.hype_mode_ON = True
         self.hb_path = hb_path
         self.server_tag = server_tag
-        self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
+        # self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
