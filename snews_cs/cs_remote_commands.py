@@ -163,7 +163,7 @@ class Commands:
         none_valid = True
         # avoid empty lines, and allow multiple emails
         given_mail =  [mail.strip() for mail in given_mail.split(";") if len(mail.strip())]
-        print(f"> [DEBUG] These mails are passed {'; '.join(given_mail)} for detector: {detector}")
+        log.debug(f"> [DEBUG] These mails are passed {'; '.join(given_mail)} for detector: {detector}")
         for email in given_mail:
             if not email in contact_list[detector]["emails"]:
                 log.error(f"\t> The given email: {email} is not registered for {detector}!")
@@ -174,8 +174,11 @@ class Commands:
             log.error(f"\t> None of the the given email: {';'.join(given_mail)} is registered, ignoring all!")
             return None
         try:
-            attachment_name = check_frequencies_and_send_mail(detector, given_contact=given_mail)
-            log.info(f"\t> The feedback file: {attachment_name} is sent to the registered mails for {detector}")
+            attachment_name, out = check_frequencies_and_send_mail(detector, given_contact=given_mail)
+            if out:
+                log.info(f"\t> The feedback file: {attachment_name} is sent to the registered mails for {detector}")
+            else:
+                log.debug(f"\t> The feedback file: {attachment_name} is created but could not be sent.")
         except Exception as e:
             log.info(f"\t> Something went wrong for {detector}, couldn't send mail, see the exception;\n{e}")
 

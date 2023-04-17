@@ -30,8 +30,7 @@ def send_email(alert_content):
 
 
 def _mail_sender(mails):
-    """ Send the emails generated
-        Try sending via mutt, if doesn't work try regular `mail` app
+    """ Send the generated emails via s-nail
     """
     success = False
     for i, mail in enumerate(mails[::-1]):
@@ -41,8 +40,10 @@ def _mail_sender(mails):
             success = True
     if success:
         log.info(f"\t> Mail was successfully sent!\n")
+        return True
     else:
         log.error(f"\t> Mail could not be sent.\n")
+        return False
 
 ### FEEDBACK EMAIL
 base_msg = "echo {message_content} | " \
@@ -68,9 +69,9 @@ def send_feedback_mail(detector, attachment, message_content=None, given_contact
                                            timenow=time,
                                            attachment=attachment,
                                            contact=contact)
-
             log.info(f"\t\t> Trying to send feedback to {contact} for {detector}")
-            _mail_sender([mail_regular])
+            out = _mail_sender([mail_regular])
+            return out
     else:
         log.info(f"\t\t> Feedback mail is requested for {detector}. However, there are no contacts added.")
 
@@ -93,7 +94,7 @@ def send_warning_mail(detector, message_content=None):
                                                detector=detector,
                                                contact=contact)
             log.info(f"\t\t> Trying to send warning to {contact} for {detector}\n")
-            _mail_sender([mail_regular])
+            out = _mail_sender([mail_regular])
     else:
         log.info(f"\t\t> Warning is triggered for {detector}. However, there are no contacts added.")
 
