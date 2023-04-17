@@ -479,6 +479,11 @@ class CoincidenceDistributor:
                     click.secho(f'{datetime.utcnow().isoformat()} (re)Initializing Coincidence System for '
                                 f'{self.observation_topic}\n')
                     for snews_message in s:
+                        try:
+                            snews_message = snews_message.content
+                        except Exception as e:
+                            log.error(f"A message with older hop version is found. {e}\n{snews_message}")
+                            continue
                         handler = CommandHandler(snews_message)
                         if handler.handle(self):
                             error_count = 0
