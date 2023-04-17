@@ -475,7 +475,7 @@ class CoincidenceDistributor:
         https://github.com/scimma/hop-client/issues/140
 
         """
-        fatal_error = 0
+        fatal_error = True
 
         while True:
             try:
@@ -508,17 +508,17 @@ class CoincidenceDistributor:
                     self.retriable_error_count += 1
                     if self.retriable_error_count >= self.max_retriable_errors:
                         log.error(f"Max retryable errors exceeded. Here is the most recent exception:\n{e}\n")
-                        fatal_error += 1
+                        fatal_error = True
                     else:
                         log.error(f"Retryable error! \n{e}\n")
                         # sleep with exponential backoff and a bit of jitter.
                         time.sleep((1.5 ** self.retriable_error_count) * (1 + random.random()) / 2)
                 else:
                     log.error(f"Something crashed the server, here is the Exception raised\n{e}\n")
-                    fatal_error += 1
+                    fatal_error = True
             except Exception as e:
                 log.error(f"Something crashed the server, here is the Exception raised\n{e}\n")
-                fatal_error += 1
+                fatal_error = True
 
             if self.exit_on_error and fatal_error:
                 break
