@@ -74,12 +74,14 @@ class Commands:
         # for retraction message we need to let it enter the cache. So updated alerts can be checked
 
     def test_connection(self, message, CoincDeciderInstance):
-        """ When received a test_connection key
-            reinstert the message with updated status
+        """ When received a test_connection key in observation topic
+            reinstert the message with updated status to connection topic
             this way user can test if their message
-            goes and comes back from the server
+            goes and comes back from the server, by looking into the connection topic
         """
         log.debug("\t> Executing Test Connection Command.")
+        default_connection_topic = "kafka://kafka.scimma.org/snews.connection-testing"
+        connection_broker = os.getenv("CONNECTION_TEST_TOPIC", default_connection_topic)
         # it might be the second bounce, if so, log and exit
         if message["status"] == "received":
             log.debug("\t> Confirm Received.")
@@ -87,12 +89,13 @@ class Commands:
 
         from hop import Stream
         stream = Stream(until_eos=True)
-        with stream.open(CoincDeciderInstance.observation_topic, "w") as s:
+        # with stream.open(CoincDeciderInstance.observation_topic, "w") as s:
+        with stream.open(connection_broker, "w") as s:
             # insert back with a "received" status
             msg = message.copy()
             msg["status"] = "received"
             s.write(msg)
-            log.info(f"\t> Connection Tested. 'Received' message is reinserted to stream.")
+            log.info(f"\t> Connection Tested. 'Received' message is reinserted to connection stream.")
 
     def hard_reset(self, message, CoincDeciderInstance):
         """ Authorized User (passing a correct password)
