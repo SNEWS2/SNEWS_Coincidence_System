@@ -534,4 +534,3 @@ class CoincidenceDistributor:
                 # otherwise continue by re-initiating
                 continue
 
-

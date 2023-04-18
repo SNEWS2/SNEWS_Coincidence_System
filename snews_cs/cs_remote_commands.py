@@ -74,12 +74,14 @@ class Commands:
         # for retraction message we need to let it enter the cache. So updated alerts can be checked
 
     def test_connection(self, message, CoincDeciderInstance):
-        """ When received a test_connection key
-            reinstert the message with updated status
+        """ When received a test_connection key in observation topic
+            reinstert the message with updated status to connection topic
             this way user can test if their message
-            goes and comes back from the server
+            goes and comes back from the server, by looking into the connection topic
         """
         log.debug("\t> Executing Test Connection Command.")
+        default_connection_topic = "kafka://kafka.scimma.org/snews.connection-testing"
+        connection_broker = os.getenv("CONNECTION_TEST_TOPIC", default_connection_topic)
         # it might be the second bounce, if so, log and exit
         if message["status"] == "received":
             log.debug("\t> Confirm Received.")
@@ -87,12 +89,13 @@ class Commands:
 
         from hop import Stream
         stream = Stream(until_eos=True)
-        with stream.open(CoincDeciderInstance.observation_topic, "w") as s:
+        # with stream.open(CoincDeciderInstance.observation_topic, "w") as s:
+        with stream.open(connection_broker, "w") as s:
             # insert back with a "received" status
             msg = message.copy()
             msg["status"] = "received"
             s.write(msg)
-            log.info(f"\t> Connection Tested. 'Received' message is reinserted to stream.")
+            log.info(f"\t> Connection Tested. 'Received' message is reinserted to connection stream.")
 
     def hard_reset(self, message, CoincDeciderInstance):
         """ Authorized User (passing a correct password)
@@ -160,7 +163,7 @@ class Commands:
         none_valid = True
         # avoid empty lines, and allow multiple emails
         given_mail =  [mail.strip() for mail in given_mail.split(";") if len(mail.strip())]
-        print(f"> [DEBUG] These mails are passed {'; '.join(given_mail)} for detector: {detector}")
+        log.debug(f"> [DEBUG] These mails are passed {'; '.join(given_mail)} for detector: {detector}")
         for email in given_mail:
             if not email in contact_list[detector]["emails"]:
                 log.error(f"\t> The given email: {email} is not registered for {detector}!")
@@ -171,8 +174,11 @@ class Commands:
             log.error(f"\t> None of the the given email: {';'.join(given_mail)} is registered, ignoring all!")
             return None
         try:
-            attachment_name = check_frequencies_and_send_mail(detector, given_contact=given_mail)
-            log.info(f"\t> The feedback file: {attachment_name} is sent to the registered mails for {detector}")
+            attachment_name, out = check_frequencies_and_send_mail(detector, given_contact=given_mail)
+            if out:
+                log.info(f"\t> The feedback file: {attachment_name} is sent to the registered mails for {detector}")
+            else:
+                log.debug(f"\t> The feedback file: {attachment_name} is created but could not be sent.")
         except Exception as e:
             log.info(f"\t> Something went wrong for {detector}, couldn't send mail, see the exception;\n{e}")
 

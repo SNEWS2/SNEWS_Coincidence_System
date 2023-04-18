@@ -112,11 +112,10 @@ class FeedBack:
                 # this warning has already been sent! Skip it
                 return None
             expected_hb = last_hb + timedelta(seconds=float(mean))  # +/- std
-            text = f" Your -{detector}- heartbeat frequency is every {mean:.2f}+/-{std:.2f} sec\n" \
-                   f" Expected a heartbeat at {expected_hb.isoformat()} +/- {std:.2f} sec\n" \
-                   f" Since last heartbeat there has been {since_lasthb.total_seconds():.2f} sec\n" \
+            text = f" Your -{detector}- heartbeat frequency is every {mean:.2f}+/-{std:.2f} sec. " \
+                   f" Expected a heartbeat at {expected_hb.isoformat()} +/- {std:.2f} sec. " \
+                   f" Since last heartbeat there has been {since_lasthb.total_seconds():.2f} sec. " \
                    f" Is everything alright? Do you wanna talk about it?"
-            # print("[DEBUG] >>>>> \n",text, "\n")
             print(f"[DEBUG] >>>>> Warning for {detector} is created, trying to send.")
             # send warning to detector
             send_warning_mail(detector, text)
@@ -140,15 +139,15 @@ def check_frequencies_and_send_mail(detector, given_contact=None):
     std = np.std(df['Time After Last'])
     last_hb = df['Received Times'].values[-1]  # this is a numpy.datetime
     last_hb = pd.to_datetime(last_hb)  # we have to convert it to datetime.datetime
-    text = f" Your heartbeat frequency is every {mean:.2f}+/-{std:2f} sec\n" \
-           f" The last heartbeat received at {last_hb} \n" \
+    text = f" Your heartbeat frequency is every {mean:.2f}+/-{std:2f} sec." \
+           f" The last heartbeat received at {last_hb}. " \
            f" The received heartbeat frequency, together with the computed latency" \
-           f" is plotted, and sent in the attachment.\n"
+           f" is plotted, and sent in the attachment."
            # f" The next feedback will be send in {self.contact_intervals[detector]} hours."
     attachment = f"{detector}_{now_str}.png"
     plot_beats(df, detector, attachment)  # create a plot to send
-    send_feedback_mail(detector, attachment, text, given_contact=given_contact)
-    return attachment
+    out = send_feedback_mail(detector, attachment, text, given_contact=given_contact)
+    return attachment, out
 
 
 def plot_beats(df, detector, figname):
