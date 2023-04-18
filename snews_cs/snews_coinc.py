@@ -1,5 +1,5 @@
 from . import cs_utils
-# from .snews_db import Storage
+from .snews_db import Storage
 import os, click
 from datetime import datetime
 from .alert_pub import AlertPublisher
@@ -312,7 +312,7 @@ class CoincidenceDistributor:
         self.hype_mode_ON = True
         self.hb_path = hb_path
         self.server_tag = server_tag
-        # self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
+        self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
@@ -320,7 +320,7 @@ class CoincidenceDistributor:
         # Some Kafka errors are retryable.
         self.retriable_error_count = 0
         self.max_retriable_errors = 20
-        self.exit_on_error = True
+        self.exit_on_error = False #True
 
         self.initial_set = False
         self.alert = AlertPublisher(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
@@ -484,25 +484,30 @@ class CoincidenceDistributor:
                     click.secho(f'{datetime.utcnow().isoformat()} (re)Initializing Coincidence System for '
                                 f'{self.observation_topic}\n')
                     for snews_message in s:
+                        # check for the hop version
                         try:
                             snews_message = snews_message.content
                         except Exception as e:
                             log.error(f"A message with older hop version is found. {e}\n{snews_message}")
-                            continue
+                            snews_message = snews_message
+                        # handle the input message
                         handler = CommandHandler(snews_message)
+                        # if a coincidence tier message (or retraction) run through the logic
                         if handler.handle(self):
-                            if self.retriable_error_count > 1:
-                                self.retriable_error_count -= 1
-
                             snews_message['received_time'] = datetime.utcnow().isoformat()
                             click.secho(f'{"-" * 57}', fg='bright_blue')
                             self.coinc_data.add_to_cache(message=snews_message)
                             # self.display_table() ## don't display on the server
                             self.hype_mode_publish()
                             self.update_message_alert()
-                            # self.storage.insert_mgs(snews_message)
+                            self.storage.insert_mgs(snews_message)
                             sys.stdout.flush()
 
+                        # for each read message reduce the retriable err count
+                        if self.retriable_error_count > 1:
+                            self.retriable_error_count -= 1
+
+            # if there is a KafkaException, check if retriable
             except adc.errors.KafkaException as e:
                 if e.retriable:
                     self.retriable_error_count += 1
@@ -514,11 +519,19 @@ class CoincidenceDistributor:
                         # sleep with exponential backoff and a bit of jitter.
                         time.sleep((1.5 ** self.retriable_error_count) * (1 + random.random()) / 2)
                 else:
-                    log.error(f"Something crashed the server, here is the Exception raised\n{e}\n")
+                    log.error(f"(1) Something crashed the server, not a retriable error, here is the Exception raised\n{e}\n")
                     fatal_error = True
-            except Exception as e:
-                log.error(f"Something crashed the server, here is the Exception raised\n{e}\n")
-                fatal_error = True
 
-            if self.exit_on_error and fatal_error:
-                break
+            # any other exception is logged, but not fatal (?)
+            except Exception as e:
+                log.error(f"(2) Something crashed the server, here is the Exception raised\n{e}\n")
+                fatal_error = False #True # maybe not a fatal error?
+
+            finally:
+                # if we are breaking on errors and there is a fatal error, break
+                if self.exit_on_error and fatal_error:
+                    break
+                # otherwise continue by re-initiating
+                continue
+
+
