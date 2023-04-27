@@ -67,7 +67,7 @@ def send_feedback_mail(detector, attachment, message_content=None, given_contact
             time = datetime.utcnow().isoformat()
             mail_regular = base_msg.format(message_content=message_content,
                                            timenow=time,
-                                           attachment=attachment,
+                                           attachment=os.path.join(beats_path, attachment),
                                            contact=contact)
             log.info(f"\t\t> Trying to send feedback to {contact} for {detector}")
             out = _mail_sender([mail_regular])

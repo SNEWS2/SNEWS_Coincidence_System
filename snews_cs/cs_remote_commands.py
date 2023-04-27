@@ -83,18 +83,17 @@ class Commands:
         default_connection_topic = "kafka://kafka.scimma.org/snews.connection-testing"
         connection_broker = os.getenv("CONNECTION_TEST_TOPIC", default_connection_topic)
         # it might be the second bounce, if so, log and exit
-        if message["status"] == "received":
-            log.debug("\t> Confirm Received.")
-            return None
+        # if message["status"] == "received":
+        #     log.debug("\t> Confirm Received.")
+        #     return None
 
         from hop import Stream
         stream = Stream(until_eos=True)
-        # with stream.open(CoincDeciderInstance.observation_topic, "w") as s:
+        msg = message.copy()
+        msg["status"] = "received"
         with stream.open(connection_broker, "w") as s:
             # insert back with a "received" status
-            msg = message.copy()
-            msg["status"] = "received"
-            s.write(msg)
+            s.write(JSONBlob(msg))
             log.info(f"\t> Connection Tested. 'Received' message is reinserted to connection stream.")
 
     def hard_reset(self, message, CoincDeciderInstance):
