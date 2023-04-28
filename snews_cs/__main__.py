@@ -58,12 +58,12 @@ def run_coincidence(local, firedrill, dropdb, email, slackbot):
         click.secho(f'\n{"="*30}DONE{"="*30}', fg='white', bg='green')
 
 @main.command()
-@click.option('--firedrill/--no-firedrill', default=True, show_default='True', help='Whether to use firedrill brokers or default ones')
-def run_feedback(firedrill):
+@click.option('--verbose', '-v', default=False, show_default='False', help='Verbose print')
+def run_feedback(verbose):
     """ Start the feedback checks
     """
-    feedback = FeedBack()
-    click.secho(f'\nInvoking Feedback search\n', fg='white', bg='green')
+    feedback = FeedBack(verbose=verbose)
+    click.secho(f'\nInvoking Feedback search, verbose={verbose}\n', fg='white', bg='green')
     feedback()
 
 
