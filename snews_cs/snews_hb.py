@@ -18,6 +18,10 @@ with open(detector_file) as file:
     snews_detectors = json.load(file)
 snews_detectors = list(snews_detectors.keys())
 
+beats_path = os.path.join(os.path.dirname(__file__), "../beats")
+mirror_csv = os.path.join(beats_path, f"cached_heartbeats_mirror.csv")
+master_csv = os.path.join(beats_path, f"complete_heartbeat_log.csv")
+
 def get_data_strings(df_input):
     """ Convert datetime objects to strings
 
@@ -46,9 +50,8 @@ class HeartBeat:
         log.info("\t> Heartbeat Instance is created.")
         set_env(env_path)
         self.store = store
-        self.beats_path = os.path.join(os.path.dirname(__file__), "../beats")
-        log.info(f"\t> Heartbeats are stored in {self.beats_path}.")
-        make_beat_directory(self.beats_path)
+        log.info(f"\t> Heartbeats are stored in {beats_path}.")
+        make_beat_directory(beats_path)
         self.stash_time = float(os.getenv("HB_STASH_TIME", "24"))  # hours
         self.delete_after = float(os.getenv("HB_DELETE_AFTER", "7"))  # days
         if firedrill_mode:
@@ -112,7 +115,6 @@ class HeartBeat:
         """ The daily csv file is kept as a file per day
             For heartbeat checks I need one that mirrors the current cache.
         """
-        mirror_csv = os.path.join(self.beats_path, f"cached_heartbeats_mirror.csv")
         if os.path.exists(mirror_csv):
             # append only the last row
             self._last_row.to_csv(mirror_csv, mode='a', header=False, index=False)
@@ -130,7 +132,7 @@ class HeartBeat:
         """
         today = datetime.utcnow()
         today_str = datetime.strftime(today, "%y-%m-%d")
-        output_csv_name = os.path.join(self.beats_path, f"{today_str}_heartbeat_log.csv")
+        output_csv_name = os.path.join(beats_path, f"{today_str}_heartbeat_log.csv")
         if os.path.exists(output_csv_name):
             self._last_row.to_csv(output_csv_name, mode='a', header=False, index=False)
         else:
@@ -152,7 +154,7 @@ class HeartBeat:
         curr_data = df.to_json(orient='columns')
         today = datetime.utcnow()
         today_str = datetime.strftime(today, "%y-%m-%d")
-        output_json_name = os.path.join(self.beats_path, f"{today_str}_heartbeat_log.json")
+        output_json_name = os.path.join(beats_path, f"{today_str}_heartbeat_log.json")
         # if os.path.exists(output_json_name):
         with open(output_json_name, 'w') as file:
             #     file_data = json.load(file)
@@ -166,7 +168,6 @@ class HeartBeat:
             Append and save everything
 
         """
-        master_csv = os.path.join(self.beats_path, f"complete_heartbeat_log.csv")
         if os.path.exists(master_csv):
             self._last_row.to_csv(master_csv, mode='a', header=False, index=False)
         else:
@@ -179,7 +180,7 @@ class HeartBeat:
         today_fulldate = datetime.utcnow()
         today_str = datetime.strftime(today_fulldate, "%y-%m-%d")
         today = datetime.strptime(today_str, "%y-%m-%d")
-        existing_logs = os.listdir(self.beats_path)
+        existing_logs = os.listdir(beats_path)
         if self.store:
             existing_logs = np.array([x for x in existing_logs if (x.endswith('log.json') or x.endswith('log.csv')) and
                                       ("complete_heartbeat_log.csv" not in x)])
@@ -199,7 +200,7 @@ class HeartBeat:
         files = np.array(files)
         log.debug(f"\t> The following logs are older than {self.delete_after} days and will be removed; \n{files[older_than_limit[0]]}")
         for file in files[older_than_limit[0]]:
-            filepath = os.path.join(self.beats_path, file)
+            filepath = os.path.join(beats_path, file)
             os.remove(filepath)
             log.debug(f"\t> {file} deleted.")
 
