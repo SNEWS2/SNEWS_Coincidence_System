@@ -82,10 +82,6 @@ class Commands:
         log.debug("\t> Executing Test Connection Command.")
         default_connection_topic = "kafka://kafka.scimma.org/snews.connection-testing"
         connection_broker = os.getenv("CONNECTION_TEST_TOPIC", default_connection_topic)
-        # it might be the second bounce, if so, log and exit
-        # if message["status"] == "received":
-        #     log.debug("\t> Confirm Received.")
-        #     return None
 
         from hop import Stream
         stream = Stream(until_eos=True)
@@ -102,7 +98,6 @@ class Commands:
         authorized = self._check_rights(message)
         if authorized:
             log.info("\t> Cache wanted to be reset. User is authorized.")
-            # CoincDeciderInstance.reset_df()
             CoincDeciderInstance.clear_cache()
             log.info("\t> Cache is reset.")
             return None
@@ -157,7 +152,7 @@ class Commands:
             log.error(f"\t> No email is given, ignoring.")
             return None
 
-        # first check if request email is in our list
+        # first check if requested email address is in our list
         detector = message['detector_name']
         none_valid = True
         # avoid empty lines, and allow multiple emails
@@ -166,7 +161,6 @@ class Commands:
         for email in given_mail:
             if not email in contact_list[detector]["emails"]:
                 log.error(f"\t> The given email: {email} is not registered for {detector}!")
-                print(f"> [DEBUG] The given email: {email} is not registered for {detector}!")
             else:
                 none_valid = False
         if none_valid:
