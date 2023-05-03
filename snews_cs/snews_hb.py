@@ -18,9 +18,9 @@ with open(detector_file) as file:
     snews_detectors = json.load(file)
 snews_detectors = list(snews_detectors.keys())
 
-beats_path = os.path.join(os.path.dirname(__file__), "../beats")
-mirror_csv = os.path.join(beats_path, f"cached_heartbeats_mirror.csv")
-master_csv = os.path.join(beats_path, f"complete_heartbeat_log.csv")
+beats_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../beats"))
+mirror_csv = os.path.abspath(os.path.join(beats_path, f"cached_heartbeats_mirror.csv"))
+master_csv = os.path.abspath(os.path.join(beats_path, f"complete_heartbeat_log.csv"))
 
 def get_data_strings(df_input):
     """ Convert datetime objects to strings

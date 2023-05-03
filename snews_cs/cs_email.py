@@ -4,12 +4,12 @@
 import os, json
 from datetime import datetime
 from .core.logging import getLogger
+from .snews_hb import beats_path
 
 log = getLogger(__name__)
 
 sender = os.getenv("snews_sender_email")
 password = os.getenv("snews_sender_pass")
-beats_path = os.path.join(os.path.dirname(__file__), "../beats")
 
 contact_list_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/contact_list.json'))
 with open(contact_list_file) as file:
@@ -46,12 +46,6 @@ def _mail_sender(mails):
         return False
 
 ### FEEDBACK EMAIL
-# base_msg = "echo {message_content} | " \
-#            "s-nail " \
-#            "-a {attachment} "\
-#            "-s 'SNEWS FEEDBACK {timenow}' " \
-#            "{contact}"
-
 def send_feedback_mail(detector, attachment=None, message_content=None, given_contact=None):
     """ Send feedback email to authorized, requested users
     """
