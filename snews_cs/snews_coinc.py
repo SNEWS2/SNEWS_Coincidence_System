@@ -18,7 +18,6 @@ import random
 import time
 import adc.errors
 
-
 log = getLogger(__name__)
 
 
@@ -36,6 +35,7 @@ class CoincidenceDataHandler:
             "p_val", "meta", "sub_group", "neutrino_time_delta"])
         self.old_count = self.cache.groupby(by='sub_group').size()
         self.updated = []
+        self.msg_state = None
 
     def add_to_cache(self, message):
         """
@@ -53,7 +53,6 @@ class CoincidenceDataHandler:
         if 'retract_latest' in message.keys():
             print('RETRACTING MESSAGE FROM')
             self.cache_retraction(retraction_message=message)
-            return 0
         message['neutrino_time_as_datetime'] = datetime.fromisoformat(message['neutrino_time'])
         # update
         if message['detector_name'] in self.cache['detector_name'].to_list():
@@ -63,6 +62,8 @@ class CoincidenceDataHandler:
             self._manage_cache(message)
             self.cache = self.cache.sort_values(by=['sub_group', 'neutrino_time_delta'], ignore_index=True)
             self.cache = self.cache.reset_index(drop=True)
+
+
 
     def _manage_cache(self, message):
         """
@@ -118,16 +119,13 @@ class CoincidenceDataHandler:
                 temp = pd.DataFrame([message])
                 self.cache = pd.concat([self.cache, temp], ignore_index=True)
                 is_coinc = True
-            # else:
-            #     is_coinc = False
-            #     continue
+                self.msg_state = 'COINC_MSG'
         if not is_coinc:
             new_ini_t = message['neutrino_time_as_datetime']
             new_sub_tag = len(sub_group_tags)
             message_as_cache = pd.DataFrame([message])
             temp_cache = pd.concat([self.cache, message_as_cache], ignore_index=True)
             temp_cache = temp_cache.drop_duplicates(subset=['detector_name', 'neutrino_time'])
-
             temp_cache['neutrino_time_delta'] = (
                     pd.to_datetime(temp_cache['neutrino_time_as_datetime']) - new_ini_t).dt.total_seconds()
             # Make two subgroup one for early signal and post
@@ -208,7 +206,7 @@ class CoincidenceDataHandler:
         initial_time = sub_df['neutrino_time_as_datetime'].min()
         sub_df = sub_df.drop(columns='neutrino_time_delta', axis=0)
         sub_df['neutrino_time_delta'] = (
-                    pd.to_datetime(sub_df['neutrino_time_as_datetime']) - initial_time).dt.total_seconds()
+                pd.to_datetime(sub_df['neutrino_time_as_datetime']) - initial_time).dt.total_seconds()
         sub_df = sub_df.sort_values(by=['neutrino_time_as_datetime'])
         return sub_df
 
@@ -224,6 +222,7 @@ class CoincidenceDataHandler:
         -------
 
         """
+        self.msg_state = 'UPDATE'
         update_detector = message["detector_name"]
         update_message = f'\t> UPDATING MESSAGE FROM: {update_detector}'
         log.info(update_message)
@@ -261,13 +260,10 @@ class CoincidenceDataHandler:
             SNEWS retraction message
 
         """
-        if 'retract_id' in retraction_message.keys():
-            self.cache = self.cache.query('_id!=@retraction_message["retract_id"]')
-            logstr = retraction_message["retract_id"]
-        else:
-            retracted_name = retraction_message['detector_name']
-            self.cache = self.cache.query('detector_name!=@retracted_name')
-            logstr = retracted_name
+        self.msg_state = 'RETRACTION'
+        retracted_name = retraction_message['detector_name']
+        self.cache = self.cache.query('detector_name!=@retracted_name')
+        logstr = retracted_name
         # in case retracted message was an initial
         if len(self.cache) == 0:
             return 0
@@ -316,12 +312,11 @@ class CoincidenceDistributor:
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
-
+        self.pub_state = None
         # Some Kafka errors are retryable.
         self.retriable_error_count = 0
         self.max_retriable_errors = 20
-        self.exit_on_error = False #True
-
+        self.exit_on_error = False  # True
         self.initial_set = False
         self.alert = AlertPublisher(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
         if firedrill_mode:
@@ -371,6 +366,7 @@ class CoincidenceDistributor:
             pass
         else:
             alert_type = 'UPDATE'
+
             log.debug('\t> An UPDATE message is received')
             for updated_sub in self.coinc_data.updated:
                 _sub_df = self.coinc_data.cache.query('sub_group==@updated_sub')
@@ -388,7 +384,6 @@ class CoincidenceDistributor:
                                   false_alarm_prob=false_alarm_prob,
                                   server_tag=self.server_tag,
                                   alert_type=alert_type)
-
 
                 with self.alert as pub:
                     alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
@@ -416,14 +411,13 @@ class CoincidenceDistributor:
         for _sub_group, new_message_count in (new_count - self.coinc_data.old_count).iteritems():
             if new_message_count == 0:
                 continue
-
+            if self.coinc_data.msg_state == 'RETRACTION':
+                continue
             _sub_df = self.coinc_data.cache.query('sub_group==@_sub_group')
             # if empty, new_message_count returns a NaN
-            if len(_sub_df['detector_name']) == 1 and (new_message_count==1 or pd.isna(new_message_count)):
+            if len(_sub_df['detector_name']) == 1 and (new_message_count == 1 or pd.isna(new_message_count)):
                 alert_type = 'INITIAL MESSAGE'
                 log.debug(f'\t> Initial message in sub group:{_sub_group}')
-            elif new_message_count <= -1:
-                alert_type = 'RETRACTION'
             else:
                 alert_type = 'NEW_MESSAGE'
                 click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
@@ -503,6 +497,7 @@ class CoincidenceDistributor:
                             self.storage.insert_mgs(snews_message)
                             sys.stdout.flush()
 
+
                         # for each read message reduce the retriable err count
                         if self.retriable_error_count > 1:
                             self.retriable_error_count -= 1
@@ -519,13 +514,14 @@ class CoincidenceDistributor:
                         # sleep with exponential backoff and a bit of jitter.
                         time.sleep((1.5 ** self.retriable_error_count) * (1 + random.random()) / 2)
                 else:
-                    log.error(f"(1) Something crashed the server, not a retriable error, here is the Exception raised\n{e}\n")
+                    log.error(
+                        f"(1) Something crashed the server, not a retriable error, here is the Exception raised\n{e}\n")
                     fatal_error = True
 
             # any other exception is logged, but not fatal (?)
             except Exception as e:
                 log.error(f"(2) Something crashed the server, here is the Exception raised\n{e}\n")
-                fatal_error = False #True # maybe not a fatal error?
+                fatal_error = False  # True # maybe not a fatal error?
 
             finally:
                 # if we are breaking on errors and there is a fatal error, break
@@ -533,4 +529,3 @@ class CoincidenceDistributor:
                     break
                 # otherwise continue by re-initiating
                 continue
-
