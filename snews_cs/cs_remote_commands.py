@@ -6,6 +6,7 @@ import pandas as pd
 from .heartbeat_feedbacks import check_frequencies_and_send_mail, delete_old_figures
 from .core.logging import getLogger
 from hop.models import JSONBlob
+from .snews_hb import beats_path
 
 log = getLogger(__name__)
 
@@ -31,9 +32,7 @@ contact_list_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'aux
 with open(contact_list_file) as file:
     contact_list = json.load(file)
 
-# this csv file is mirroring the existing heartbeat cache
-beats_path = os.path.join(os.path.dirname(__file__), "../beats")
-csv_path = os.path.join(beats_path, f"cached_heartbeats_mirror.csv")
+
 
 # should I allow people to change their passwords? I can use simple encryption: from cryptography.fernet import Fernet
 class Commands:
