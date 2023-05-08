@@ -46,17 +46,21 @@ class CoincidenceDataHandler:
         message : dict
             SNEWS Message, must be PT valid
 
+
         """
 
         # retraction
         if 'retract_latest' in message.keys():
-            print('RETRACTING MESSAGE FROM')
+            print('RETRACTION TRIGGERED...')
+            print(f'RETRACTING MESSAGE FROM: {message["detector_name"]}')
             self.cache_retraction(retraction_message=message)
-            return None # break if message is meant for retraction
+            return 0
         message['neutrino_time_as_datetime'] = datetime.fromisoformat(message['neutrino_time'])
         # update
         if message['detector_name'] in self.cache['detector_name'].to_list():
+            print(f'UPDATING....')
             self._update_message(message)
+            return 0
         # regular add
         else:
             self._manage_cache(message)
@@ -496,6 +500,7 @@ class CoincidenceDistributor:
                             self.update_message_alert()
                             self.storage.insert_mgs(snews_message)
                             sys.stdout.flush()
+                            self.coinc_data.msg_state = None
 
 
                         # for each read message reduce the retriable err count
