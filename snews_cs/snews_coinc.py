@@ -46,13 +46,13 @@ class CoincidenceDataHandler:
         message : dict
             SNEWS Message, must be PT valid
 
-
         """
 
         # retraction
         if 'retract_latest' in message.keys():
             print('RETRACTING MESSAGE FROM')
             self.cache_retraction(retraction_message=message)
+            return None # break if message is meant for retraction
         message['neutrino_time_as_datetime'] = datetime.fromisoformat(message['neutrino_time'])
         # update
         if message['detector_name'] in self.cache['detector_name'].to_list():
