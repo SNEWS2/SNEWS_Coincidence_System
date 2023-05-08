@@ -366,45 +366,42 @@ class CoincidenceDistributor:
         This method will send out an alert if the CoincidenceData
 
         """
-        if len(self.coinc_data.updated) == 0:
-            pass
-        else:
-            alert_type = 'UPDATE'
 
-            log.debug('\t> An UPDATE message is received')
-            for updated_sub in self.coinc_data.updated:
-                _sub_df = self.coinc_data.cache.query('sub_group==@updated_sub')
-                p_vals = _sub_df['p_val'].to_list()
-                p_vals_avg = np.round(_sub_df['p_val'].mean(), decimals=5)
-                nu_times = _sub_df['neutrino_time'].to_list()
-                detector_names = _sub_df['detector_name'].to_list()
-                false_alarm_prob = cache_false_alarm_rate(cache_sub_list=_sub_df, hb_cache=self.heartbeat.cache_df)
+        alert_type = 'UPDATE'
 
-                alert_data = dict(p_vals=p_vals,
-                                  p_val_avg=p_vals_avg,
-                                  sub_list_num=updated_sub,
-                                  neutrino_times=nu_times,
-                                  detector_names=detector_names,
-                                  false_alarm_prob=false_alarm_prob,
-                                  server_tag=self.server_tag,
-                                  alert_type=alert_type)
+        log.debug('\t> An UPDATE message is received')
+        for updated_sub in self.coinc_data.updated:
+            _sub_df = self.coinc_data.cache.query('sub_group==@updated_sub')
+            p_vals = _sub_df['p_val'].to_list()
+            p_vals_avg = np.round(_sub_df['p_val'].mean(), decimals=5)
+            nu_times = _sub_df['neutrino_time'].to_list()
+            detector_names = _sub_df['detector_name'].to_list()
+            false_alarm_prob = cache_false_alarm_rate(cache_sub_list=_sub_df, hb_cache=self.heartbeat.cache_df)
 
-                with self.alert as pub:
-                    alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
-                    pub.send(alert)
-                    if self.send_email:
-                        send_email(alert)
-                    if self.send_slack:
-                        snews_bot.send_table(alert_data,
-                                             alert,
-                                             is_test=True,
-                                             topic=self.observation_topic)
+            alert_data = dict(p_vals=p_vals,
+                              p_val_avg=p_vals_avg,
+                              sub_list_num=updated_sub,
+                              neutrino_times=nu_times,
+                              detector_names=detector_names,
+                              false_alarm_prob=false_alarm_prob,
+                              server_tag=self.server_tag,
+                              alert_type=alert_type)
 
-            log.debug('\t> An alert is updated!')
-            self.coinc_data.updated = []
+            with self.alert as pub:
+                alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
+                pub.send(alert)
+                if self.send_email:
+                    send_email(alert)
+                if self.send_slack:
+                    snews_bot.send_table(alert_data,
+                                         alert,
+                                         is_test=True,
+                                         topic=self.observation_topic)
+
+        log.debug('\t> An alert is updated!')
 
     # ------------------------------------------------------------------------------------------------------------------
-    def hype_mode_publish(self):
+    def alert_decider(self):
         """
         This method will publish an alert every time a new detector
         submits an observation message
@@ -416,6 +413,11 @@ class CoincidenceDistributor:
             if new_message_count == 0:
                 continue
             if self.coinc_data.msg_state == 'RETRACTION':
+                continue
+            if self.coinc_data.msg_state =='UPDATE':
+                print('SENDING OUT UPDATED COINCIDENCE CACHE...')
+                alert_type = 'UPDATE'
+                self.update_message_alert()
                 continue
             _sub_df = self.coinc_data.cache.query('sub_group==@_sub_group')
             # if empty, new_message_count returns a NaN
@@ -496,7 +498,7 @@ class CoincidenceDistributor:
                             click.secho(f'{"-" * 57}', fg='bright_blue')
                             self.coinc_data.add_to_cache(message=snews_message)
                             # self.display_table() ## don't display on the server
-                            self.hype_mode_publish()
+                            self.alert_decider()
                             self.update_message_alert()
                             self.storage.insert_mgs(snews_message)
                             sys.stdout.flush()
