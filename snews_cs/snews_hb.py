@@ -115,11 +115,8 @@ class HeartBeat:
         """ The daily csv file is kept as a file per day
             For heartbeat checks I need one that mirrors the current cache.
         """
-        if os.path.exists(mirror_csv):
-            # append only the last row
-            self._last_row.to_csv(mirror_csv, mode='a', header=False, index=False)
-        else:
-            self.cache_df.to_csv(mirror_csv, mode='w', header=True, index=False)
+        self.drop_old_messages()
+        self.cache_df.to_csv(mirror_csv, mode='w', header=True, index=False)
 
     def dump_csv(self):
         """ dump a local csv file once a day
@@ -246,7 +243,7 @@ class HeartBeat:
                 self.make_entry(message)
                 self.store_beats()
                 self.update_cache_csv()
-                self.drop_old_messages()
+                # self.drop_old_messages()
                 self.burn_logs()
                 # if all successful, return True. Not logging each time, not to overcrowd
                 return True
