@@ -294,7 +294,7 @@ class CoincidenceDataHandler:
 class CoincidenceDistributor:
 
     def __init__(self, env_path=None, use_local_db=True, drop_db=False, firedrill_mode=True, hb_path=None,
-                 server_tag=None, send_email=False, send_slack=True):
+                 server_tag=None, send_email=False, send_slack=True, show_table = False):
         """This class is in charge of sending alerts to SNEWS when CS is triggered
 
         Parameters
@@ -309,6 +309,7 @@ class CoincidenceDistributor:
         """
         log.debug("Initializing CoincDecider\n")
         cs_utils.set_env(env_path)
+        self.show_table = show_table
         self.send_email = send_email
         self.send_slack = send_slack
         self.hb_path = hb_path
@@ -317,7 +318,6 @@ class CoincidenceDistributor:
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
         self.cache_expiration = 86400
-        self.pub_state = None
         # Some Kafka errors are retryable.
         self.retriable_error_count = 0
         self.max_retriable_errors = 20
@@ -402,20 +402,33 @@ class CoincidenceDistributor:
             if state is None:
                 continue
             elif state == 'RETRACTION':
-                print('RETRACTING')
+                click.secho(f'SUB GROUP {sub_group_tag}:{"RETRACTION HAS BEEN MADE".upper():^100}', bg='bright_green',
+                            fg='red')
+                click.secho(f'{"Publishing an updated  alert..".upper():^100}', bg='bright_green', fg='red')
+                click.secho(f'{"=" * 100}', fg='bright_red')
                 alert_type = 'RETRACTION'
                 self.send_alert(sub_group_tag=sub_group_tag, alert_type=alert_type)
                 continue
             elif state == 'INITIAL':
                 log.debug(f'\t> Initial message in sub group:{sub_group_tag}')
+                click.secho(f'SUB GROUP {sub_group_tag}:{"Initial message recieved".upper():^100}', bg='bright_green',
+                            fg='red')
+                click.secho(f'{"=" * 100}', fg='bright_red')
                 continue
             elif state == 'UPDATE':
+                click.secho(f'SUB GROUP {sub_group_tag}:{"A MESSGAE HAS BEEN UPDATED".upper():^100}', bg='bright_green',
+                            fg='red')
+                click.secho(f'{"Publishing an updated  Alert!!!".upper():^100}', bg='bright_green', fg='red')
+                click.secho(f'{"=" * 100}', fg='bright_red')
                 log.debug('\t> An UPDATE message is received')
                 alert_type = 'UPDATE'
                 self.send_alert(sub_group_tag=sub_group_tag, alert_type=alert_type)
                 log.debug('\t> An alert is updated!')
                 continue
             elif state == 'COINC_MSG':
+                click.secho(f'SUB GROUP {sub_group_tag}:{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
+                click.secho(f'{"Published an Alert!!!".upper():^100}', bg='bright_green', fg='red')
+                click.secho(f'{"=" * 100}', fg='bright_red')
                 alert_type = 'NEW_COINCIDENT_MESSAGE'
                 log.info(f"\t> An alert was published: {alert_type} !")
                 self.send_alert(sub_group_tag=sub_group_tag, alert_type=alert_type)
@@ -458,7 +471,8 @@ class CoincidenceDistributor:
                             snews_message['received_time'] = datetime.utcnow().isoformat()
                             click.secho(f'{"-" * 57}', fg='bright_blue')
                             self.coinc_data.add_to_cache(message=snews_message)
-                            # self.display_table() ## don't display on the server
+                            if self.show_table:
+                                self.display_table() ## don't display on the server
                             self.alert_decider()
                             self.storage.insert_mgs(snews_message)
                             sys.stdout.flush()
