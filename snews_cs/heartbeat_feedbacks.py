@@ -141,7 +141,7 @@ def check_frequencies_and_send_mail(detector, given_contact=None):
         last_hb = df['Received Times'].values[-1]  # this is a numpy.datetime
     except Exception as e:
         log.debug(f"> Frequency check failed for {detector}, probably no beats within last 24h\n{e}")
-        fail_text = f"Couldn't find any entries within last 24hours!"
+        fail_text = f"Could not find any entries within last 24hours!"
         out = send_feedback_mail(detector, None, fail_text, given_contact=given_contact)
         return "-No Attachment Created, Warned-", out
 
