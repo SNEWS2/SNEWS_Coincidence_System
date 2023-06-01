@@ -4,12 +4,12 @@
 import os, json
 from datetime import datetime
 from .core.logging import getLogger
+from .snews_hb import beats_path
 
 log = getLogger(__name__)
 
 sender = os.getenv("snews_sender_email")
 password = os.getenv("snews_sender_pass")
-beats_path = os.path.join(os.path.dirname(__file__), "../beats")
 
 contact_list_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/contact_list.json'))
 with open(contact_list_file) as file:
@@ -46,13 +46,7 @@ def _mail_sender(mails):
         return False
 
 ### FEEDBACK EMAIL
-base_msg = "echo {message_content} | " \
-           "s-nail " \
-           "-a {attachment} "\
-           "-s 'SNEWS COINCIDENCE {timenow}' " \
-           "{contact}"
-
-def send_feedback_mail(detector, attachment, message_content=None, given_contact=None):
+def send_feedback_mail(detector, attachment=None, message_content=None, given_contact=None):
     """ Send feedback email to authorized, requested users
     """
     # Accept a contact list (e-mail(s)) # mail addresses already checked
@@ -62,15 +56,18 @@ def send_feedback_mail(detector, attachment, message_content=None, given_contact
         contacts = given_contact
 
     message_content = message_content or ""
+
     if len(contacts) > 0:
+        time = datetime.utcnow().isoformat()
+        base_msg = f"echo {message_content} | s-nail -s 'SNEWS FEEDBACK {time}' "
+        if attachment is not None:
+            attached_file = os.path.join(beats_path, attachment)
+            base_msg += f" -a {attached_file}"
+
         for contact in contacts:
-            time = datetime.utcnow().isoformat()
-            mail_regular = base_msg.format(message_content=message_content,
-                                           timenow=time,
-                                           attachment=os.path.join(beats_path, attachment),
-                                           contact=contact)
+            base_msg += f" {contact}"
             log.info(f"\t\t> Trying to send feedback to {contact} for {detector}")
-            out = _mail_sender([mail_regular])
+            out = _mail_sender([base_msg])
             return out
     else:
         log.info(f"\t\t> Feedback mail is requested for {detector}. However, there are no contacts added.")

@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from time import sleep
 from .core.logging import getLogger
 from .cs_email import send_warning_mail, send_feedback_mail
+from .snews_hb import beats_path, mirror_csv
 
 log = getLogger(__name__)
 
@@ -20,10 +21,8 @@ with open(detector_file) as file:
     snews_detectors = json.load(file)
 snews_detectors = list(snews_detectors.keys())
 
-# this csv file is mirroring the existing heartbeat cache
-beats_path = os.path.join(os.path.dirname(__file__), "../beats")
-csv_path = os.path.join(beats_path, f"cached_heartbeats_mirror.csv")
-
+# verbose print. Prints only if verbose=True
+vprint = lambda inp, _bool: print(inp) if _bool else None
 
 class FeedBack:
     """ Once every minute, check the HB of each detector
@@ -31,13 +30,14 @@ class FeedBack:
         Once every user-defined time interval, send a plot with latency and frequency statistics
 
     """
-    def __init__(self):
+    def __init__(self, verbose=False):
         self.detectors = snews_detectors
         self.last_feedback_time = dict()
         for k in self.detectors:
             self.last_feedback_time[k] = datetime(2022, 1, 1)
         self.day_in_min = 1440
         self.running_min = 0
+        self.verbose = verbose
         log.info(f"\t> Heartbeat tracking initiated.")
 
     def __call__(self):
@@ -49,17 +49,17 @@ class FeedBack:
             # run every minute
             sleep(60)
             try:
-                df = pd.read_csv(csv_path, parse_dates=['Received Times'], )
+                df = pd.read_csv(mirror_csv, parse_dates=['Received Times'], )
             except FileNotFoundError:
-                log.error(f"{csv_path} does not exist yet! Maybe `snews_cs run-coincidence` is not invoked?")
-                while not os.path.isfile(csv_path):
+                log.error(f"{mirror_csv} does not exist yet! Maybe `snews_cs run-coincidence` is not invoked?")
+                while not os.path.isfile(mirror_csv):
                     sleep(60)
-                df = pd.read_csv(csv_path, parse_dates=['Received Times'], )
-                log.debug(f"OK {csv_path} found! Moving on")
+                df = pd.read_csv(mirror_csv, parse_dates=['Received Times'], )
+                log.debug(f"OK {mirror_csv} found! Moving on")
 
             self.control(df) # check if a detector is taking longer than usual (mean+3*sigma>)
             self.running_min += 1
-            print(f"[DEBUG] >>>>> Running minute: {self.running_min}")
+            vprint(f"[DEBUG] >>>>> Running minute: {self.running_min}", self.verbose)
             # every hour, reset the minute counter, increase hour counter
             # and check if it has been feedback time for any detector.
             if (self.running_min % 60) == 0:
@@ -87,7 +87,7 @@ class FeedBack:
 
             if len(detector_df) < 5:
                 # not enough statistics, skip.
-                print("[DEBUG] >>>>> len=",len(detector_df), "Not enough")
+                vprint(f"[DEBUG] >>>>> len {len(detector_df)} Not enough!", self.verbose)
                 continue
             # check if a heartbeat is skipped
             self.check_missed_beats(detector_df, detector)
@@ -96,7 +96,7 @@ class FeedBack:
         """ Check if a heartbeat is skipped
 
         """
-        print("\n[DEBUG] >>>>> Checking if beat skipped")
+        vprint("\n[DEBUG] >>>>> Checking if beat skipped", self.verbose)
         # get the computed delays between 2 consecutive hb
         mean = np.mean(df['Time After Last'])
         std = np.std(df['Time After Last'])
@@ -104,8 +104,8 @@ class FeedBack:
         last_hb = df['Received Times'].values[-1] # this is a numpy.datetime
         last_hb = pd.to_datetime(last_hb)         # we have to convert it to datetime.datetime
         since_lasthb = datetime.utcnow() - last_hb
-        print(f"[DEBUG] >>>>> mean:{mean:.2f}, std:{std:.2f}, trigger at {mean + 3 * std:.2f}")
-        print(f"[DEBUG] >>>>> Delay since last: {since_lasthb.total_seconds():.2f}")
+        vprint(f"[DEBUG] >>>>> mean:{mean:.2f}, std:{std:.2f}, trigger at {mean + 3 * std:.2f}", self.verbose)
+        vprint(f"[DEBUG] >>>>> Delay since last: {since_lasthb.total_seconds():.2f}", self.verbose)
         if since_lasthb > timedelta(seconds=(mean + 3 * std)):
             # something is wrong!
             if last_hb == self.last_feedback_time[detector]:
@@ -116,7 +116,7 @@ class FeedBack:
                    f" Expected a heartbeat at {expected_hb.isoformat()} +/- {std:.2f} sec. " \
                    f" Since last heartbeat there has been {since_lasthb.total_seconds():.2f} sec. " \
                    f" Is everything alright? Do you wanna talk about it?"
-            print(f"[DEBUG] >>>>> Warning for {detector} is created, trying to send.")
+            vprint(f"[DEBUG] >>>>> Warning for {detector} is created, trying to send.", self.verbose)
             # send warning to detector
             send_warning_mail(detector, text)
             self.last_feedback_time[detector] = last_hb
@@ -132,18 +132,25 @@ def check_frequencies_and_send_mail(detector, given_contact=None):
     """ Create a plot with latency and heartbeat frequencies
         and send it via emails
     """
-    df = pd.read_csv(csv_path, parse_dates=['Received Times'], )
+    df = pd.read_csv(mirror_csv, parse_dates=['Received Times'], )
     df.query("Detector==@detector", inplace=True)
     now_str = datetime.utcnow().strftime("%Y-%m-%d_%HH%MM")
     mean = np.mean(df['Time After Last'])
     std = np.std(df['Time After Last'])
-    last_hb = df['Received Times'].values[-1]  # this is a numpy.datetime
+    try:
+        last_hb = df['Received Times'].values[-1]  # this is a numpy.datetime
+    except Exception as e:
+        log.debug(f"> Frequency check failed for {detector}, probably no beats within last 24h\n{e}")
+        fail_text = f"Could not find any entries within last 24hours!"
+        out = send_feedback_mail(detector, None, fail_text, given_contact=given_contact)
+        return "-No Attachment Created, Warned-", out
+
     last_hb = pd.to_datetime(last_hb)  # we have to convert it to datetime.datetime
     text = f" Your heartbeat frequency is every {mean:.2f}+/-{std:2f} sec." \
            f" The last heartbeat received at {last_hb}. " \
            f" The received heartbeat frequency, together with the computed latency" \
            f" is plotted, and sent in the attachment."
-           # f" The next feedback will be send in {self.contact_intervals[detector]} hours."
+
     attachment = f"{detector}_{now_str}.png"
     plot_beats(df, detector, attachment)  # create a plot to send
     out = send_feedback_mail(detector, attachment, text, given_contact=given_contact)
