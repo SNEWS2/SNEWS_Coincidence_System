@@ -76,3 +76,70 @@ class AlertPublisher:
 # Sending TEST ALERT
 #
 # maybe we can get rid of "Sending TEST ALERT" message
+
+
+class AlertListener:
+    """ Class to receive SNEWS SuperNova Alerts based on coincidence
+
+    """
+    def __init__(self, env_path=None, verbose=True, auth=True, use_local=False, firedrill_mode=True, topic=None):
+        """
+        Alert listener constructor
+        Parameters
+        ----------
+        env_path: str
+            path to env file, defaults to
+        verbose: bool
+            Show alert, defaults to True
+        auth: bool
+            Use hop-auth credentials, defaults to True
+        use_local: bool
+            Use local MongoClient, defaults to False
+        topic: str
+            Allows multiple instances of this class for the multiple alert tiers
+        """
+        cs_utils.set_env(env_path)
+        self.auth = auth
+        self.broker = os.getenv("HOP_BROKER")
+
+        if firedrill_mode:
+            self.alert_topic = os.getenv("FIREDRILL_ALERT_TOPIC")
+        else:
+            self.alert_topic = os.getenv("ALERT_TOPIC")
+
+        # Override the default
+        if topic is not None:
+            self.alert_topic = topic
+
+        self.verbose = verbose
+        self.storage = Storage(drop_db=False, use_local_db=use_local)
+
+    def __enter__(self):
+        self.stream = Stream(until_eos=True, auth=self.auth).open(self.alert_topic, 'r')
+        return self
+
+    def __exit__(self, *args):
+        self.stream.close()
+
+    def run(self):
+        while True:
+            for message in self.stream:
+                snews_message = None
+                # XXX - Debug
+                self.display_message(message)
+
+                # check for the hop version
+                try:
+                    snews_message = message.content
+                except Exception as e:
+                    log.error(f"A message with older hop version is found. {e}\n{snews_message}")
+                    snews_message = message
+
+                self.storage.insert_mgs(snews_message)
+
+    def display_message(self, message):
+        if self.verbose:
+            click.secho(f'{"-" * 64}', fg='bright_blue')
+            for k, v in message.items():
+                print(f'{k:<35s}:{v}')
+

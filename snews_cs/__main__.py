@@ -32,6 +32,7 @@ def main(ctx, env):
     cs_utils.set_env(env_path)
     ctx.obj['env'] = env
 
+
 @main.command()
 @click.option('--local/--no-local', default=True, show_default='True', help='Whether to use local database server or take from the env file')
 @click.option('--firedrill/--no-firedrill', default=True, show_default='True', help='Whether to use firedrill brokers or default ones')

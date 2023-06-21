@@ -5,6 +5,7 @@ from datetime import datetime
 from .alert_pub import AlertPublisher
 import numpy as np
 import pandas as pd
+from multiprocessing import Value
 from hop import Stream
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
@@ -308,6 +309,10 @@ class CoincidenceDistributor:
         self.hype_mode_ON = True
         self.hb_path = hb_path
         self.server_tag = server_tag
+        #
+        # ['leader', 'follower']
+        self.replicationleader = 0
+
         self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
@@ -384,19 +389,22 @@ class CoincidenceDistributor:
                                   false_alarm_prob=false_alarm_prob,
                                   server_tag=self.server_tag,
                                   alert_type=alert_type)
+                if self.replicationleader:
+                    with self.alert as pub:
+                        alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
+                        pub.send(alert)
+                        if self.send_email:
+                            send_email(alert)
+                        if self.send_slack:
+                            snews_bot.send_table(alert_data,
+                                                 alert,
+                                                 is_test=True,
+                                                 topic=self.observation_topic)
 
-                with self.alert as pub:
-                    alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
-                    pub.send(alert)
-                    if self.send_email:
-                        send_email(alert)
-                    if self.send_slack:
-                        snews_bot.send_table(alert_data,
-                                             alert,
-                                             is_test=True,
-                                             topic=self.observation_topic)
+                    log.debug('\t> An alert is updated!')
+                else:
+                    log.debug('\t> An alert is updated, but not sent since I am not the replication leader!')
 
-            log.debug('\t> An alert is updated!')
             self.coinc_data.updated = []
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -439,23 +447,26 @@ class CoincidenceDistributor:
                                   false_alarm_prob=false_alarm_prob,
                                   server_tag=self.server_tag,
                                   alert_type=alert_type)
+                if self.replicationleader:
+                    with self.alert as pub:
+                        alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
+                        pub.send(alert)
+                        if self.send_email:
+                            send_email(alert)
+                        if self.send_slack:
+                            snews_bot.send_table(alert_data,
+                                                 alert,
+                                                 is_test=True,
+                                                 topic=self.observation_topic)
 
-                with self.alert as pub:
-                    alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
-                    pub.send(alert)
-                    if self.send_email:
-                        send_email(alert)
-                    if self.send_slack:
-                        snews_bot.send_table(alert_data,
-                                             alert,
-                                             is_test=True,
-                                             topic=self.observation_topic)
+                    log.info(f"\t> An alert was published: {alert_type} !")
+                else:
+                    log.info(f"\t> An alert would have been published, but I am not the replication leader: {alert_type} !")
 
-                log.info(f"\t> An alert was published: {alert_type} !")
         self.coinc_data.old_count = new_count
 
     # ------------------------------------------------------------------------------------------------------------------
-    def run_coincidence(self):
+    def run_coincidence(self, replicationleader: Value):
         """
         As the name states this method runs the coincidence system.
         Starts by subscribing to the hop observation_topic.
@@ -478,6 +489,10 @@ class CoincidenceDistributor:
                     click.secho(f'{datetime.utcnow().isoformat()} (re)Initializing Coincidence System for '
                                 f'{self.observation_topic}\n')
                     for snews_message in s:
+                        # check replica state with every message
+                        if replicationleader:
+                            self.replicationeleader = replicationleader.value
+
                         # check for the hop version
                         try:
                             snews_message = snews_message.content
