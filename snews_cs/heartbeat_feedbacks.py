@@ -160,27 +160,43 @@ def check_frequencies_and_send_mail(detector, given_contact=None):
 def plot_beats(df, detector, figname):
     """ Requires QT libraries: sudo apt-get install qt5-default
     """
-    fig, ax = plt.subplots(figsize=(12, 3))
+    fig, ax = plt.subplots(figsize=(15, 6))
     latency = pd.to_timedelta(df['Latency'].values).total_seconds()
     received_times = df['Received Times']
     time_after_last = df['Time After Last'].astype(float)
+    unique_days = list(set([datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d') for date in received_times]))
+    if len(unique_days) > 1:
+        date = "&".join([i for i in unique_days])
+    else:
+        date = list(unique_days)[0]
 
     mean = np.mean(time_after_last)
     std = np.std(time_after_last)
 
-    ax.fill_between(received_times, mean - 3 * std, mean + 3 * std, alpha=0.5, color='yellow')
-    ax.fill_between(received_times, mean - std, mean + std, alpha=0.5, color='green')
+    ax.fill_between(received_times, mean - 3 * std, mean + 3 * std, alpha=0.5, color='dodgerblue')
+    ax.fill_between(received_times, mean - std, mean + std, alpha=0.5, color='blue')
+    # ax.axvline(received_times[2], color='gray', lw=10)
     ax.axhline(mean)
-    colors = ['g' if i == 'ON' else 'r' for i in df['Status']]
-    # ax.plot_date(received_times, time_after_last, c=colors)
-    ax.scatter(received_times, time_after_last, marker='o', c=colors, ec='k', zorder=2)
-    ax.set_xlabel("Received Times")
-    ax.set_ylabel("Seconds after last hb")
+    colors = ['yellow' if i == 'ON' else 'r' for i in df['Status']]
+    ax.plot(received_times, time_after_last, color='k', zorder=1)
+    ax.scatter(received_times, time_after_last, marker='o', c=colors, ec='k', s=100, zorder=2)
+    ax.set_xlabel("Received Times", fontsize=13)
+    ax.set_ylabel("Seconds after last hb", fontsize=15)
     ax2 = ax.twinx()
-
-    ax2.scatter(received_times, latency, ls='--', c='none', ec='magenta')
-    ax2.set_ylabel('Latency [sec]\nReceived at server - Sent from local', color='magenta')
-    ax.set_title(f"HB data for {detector}, last 24hr")
+    ax2.plot(received_times, latency, zorder=1, color='darkred', ls='--')
+    ax2.scatter(received_times, latency, marker='x', c='none', ec='darkred', s=100, zorder=2)
+    ax2.set_ylabel('Latency [sec]\nReceived at server - Sent from local', color='darkred', fontsize=15)
+    ax.set_title(f"HeartBeat data for {detector}, {date}", fontsize=15)
+    xticks_positions, _ = plt.xticks()
+    xticklabels = []
+    for date in received_times:
+        dt = datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f')
+        time_str = dt.strftime('%H:%M:%S')
+        xticklabels.append(time_str)
+    ax.set_xticks(xticks_positions, xticklabels)
+    ax.tick_params(axis='x', labelsize=15)
+    ax.tick_params(axis='y', labelsize=15)
+    ax2.tick_params(axis='y', labelsize=15)
     plt.savefig(os.path.join(beats_path, figname))
 
 def delete_old_figures():

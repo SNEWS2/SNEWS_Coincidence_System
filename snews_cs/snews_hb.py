@@ -5,7 +5,7 @@ This a module to handle all heartbeat related work
 
 import os, json
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 import numpy as np
 from .cs_utils import set_env, make_beat_directory
 from .core.logging import getLogger
