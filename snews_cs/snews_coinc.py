@@ -29,13 +29,16 @@ class CoincidenceDataHandler:
     """
 
     def __init__(self):
+        # define the col names of the cahce df
         self.cache = pd.DataFrame(columns=[
             "_id", "detector_name", "received_time", "machine_time", "neutrino_time",
             'neutrino_time_as_datetime',
             "p_val", "meta", "sub_group", "neutrino_time_delta"])
-        self.old_count = self.cache.groupby(by='sub_group').size()
+        # keep track of updated sub groups
         self.updated = []
         self.msg_state = None
+        # this dict is used to store the current state of each sub group in the cache, UPDATE, COINCIDENT, None, RETRACTION.
+        self.sub_group_state = {}
 
     def add_to_cache(self, message):
         """
@@ -52,7 +55,7 @@ class CoincidenceDataHandler:
         if 'retract_latest' in message.keys():
             print('RETRACTING MESSAGE FROM')
             self.cache_retraction(retraction_message=message)
-            return None # break if message is meant for retraction
+            return None  # break if message is meant for retraction
         message['neutrino_time_as_datetime'] = datetime.fromisoformat(message['neutrino_time'])
         # update
         if message['detector_name'] in self.cache['detector_name'].to_list():
@@ -62,8 +65,6 @@ class CoincidenceDataHandler:
             self._manage_cache(message)
             self.cache = self.cache.sort_values(by=['sub_group', 'neutrino_time_delta'], ignore_index=True)
             self.cache = self.cache.reset_index(drop=True)
-
-
 
     def _manage_cache(self, message):
         """
@@ -78,12 +79,16 @@ class CoincidenceDataHandler:
         message
 
         """
+
+        # if the cache is empty add the message to cache, decleare state of sub group 0 as INITIAL
         if len(self.cache) == 0:
             print('Initial Message!!')
             message['neutrino_time_delta'] = 0
             message['sub_group'] = 0
             temp = pd.DataFrame([message])
+            self.sub_group_state[0] = 'INITIAL'
             self.cache = pd.concat([self.cache, temp], ignore_index=True)
+        # if the cache is not empty, check if the message is coincident with other sub groups
         else:
             self._check_coinc_in_subgroups(message)
 
@@ -93,7 +98,7 @@ class CoincidenceDataHandler:
             A)Adds Message to an existing sub-group, if coincident with the initial signal
 
 
-            B) If it is not coincident with any sub groups it creates two new sub groups,
+            B) If NOT coincident with any sub groups it creates two new sub groups,
             setting the message as their initial time.
             The new groups consist of coincident signals with earlier arrival time and
             later arrival times, respectively.
@@ -106,26 +111,46 @@ class CoincidenceDataHandler:
             SNEWS message
 
         """
+        # grab the curent sub group tags
         sub_group_tags = self.cache['sub_group'].unique()
+        #  this boolean declears whether if the messsage is not coincident
         is_coinc = False
         for tag in sub_group_tags:
+            # query the cache, select the current sub group
             sub_cache = self.cache.query('sub_group==@tag')
+            #  reeset the index, for the sake of keeping things organized
             sub_cache = sub_cache.reset_index(drop=True)
+            # select the initial nu time of the sub group
             sub_ini_t = sub_cache['neutrino_time_as_datetime'][0]
+            #  make the nu time delta series
             delta = (message['neutrino_time_as_datetime'] - sub_ini_t).total_seconds()
+            #  if the message's nu time is within the coincidence window
             if 0 < delta <= 10.0:
+                # to the message add the corresponding sub group and nu time delta
                 message['sub_group'] = tag
                 message['neutrino_time_delta'] = delta
+                # turn the message into a pd df, this is for concating it to the cache
                 temp = pd.DataFrame([message])
+                # concat the message df to the cahce
                 self.cache = pd.concat([self.cache, temp], ignore_index=True)
+                #  set the message as coinc
                 is_coinc = True
-                self.msg_state = 'COINC_MSG'
+                #  declare the state the sub group to COINC_MSG
+                self.sub_group_state[tag] = 'COINC_MSG'
+
+        # if the message is not coimcident with any of the sub groups create a new sub group
         if not is_coinc:
+            # set the message's nu time, as the initial nu time
             new_ini_t = message['neutrino_time_as_datetime']
+            # create the sub group tag
             new_sub_tag = len(sub_group_tags)
+            #  turn the message into a df
             message_as_cache = pd.DataFrame([message])
+            #  create a temp cache concat the message
             temp_cache = pd.concat([self.cache, message_as_cache], ignore_index=True)
+            #  drop dublicates of detector name and nu time
             temp_cache = temp_cache.drop_duplicates(subset=['detector_name', 'neutrino_time'])
+            # create  a new time delta
             temp_cache['neutrino_time_delta'] = (
                     pd.to_datetime(temp_cache['neutrino_time_as_datetime']) - new_ini_t).dt.total_seconds()
             # Make two subgroup one for early signal and post
@@ -140,58 +165,75 @@ class CoincidenceDataHandler:
             # sort sub-group by nu time
             new_sub_group_early = new_sub_group_early.sort_values(by='neutrino_time_as_datetime')
             new_sub_group_post = new_sub_group_post.sort_values(by='neutrino_time_as_datetime')
+            #  organize the cache
+            self._organize_cache(sub_cache=new_sub_group_post)
+            self._organize_cache(sub_cache=new_sub_group_early)
 
-            self._organize_cache(sub_group=new_sub_group_post)
-            self._organize_cache(sub_group=new_sub_group_early)
-
-    def _check_for_redundancies(self, sub_group):
-        """Checks if sub group is redundant
+    def _check_for_redundancies(self, sub_cache):
+        """Checks if sub cache is redundant
         Parameters
         ----------
-        sub_group : dataframe
+        sub_cache : dataframe
             New sub group
 
         Returns
         -------
         bool
             True if sub group is redundant
-            False if sub group is unique
+            False if sub cache is unique
 
         """
-        ids = sub_group['_id']
+        # create a series of the ids in the sub group
+        ids = sub_cache['_id']
 
-        if len(sub_group) == 1:
+        # if this sub group only contains a single message return True
+        if len(sub_cache) == 1:
             return True
+        #  loop through the other sub group tags
         for sub_tag in self.cache['sub_group'].unique():
+            # save the other sub groups as a df
             other_sub = self.cache.query('sub_group == @sub_tag')
+            # check if the current sub group's ids are in the other sub group
             check_ids = ids.isin(other_sub['_id'])
+            # if the ids are in the other sub group, return True
             if check_ids.eq(True).all():
                 return True
         return False
 
-    def _organize_cache(self, sub_group):
+    def _organize_cache(self, sub_cache):
         """
         This method makes sure that the nu_delta_times are not negative,
         recalculates new deltas using the proper initial time
 
         Parameters
         ----------
-        sub_group : dataframe
+        sub_cache : dataframe
             Sub group
 
         """
-        if self._check_for_redundancies(sub_group):
+        #  if the sub is redundant then return out of the
+        if self._check_for_redundancies(sub_cache):
             return
-        # Checks if initial nu time of new sub cache is < 0
-        sub_group = sub_group.reset_index(drop=True)
-        if sub_group['neutrino_time_delta'][0] < 0:
-            sub_group = self._fix_deltas(sub_df=sub_group)
+        # for the sake of keeping things organized reset the index of the sub group
+        sub_cache = sub_cache.reset_index(drop=True)
+        # if the inital nu time is negative then fix it by passing the sub group to fix_deltas
+        if sub_cache['neutrino_time_delta'][0] < 0:
+            sub_cache = self._fix_deltas(sub_df=sub_cache)
 
-        self.cache = pd.concat([self.cache, sub_group], ignore_index=True)
+        # concat to the coche
+        self.cache = pd.concat([self.cache, sub_cache], ignore_index=True)
+        #  sort the values of the cache by their sub group and nu time ( ascending order)
         self.cache = self.cache.sort_values(by=['sub_group', 'neutrino_time_as_datetime']).reset_index(drop=True)
+
+        #  this might be useless .. comment
+        # if len(sub_cache) > 1:
+        #     self.sub_group_state[sub_cache['sub_group'][0]] = 'COINC_MSG'
+        # else:
+        #     self.sub_group_state[sub_cache['sub_group'][0]] = 'INITIAL'
 
     def _fix_deltas(self, sub_df):
         """
+        This methods fixes the deltas of the sub group by reseting the initial nu time
         Parameters
         ----------
         sub_df : Dataframe
@@ -203,15 +245,19 @@ class CoincidenceDataHandler:
             Sub cache with fixed nu time deltas
 
         """
+        #  find the new initial nu time
         initial_time = sub_df['neutrino_time_as_datetime'].min()
+        #  drop the old delta col
         sub_df = sub_df.drop(columns='neutrino_time_delta', axis=0)
+        #  make the new delta col
         sub_df['neutrino_time_delta'] = (
                 pd.to_datetime(sub_df['neutrino_time_as_datetime']) - initial_time).dt.total_seconds()
+        #  sort the nu times by ascending order
         sub_df = sub_df.sort_values(by=['neutrino_time_as_datetime'])
         return sub_df
 
     def _update_message(self, message):
-        """ This method updates the p_val and neutrino of a detector in cache.
+        """ If tirggered thhis method updates the p_val and neutrino time of a detector in cache.
 
         Parameters
         ----------
@@ -222,45 +268,63 @@ class CoincidenceDataHandler:
         -------
 
         """
-        self.msg_state = 'UPDATE'
+
+        # declare the name of the detector that will be updated
         update_detector = message["detector_name"]
+        # announce that an update is happening
         update_message = f'\t> UPDATING MESSAGE FROM: {update_detector}'
         log.info(update_message)
+        # get inds of where the detector name is present
         detector_ind = self.cache.query(f'detector_name==@update_detector').index.to_list()
-        # old_nu_times = self.cache['neutrino_time_as_datetime'][detector_ind]
+        #  loop trough the inds
         for ind in detector_ind:
+            # get the sub tag
             sub_tag = self.cache['sub_group'][ind]
+            #  declare the staate of the sub group as UPDATE
+            self.sub_group_state[sub_tag] = 'UPDATE'
+            #  get the initial nu time of the sub group
             initial_time = self.cache.query('sub_group==@sub_tag')['neutrino_time_as_datetime'].min()
+            # igonore update if the updated message is outside the coincident window
             if abs((message['neutrino_time_as_datetime'] - initial_time).total_seconds()) > 10.0:
                 continue
+            # update the message if it is coincident with the current sub group
             else:
+                #  find the ind to be updated and replace its contents with
                 for key in message.keys():
                     self.cache.at[ind, key] = message[key]
                 self.cache.at[ind, 'neutrino_time_delta'] = (
                         message['neutrino_time_as_datetime'] - initial_time).total_seconds()
+                # append the updated list
                 self.updated.append(self.cache['sub_group'][ind])
 
+        # if there are any updated sub groups reorganize them
         if len(self.updated) != 0:
-            sub_tags = self.cache['sub_group'].unique()
-            sub_tags = [i for i in sub_tags if i in self.updated]
-            print(sub_tags)
-            for sub_tag in sub_tags:
+            # loop through upated sub group list
+            for sub_tag in self.updated:
+                #  make a sub group df
                 sub_df = self.cache.query('sub_group == @sub_tag')
+                # dump the unorgaized subgroup
                 self.cache = self.cache.query('sub_group != @sub_tag')
+                # fix deltas of updated sub group
                 sub_df = self._fix_deltas(sub_df)
+                # concat the organized sub group with the rest of the cache
                 self.cache = pd.concat([self.cache, sub_df], ignore_index=True)
+                #  sort the values of the cache by sub group nu time
                 self.cache = self.cache.sort_values(
                     by=['sub_group', 'neutrino_time_as_datetime']).reset_index(drop=True)
 
     def cache_retraction(self, retraction_message):
         """
+        This method handdles message retraction by parsing the cache and dumping any instance of the target detector
+
+
         Parameters
         ----------
         retraction_message : dict
             SNEWS retraction message
 
         """
-        self.msg_state = 'RETRACTION'
+
         retracted_name = retraction_message['detector_name']
         self.cache = self.cache.query('detector_name!=@retracted_name')
         logstr = retracted_name
@@ -268,6 +332,7 @@ class CoincidenceDataHandler:
         if len(self.cache) == 0:
             return 0
         for sub_tag in self.cache['sub_group'].unique():
+            self.sub_group_state[sub_tag] = 'RETRACTION'
             other_sub = self.cache.query('sub_group == @sub_tag')
             if other_sub['neutrino_time_delta'].min() != 0.0:
                 if len(other_sub) == 1:
@@ -275,20 +340,26 @@ class CoincidenceDataHandler:
                     other_sub['neutrino_time_delta'] = [0]
 
                 else:
+                    # set new initial nu time
                     new_initial_time = pd.to_datetime(other_sub['neutrino_time_as_datetime'].min())
+                    # drop the old delta
                     other_sub = other_sub.drop(columns=['neutrino_time_delta'])
+                    #  make new delta
                     other_sub['neutrino_time_delta'] = (pd.to_datetime(
                         other_sub['neutrino_time_as_datetime']) - new_initial_time).dt.total_seconds()
+                # concat retracted sub group to the cache
                 self.cache = self.cache.query('sub_group!=@sub_tag')
                 self.cache = pd.concat([self.cache, other_sub], ignore_index=True)
                 self.cache = self.cache.sort_values(by='neutrino_time').reset_index()
-        log.info(f"\t> Retracted {logstr}")
+            # log retraction to log file
+            log.info(f"\t> Retracted {logstr} from sub-group {sub_tag}")
 
 
 class CoincidenceDistributor:
 
+
     def __init__(self, env_path=None, use_local_db=True, drop_db=False, firedrill_mode=True, hb_path=None,
-                 server_tag=None, send_email=False, send_slack=True):
+                 server_tag=None, send_email=False, send_slack=True, show_table = False):
         """This class is in charge of sending alerts to SNEWS when CS is triggered
 
         Parameters
@@ -303,16 +374,20 @@ class CoincidenceDistributor:
         """
         log.debug("Initializing CoincDecider\n")
         cs_utils.set_env(env_path)
+        self.show_table = show_table
         self.send_email = send_email
         self.send_slack = send_slack
-        self.hype_mode_ON = True
         self.hb_path = hb_path
+        # name of your sever, used for alerts
         self.server_tag = server_tag
+        # initilaize local MongoDB
         self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
+        # decelare topic type, used for alerts
         self.topic_type = "CoincidenceTier"
+        #  from the env var get the coinc thresh, 10sec
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
+        # lifetime of cahce (sec) = 24hr
         self.cache_expiration = 86400
-        self.pub_state = None
         # Some Kafka errors are retryable.
         self.retriable_error_count = 0
         self.max_retriable_errors = 20
@@ -357,102 +432,86 @@ class CoincidenceDistributor:
             print(sub_df.to_markdown())
             print('=' * 168)
 
-    def update_message_alert(self):
-        """
-        This method will send out an alert if the CoincidenceData
+    def send_alert(self, sub_group_tag, alert_type):
+        sub_df = self.coinc_data.cache.query('sub_group==@sub_group_tag')
+        p_vals = sub_df['p_val'].to_list()
+        p_vals_avg = np.round(sub_df['p_val'].mean(), decimals=5)
+        nu_times = sub_df['neutrino_time'].to_list()
+        detector_names = sub_df['detector_name'].to_list()
+        false_alarm_prob = cache_false_alarm_rate(cache_sub_list=sub_df, hb_cache=self.heartbeat.cache_df)
 
-        """
-        if len(self.coinc_data.updated) == 0:
-            pass
-        else:
-            alert_type = 'UPDATE'
+        alert_data = dict(p_vals=p_vals,
+                          p_val_avg=p_vals_avg,
+                          sub_list_num=sub_group_tag,
+                          neutrino_times=nu_times,
+                          detector_names=detector_names,
+                          false_alarm_prob=false_alarm_prob,
+                          server_tag=self.server_tag,
+                          alert_type=alert_type)
 
-            log.debug('\t> An UPDATE message is received')
-            for updated_sub in self.coinc_data.updated:
-                _sub_df = self.coinc_data.cache.query('sub_group==@updated_sub')
-                p_vals = _sub_df['p_val'].to_list()
-                p_vals_avg = np.round(_sub_df['p_val'].mean(), decimals=5)
-                nu_times = _sub_df['neutrino_time'].to_list()
-                detector_names = _sub_df['detector_name'].to_list()
-                false_alarm_prob = cache_false_alarm_rate(cache_sub_list=_sub_df, hb_cache=self.heartbeat.cache_df)
-
-                alert_data = dict(p_vals=p_vals,
-                                  p_val_avg=p_vals_avg,
-                                  sub_list_num=updated_sub,
-                                  neutrino_times=nu_times,
-                                  detector_names=detector_names,
-                                  false_alarm_prob=false_alarm_prob,
-                                  server_tag=self.server_tag,
-                                  alert_type=alert_type)
-
-                with self.alert as pub:
-                    alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
-                    pub.send(alert)
-                    if self.send_email:
-                        send_email(alert)
-                    if self.send_slack:
-                        snews_bot.send_table(alert_data,
-                                             alert,
-                                             is_test=True,
-                                             topic=self.observation_topic)
-
-            log.debug('\t> An alert is updated!')
-            self.coinc_data.updated = []
+        with self.alert as pub:
+            alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
+            pub.send(alert)
+            if self.send_email:
+                send_email(alert)
+            if self.send_slack:
+                snews_bot.send_table(alert_data,
+                                     alert,
+                                     is_test=True,
+                                     topic=self.observation_topic)
 
     # ------------------------------------------------------------------------------------------------------------------
-    def hype_mode_publish(self):
+    def alert_decider(self):
         """
         This method will publish an alert every time a new detector
         submits an observation message
 
         """
+        # mkae a pretty terminal output
         click.secho(f'{"=" * 100}', fg='bright_red')
-        new_count = self.coinc_data.cache.groupby(by='sub_group').size()
-        for _sub_group, new_message_count in (new_count - self.coinc_data.old_count).iteritems():
-            if new_message_count == 0:
+        # loop through the sub group tag and state
+        for sub_group_tag, state in self.coinc_data.sub_group_state.items():
+            # if state is none skip the sub group
+            if state is None:
                 continue
-            if self.coinc_data.msg_state == 'RETRACTION':
+            # publish a retraction alert for the sub group is its state is RETRACTION
+            elif state == 'RETRACTION':
+                #  yet another pretty terminal output
+                click.secho(f'SUB GROUP {sub_group_tag}:{"RETRACTION HAS BEEN MADE".upper():^100}', bg='bright_green',
+                            fg='red')
+                click.secho(f'{"Publishing an updated  alert..".upper():^100}', bg='bright_green', fg='red')
+                click.secho(f'{"=" * 100}', fg='bright_red')
+                # publish retraction alert
+                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
                 continue
-            _sub_df = self.coinc_data.cache.query('sub_group==@_sub_group')
-            # if empty, new_message_count returns a NaN
-            if len(_sub_df['detector_name']) == 1 and (new_message_count == 1 or pd.isna(new_message_count)):
-                alert_type = 'INITIAL MESSAGE'
-                log.debug(f'\t> Initial message in sub group:{_sub_group}')
-            else:
-                alert_type = 'NEW_MESSAGE'
-                click.secho(f'{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
+            #Don't publish alert for the sub group is its state is INITIAL
+            elif state == 'INITIAL':
+                #  yet another pretty terminal output
+                log.debug(f'\t> Initial message in sub group:{sub_group_tag}')
+                click.secho(f'SUB GROUP {sub_group_tag}:{"Initial message recieved".upper():^100}', bg='bright_green',
+                            fg='red')
+                click.secho(f'{"=" * 100}', fg='bright_red')
+                continue
+            elif state == 'UPDATE':
+                #  yet another pretty terminal output
+                click.secho(f'SUB GROUP {sub_group_tag}:{"A MESSGAE HAS BEEN UPDATED".upper():^100}', bg='bright_green',
+                            fg='red')
+                click.secho(f'{"Publishing an updated  Alert!!!".upper():^100}', bg='bright_green', fg='red')
+                click.secho(f'{"=" * 100}', fg='bright_red')
+                log.debug('\t> An UPDATE message is received')
+                # publish update alert
+                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
+                log.debug('\t> An alert is updated!')
+                continue
+            elif state == 'COINC_MSG':
+                #  yet another pretty terminal output
+                click.secho(f'SUB GROUP {sub_group_tag}:{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
                 click.secho(f'{"Published an Alert!!!".upper():^100}', bg='bright_green', fg='red')
                 click.secho(f'{"=" * 100}', fg='bright_red')
-
-            if alert_type != 'INITIAL MESSAGE':
-                p_vals = _sub_df['p_val'].to_list()
-                p_vals_avg = np.round(_sub_df['p_val'].mean(), decimals=5)
-                nu_times = _sub_df['neutrino_time'].to_list()
-                detector_names = _sub_df['detector_name'].to_list()
-                false_alarm_prob = cache_false_alarm_rate(cache_sub_list=_sub_df, hb_cache=self.heartbeat.cache_df)
-
-                alert_data = dict(p_vals=p_vals,
-                                  p_val_avg=p_vals_avg,
-                                  sub_list_num=_sub_group,
-                                  neutrino_times=nu_times,
-                                  detector_names=detector_names,
-                                  false_alarm_prob=false_alarm_prob,
-                                  server_tag=self.server_tag,
-                                  alert_type=alert_type)
-
-                with self.alert as pub:
-                    alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
-                    pub.send(alert)
-                    if self.send_email:
-                        send_email(alert)
-                    if self.send_slack:
-                        snews_bot.send_table(alert_data,
-                                             alert,
-                                             is_test=True,
-                                             topic=self.observation_topic)
-
-                log.info(f"\t> An alert was published: {alert_type} !")
-        self.coinc_data.old_count = new_count
+                # publish coincidence alert
+                log.info(f"\t> An alert was published: {state} !")
+                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
+                continue
 
     # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
@@ -491,12 +550,15 @@ class CoincidenceDistributor:
                             snews_message['received_time'] = datetime.utcnow().isoformat()
                             click.secho(f'{"-" * 57}', fg='bright_blue')
                             self.coinc_data.add_to_cache(message=snews_message)
-                            # self.display_table() ## don't display on the server
-                            self.hype_mode_publish()
-                            self.update_message_alert()
+                            if self.show_table:
+                                self.display_table() ## don't display on the server
+                            self.alert_decider()
                             self.storage.insert_mgs(snews_message)
                             sys.stdout.flush()
-
+                            # reset state of each sub group
+                            for key in self.coinc_data.sub_group_state.keys():
+                                self.coinc_data.sub_group_state[key] = None
+                            self.coinc_data.updated = []
 
                         # for each read message reduce the retriable err count
                         if self.retriable_error_count > 1:
