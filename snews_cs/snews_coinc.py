@@ -29,7 +29,7 @@ class CoincidenceDataHandler:
     """
 
     def __init__(self):
-        # define the col names of the cahce df
+        # define the col names of the cache df
         self.cache = pd.DataFrame(columns=[
             "_id", "detector_name", "received_time", "machine_time", "neutrino_time",
             'neutrino_time_as_datetime',
@@ -80,7 +80,7 @@ class CoincidenceDataHandler:
 
         """
 
-        # if the cache is empty add the message to cache, decleare state of sub group 0 as INITIAL
+        # if the cache is empty add the message to cache, declare state of sub group 0 as INITIAL
         if len(self.cache) == 0:
             print('Initial Message!!')
             message['neutrino_time_delta'] = 0
@@ -111,14 +111,14 @@ class CoincidenceDataHandler:
             SNEWS message
 
         """
-        # grab the curent sub group tags
+        # grab the current sub group tags
         sub_group_tags = self.cache['sub_group'].unique()
-        #  this boolean declears whether if the messsage is not coincident
+        #  this boolean declares whether if the message is not coincident
         is_coinc = False
         for tag in sub_group_tags:
             # query the cache, select the current sub group
             sub_cache = self.cache.query('sub_group==@tag')
-            #  reeset the index, for the sake of keeping things organized
+            #  reset the index, for the sake of keeping things organized
             sub_cache = sub_cache.reset_index(drop=True)
             # select the initial nu time of the sub group
             sub_ini_t = sub_cache['neutrino_time_as_datetime'][0]
@@ -138,7 +138,7 @@ class CoincidenceDataHandler:
                 #  declare the state the sub group to COINC_MSG
                 self.sub_group_state[tag] = 'COINC_MSG'
 
-        # if the message is not coimcident with any of the sub groups create a new sub group
+        # if the message is not coincident with any of the sub groups create a new sub group
         if not is_coinc:
             # set the message's nu time, as the initial nu time
             new_ini_t = message['neutrino_time_as_datetime']
@@ -216,11 +216,11 @@ class CoincidenceDataHandler:
             return
         # for the sake of keeping things organized reset the index of the sub group
         sub_cache = sub_cache.reset_index(drop=True)
-        # if the inital nu time is negative then fix it by passing the sub group to fix_deltas
+        # if the initial nu time is negative then fix it by passing the sub group to fix_deltas
         if sub_cache['neutrino_time_delta'][0] < 0:
             sub_cache = self._fix_deltas(sub_df=sub_cache)
 
-        # concat to the coche
+        # concat to the cache
         self.cache = pd.concat([self.cache, sub_cache], ignore_index=True)
         #  sort the values of the cache by their sub group and nu time ( ascending order)
         self.cache = self.cache.sort_values(by=['sub_group', 'neutrino_time_as_datetime']).reset_index(drop=True)
@@ -274,17 +274,17 @@ class CoincidenceDataHandler:
         # announce that an update is happening
         update_message = f'\t> UPDATING MESSAGE FROM: {update_detector}'
         log.info(update_message)
-        # get inds of where the detector name is present
+        # get indices of where the detector name is present
         detector_ind = self.cache.query(f'detector_name==@update_detector').index.to_list()
-        #  loop trough the inds
+        #  loop through the indices
         for ind in detector_ind:
             # get the sub tag
             sub_tag = self.cache['sub_group'][ind]
-            #  declare the staate of the sub group as UPDATE
+            #  declare the state of the sub group as UPDATE
             self.sub_group_state[sub_tag] = 'UPDATE'
             #  get the initial nu time of the sub group
             initial_time = self.cache.query('sub_group==@sub_tag')['neutrino_time_as_datetime'].min()
-            # igonore update if the updated message is outside the coincident window
+            # ignore update if the updated message is outside the coincident window
             if abs((message['neutrino_time_as_datetime'] - initial_time).total_seconds()) > 10.0:
                 continue
             # update the message if it is coincident with the current sub group
@@ -299,11 +299,11 @@ class CoincidenceDataHandler:
 
         # if there are any updated sub groups reorganize them
         if len(self.updated) != 0:
-            # loop through upated sub group list
+            # loop through updated sub group list
             for sub_tag in self.updated:
                 #  make a sub group df
                 sub_df = self.cache.query('sub_group == @sub_tag')
-                # dump the unorgaized subgroup
+                # dump the unorganized subgroup
                 self.cache = self.cache.query('sub_group != @sub_tag')
                 # fix deltas of updated sub group
                 sub_df = self._fix_deltas(sub_df)
@@ -380,13 +380,13 @@ class CoincidenceDistributor:
         self.hb_path = hb_path
         # name of your sever, used for alerts
         self.server_tag = server_tag
-        # initilaize local MongoDB
+        # initialize local MongoDB
         self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
-        # decelare topic type, used for alerts
+        # declare topic type, used for alerts
         self.topic_type = "CoincidenceTier"
         #  from the env var get the coinc thresh, 10sec
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
-        # lifetime of cahce (sec) = 24hr
+        # lifetime of case (sec) = 24hr
         self.cache_expiration = 86400
         # Some Kafka errors are retryable.
         self.retriable_error_count = 0
