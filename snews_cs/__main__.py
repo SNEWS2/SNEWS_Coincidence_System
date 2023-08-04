@@ -34,7 +34,7 @@ def main(ctx, env):
 
 @main.command()
 @click.option('--local/--no-local', default=True, show_default='True', help='Whether to use local database server or take from the env file')
-@click.option('--firedrill/--no-firedrill', default=True, show_default='True', help='Whether to use firedrill brokers or default ones')
+@click.option('--firedrill/--no-firedrill', default=False, show_default='False', help='Whether to use firedrill brokers or default ones')
 @click.option('--dropdb/--no-dropdb', default=True, show_default='True', help='Whether to drop the current database')
 @click.option('--email/--no-email', default=True, show_default='True', help='Whether to send emails along with the alert')
 @click.option('--slackbot/--no-slackbot', default=True, show_default='True', help='Whether to send the alert on slack')
