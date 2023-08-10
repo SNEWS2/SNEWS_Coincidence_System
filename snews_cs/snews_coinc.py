@@ -22,7 +22,7 @@ log = getLogger(__name__)
 
 
 # TODO: duplicate for a test-cache. Do not drop actual cache each time there are tests
-class CoincidenceDataHandler:
+class CacheManager:
     """
     This class handles all the incoming data to the SNEWS CS Cache,
     adding messages, organizing sub-groups, retractions and updating cache entries
@@ -129,7 +129,7 @@ class CoincidenceDataHandler:
                 # to the message add the corresponding sub group and nu time delta
                 message['sub_group'] = tag
                 message['neutrino_time_delta'] = delta
-                # turn the message into a pd df, this is for concating it to the cache
+                # turn the message into a pd df, this is for concatenating it to the cache
                 temp = pd.DataFrame([message])
                 # concat the message df to the cahce
                 self.cache = pd.concat([self.cache, temp], ignore_index=True)
@@ -225,15 +225,9 @@ class CoincidenceDataHandler:
         #  sort the values of the cache by their sub group and nu time ( ascending order)
         self.cache = self.cache.sort_values(by=['sub_group', 'neutrino_time_as_datetime']).reset_index(drop=True)
 
-        #  this might be useless .. comment
-        # if len(sub_cache) > 1:
-        #     self.sub_group_state[sub_cache['sub_group'][0]] = 'COINC_MSG'
-        # else:
-        #     self.sub_group_state[sub_cache['sub_group'][0]] = 'INITIAL'
-
     def _fix_deltas(self, sub_df):
         """
-        This methods fixes the deltas of the sub group by reseting the initial nu time
+        This method fixes the deltas of the sub group by resetting the initial nu time
         Parameters
         ----------
         sub_df : Dataframe
@@ -257,7 +251,7 @@ class CoincidenceDataHandler:
         return sub_df
 
     def _update_message(self, message):
-        """ If tirggered thhis method updates the p_val and neutrino time of a detector in cache.
+        """ If triggered this method updates the p_val and neutrino time of a detector in cache.
 
         Parameters
         ----------
@@ -357,9 +351,8 @@ class CoincidenceDataHandler:
 
 class CoincidenceDistributor:
 
-
     def __init__(self, env_path=None, use_local_db=True, drop_db=False, firedrill_mode=True, hb_path=None,
-                 server_tag=None, send_email=False, send_slack=True, show_table = False):
+                 server_tag=None, send_email=False, send_slack=True, show_table=False):
         """This class is in charge of sending alerts to SNEWS when CS is triggered
 
         Parameters
@@ -404,7 +397,7 @@ class CoincidenceDistributor:
         self.heartbeat = HeartBeat(env_path=env_path, firedrill_mode=firedrill_mode)
 
         self.stash_time = 86400
-        self.coinc_data = CoincidenceDataHandler()
+        self.coinc_data = CacheManager()
 
     def clear_cache(self):
         """ When a reset cache is passed, recreate the
@@ -413,7 +406,7 @@ class CoincidenceDistributor:
         """
         log.info("\t > [RESET] Resetting the cache.")
         del self.coinc_data
-        self.coinc_data = CoincidenceDataHandler()
+        self.coinc_data = CacheManager()
 
     # ----------------------------------------------------------------------------------------------------------------
     def display_table(self):
@@ -484,7 +477,7 @@ class CoincidenceDistributor:
                 # publish retraction alert
                 self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
                 continue
-            #Don't publish alert for the sub group is its state is INITIAL
+            # Don't publish alert for the sub group is its state is INITIAL
             elif state == 'INITIAL':
                 #  yet another pretty terminal output
                 log.debug(f'\t> Initial message in sub group:{sub_group_tag}')
@@ -551,7 +544,7 @@ class CoincidenceDistributor:
                             click.secho(f'{"-" * 57}', fg='bright_blue')
                             self.coinc_data.add_to_cache(message=snews_message)
                             if self.show_table:
-                                self.display_table() ## don't display on the server
+                                self.display_table()  ## don't display on the server
                             self.alert_decider()
                             self.storage.insert_mgs(snews_message)
                             sys.stdout.flush()
