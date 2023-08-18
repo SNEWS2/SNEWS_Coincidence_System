@@ -563,7 +563,6 @@ class CoincidenceDistributor:
                 log.error(f"(2) Caught a keyboard interrupt. Exiting.\n")
                 self.exit_on_error = True
                 fatal_error = True
-                sys.exit()
 
             # if there is a KafkaException, check if retriable
             except adc.errors.KafkaException as e:
