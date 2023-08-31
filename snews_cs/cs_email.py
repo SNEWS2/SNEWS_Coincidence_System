@@ -44,35 +44,30 @@ def send_email(alert_content):
 
 ###  First pass at using smtplib.
 ###  Note that this is sample code.
-def _smtp_sender(mails)
+def _smtp_sender(body, subject, addr, attachment=None):
     # Create a text/plain message
     msg = email.mime.multipart.MIMEMultipart()
-    msg['Subject'] = 'This is a test'
-    msg['From'] = 'cjorr@purdue.edu'
-    msg['To'] = 'cjorr@purdue.edu'
+    msg['Subject'] = subject
+    msg['From'] = 'SNEWS TEST USER <cjorr@purdue.edu>'
+    msg['To'] = addr
 
     # The main body is just another attachment
-    body = email.mime.text.MIMEText("""Hello, how are you? I am fine.
-    This is a rather nice letter, don't you think?""")
-    msg.attach(body)
+    emailbody = email.mime.text.MIMEText(body)
+    msg.attach(emailbody)
 
-    # PDF attachment
-   filename='resume.pdf'
-   fp=open(filename,'rb')
-   att = email.mime.application.MIMEApplication(fp.read(),_subtype="pdf")
-   fp.close()
-   att.add_header('Content-Disposition','attachment',filename=filename)
-   msg.attach(att)
+    if attachment is not None:
+         fp=open(attachment,'rb')
+         att = email.mime.application.MIMEApplication(fp.read(),_subtype="octet-stream")
+         fp.close()
+         att.add_header('Content-Disposition','attachment',filename=attachment)
+         msg.attach(att)
 
-   # send via Gmail server
-   # NOTE: my ISP, Centurylink, seems to be automatically rewriting
-   # port 25 packets to be port 587 and it is trashing port 587 packets.
-   # So, I use the default port 25, but I authenticate.
-   s = smtplib.SMTP('smtp.purdue.edu')
-   #s.starttls()
-   #s.login('xyz@gmail.com','xyzpassword')
-   s.sendmail('cjorr@purdue.edu',['cjorr@purdue.edu'], msg.as_string())
-   s.quit()
+    s = smtplib.SMTP('smtp.purdue.edu')
+    ## Bits and pieces for authenticated smtp.
+    #s.starttls()
+    #s.login('xyz@gmail.com','xyzpassword')
+    s.sendmail('cjorr@purdue.edu',['cjorr@purdue.edu'], msg.as_string())
+    s.quit()
 
 def _mail_sender(mails):
     """ Send the generated emails via s-nail
