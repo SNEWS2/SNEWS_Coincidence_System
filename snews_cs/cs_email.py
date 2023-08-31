@@ -1,6 +1,3 @@
-
-# https://unix.stackexchange.com/questions/381131/simplest-way-to-send-mail-with-image-attachment-from-command-line-using-gmail
-
 import os, json
 from datetime import datetime
 from .core.logging import getLogger
@@ -38,16 +35,22 @@ def send_email(alert_content):
     for k, v in alert_content.items():
         space = 40 - len(k)
         pretty_alert += f'{k} :{r" "*space}{v}\n'
+    subject = "SNEWS COINCIDENCE" + datetime.utcnow().isoformat()
     emails = 'snews2-test-ahabig@d.umn.edu'
+
+    # TODO: the call out to mail won't be needed later.
     os.system( f'echo "{pretty_alert}"| mail -s "SNEWS COINCIDENCE {datetime.utcnow().isoformat()}" {emails}')
+    _smtp_sender(pretty_alert, subject, emails)
     log.info(f"\t\t> SNEWS Alert mail was sent at {datetime.utcnow().isoformat()} to {emails}")
 
-###  First pass at using smtplib.
-###  Note that this is sample code.
+### _smtp_sender service function.  All other functions in this file 
+### call this for mail handling.
 def _smtp_sender(body, subject, addr, attachment=None):
     # Create a text/plain message
     msg = email.mime.multipart.MIMEMultipart()
     msg['Subject'] = subject
+
+    # TODO: Adjust this appropriately when testing is complete.
     msg['From'] = 'SNEWS TEST USER <cjorr@purdue.edu>'
     msg['To'] = addr
 
@@ -62,10 +65,15 @@ def _smtp_sender(body, subject, addr, attachment=None):
          att.add_header('Content-Disposition','attachment',filename=attachment)
          msg.attach(att)
 
+    # TODO: This should be defined as a os env
     s = smtplib.SMTP('smtp.purdue.edu')
+
+    # TODO: We may need this.  Leaving for now.
     ## Bits and pieces for authenticated smtp.
     #s.starttls()
     #s.login('xyz@gmail.com','xyzpassword')
+
+    #SMTP.sendmail(from_addr, to_addrs, msg, mail_options=(), rcpt_options=())
     s.sendmail('cjorr@purdue.edu',['cjorr@purdue.edu'], msg.as_string())
     s.quit()
 
@@ -99,6 +107,7 @@ def send_feedback_mail(detector, attachment=None, message_content=None, given_co
 
     if len(contacts) > 0:
         time = datetime.utcnow().isoformat()
+        subject = "SNEWS FEEDBACK " + time
         base_msg = f"echo {message_content} | s-nail -s 'SNEWS FEEDBACK {time}' "
         if attachment is not None:
             attached_file = os.path.join(beats_path, attachment)
@@ -107,7 +116,9 @@ def send_feedback_mail(detector, attachment=None, message_content=None, given_co
         for contact in contacts:
             base_msg += f" {contact}"
             log.info(f"\t\t> Trying to send feedback to {contact} for {detector}")
+            # TODO: This piece may not be needed
             out = _mail_sender([base_msg])
+            _smtp_sender(message_content, subject, contact, attachment)
             return out
     else:
         log.info(f"\t\t> Feedback mail is requested for {detector}. However, there are no contacts added.")
@@ -125,12 +136,15 @@ def send_warning_mail(detector, message_content=None):
     """
     contacts = contact_list[detector]["emails"]
     message_content = message_content or ""
+    subject = "SNEWS Server Heartbeat for " + detector + " is skipped!"
     if len(contacts) > 0:
         for contact in contacts:
             mail_regular = base_warning.format(message_content=message_content,
                                                detector=detector,
                                                contact=contact)
             log.info(f"\t\t> Trying to send warning to {contact} for {detector}\n")
+            # TODO: This piece may not be needed.
             out = _mail_sender([mail_regular])
+            _smtp_sender(message_content, subject, contact)
     else:
         log.info(f"\t\t> Warning is triggered for {detector}. However, there are no contacts added.")
