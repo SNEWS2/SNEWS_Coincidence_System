@@ -1,6 +1,7 @@
 
 {"Baksan": {"emails":[], "detector_pass":"None"},
  "Borexino": {"emails": [], "detector_pass":"None"},
+ "cjorrtest": {"emails": ["cjorr@purdue.edu", "chris.orr@gmail.com"], "detector_pass":"None"},
  "DS-20K": {"emails": ["sptorres@CougarNet.UH.EDU"], "detector_pass":"None"},
  "DUNE": {"emails": [], "detector_pass":"None"},
  "HALO": {"emails": [], "detector_pass":"None"},
