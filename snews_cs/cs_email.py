@@ -19,6 +19,8 @@ from email.mime.multipart import MIMEMultipart
 
 log = getLogger(__name__)
 
+### Pull in environment variables for use with _smtp_sender service function
+smtpserver = os.getenv("smtp_server_addr")
 sender = os.getenv("snews_sender_email")
 password = os.getenv("snews_sender_pass")
 
@@ -51,7 +53,7 @@ def _smtp_sender(body, subject, addr, attachment=None):
     msg['Subject'] = subject
 
     # TODO: Adjust this appropriately when testing is complete.
-    msg['From'] = 'SNEWS TEST USER <cjorr@purdue.edu>'
+    msg['From'] = 'SNEWS USER <' + sender + '>'
     msg['To'] = addr
 
     # The main body is just another attachment
@@ -66,16 +68,15 @@ def _smtp_sender(body, subject, addr, attachment=None):
          msg.attach(att)
 
     # TODO: This should be defined as a os env
-    s = smtplib.SMTP('smtp.purdue.edu')
+    with smtplib.SMTP(smtpserver) as smtp:
+         smtp.connect(smtpserver)
+         # TODO: We may need this.  Leaving for now.
+         ## Bits and pieces for authenticated smtp.
+         #smtp.starttls()
+         #smtp.login(sender,password)
 
-    # TODO: We may need this.  Leaving for now.
-    ## Bits and pieces for authenticated smtp.
-    #s.starttls()
-    #s.login('xyz@gmail.com','xyzpassword')
-
-    #SMTP.sendmail(from_addr, to_addrs, msg, mail_options=(), rcpt_options=())
-    s.sendmail('cjorr@purdue.edu',['cjorr@purdue.edu'], msg.as_string())
-    s.quit()
+         #SMTP.sendmail(from_addr, to_addrs, msg, mail_options=(), rcpt_options=())
+         smtp.sendmail(sender,['cjorr@purdue.edu'], msg.as_string())
 
 def _mail_sender(mails):
     """ Send the generated emails via s-nail
