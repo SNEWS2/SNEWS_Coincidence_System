@@ -78,6 +78,8 @@ def _smtp_sender(body, subject, addr, attachment=None):
          #SMTP.sendmail(from_addr, to_addrs, msg, mail_options=(), rcpt_options=())
          smtp.sendmail(sender,['cjorr@purdue.edu'], msg.as_string())
 
+    log.info(f"\t\t> An e-mail was sent at {datetime.utcnow().isoformat()} to {addr} via _smtp_sender")
+
 def _mail_sender(mails):
     """ Send the generated emails via s-nail
     """
