@@ -40,8 +40,6 @@ def send_email(alert_content):
     subject = "SNEWS COINCIDENCE" + datetime.utcnow().isoformat()
     emails = 'snews2-test-ahabig@d.umn.edu'
 
-    # TODO: the call out to mail won't be needed later.
-    os.system( f'echo "{pretty_alert}"| mail -s "SNEWS COINCIDENCE {datetime.utcnow().isoformat()}" {emails}')
     _smtp_sender(pretty_alert, subject, emails)
     log.info(f"\t\t> SNEWS Alert mail was sent at {datetime.utcnow().isoformat()} to {emails}")
 
@@ -52,7 +50,6 @@ def _smtp_sender(body, subject, addr, attachment=None):
     msg = email.mime.multipart.MIMEMultipart()
     msg['Subject'] = subject
 
-    # TODO: Adjust this appropriately when testing is complete.
     msg['From'] = 'SNEWS USER <' + sender + '>'
     msg['To'] = addr
 
@@ -77,24 +74,9 @@ def _smtp_sender(body, subject, addr, attachment=None):
 
          #SMTP.sendmail(from_addr, to_addrs, msg, mail_options=(), rcpt_options=())
          smtp.sendmail(sender,['cjorr@purdue.edu'], msg.as_string())
+         smtp.sendmail(sender, addr, msg.as_string())
 
     log.info(f"\t\t> An e-mail was sent at {datetime.utcnow().isoformat()} to {addr} via _smtp_sender")
-
-def _mail_sender(mails):
-    """ Send the generated emails via s-nail
-    """
-    success = False
-    for i, mail in enumerate(mails[::-1]):
-        # try sending either of the mails
-        stdout = os.system(mail)
-        if stdout == 0:
-            success = True
-    if success:
-        log.info(f"\t> Mail was successfully sent!\n")
-        return True
-    else:
-        log.error(f"\t> Mail could not be sent.\n")
-        return False
 
 ### FEEDBACK EMAIL
 def send_feedback_mail(detector, attachment=None, message_content=None, given_contact=None):
@@ -119,20 +101,11 @@ def send_feedback_mail(detector, attachment=None, message_content=None, given_co
         for contact in contacts:
             base_msg += f" {contact}"
             log.info(f"\t\t> Trying to send feedback to {contact} for {detector}")
-            # TODO: This piece may not be needed
-            out = _mail_sender([base_msg])
             _smtp_sender(message_content, subject, contact, attachment)
-            return out
     else:
         log.info(f"\t\t> Feedback mail is requested for {detector}. However, there are no contacts added.")
 
 ### Send WARNING message
-
-base_warning = "echo {message_content} | " \
-               "s-nail " \
-               "-s 'SNEWS Server Heartbeat for {detector} is skipped!' " \
-               "{contact}"
-
 def send_warning_mail(detector, message_content=None):
     """ Send warning mail when a heartbeat is skipped
         This function is invoked within the feedback script
@@ -142,12 +115,7 @@ def send_warning_mail(detector, message_content=None):
     subject = "SNEWS Server Heartbeat for " + detector + " is skipped!"
     if len(contacts) > 0:
         for contact in contacts:
-            mail_regular = base_warning.format(message_content=message_content,
-                                               detector=detector,
-                                               contact=contact)
             log.info(f"\t\t> Trying to send warning to {contact} for {detector}\n")
-            # TODO: This piece may not be needed.
-            out = _mail_sender([mail_regular])
             _smtp_sender(message_content, subject, contact)
     else:
         log.info(f"\t\t> Warning is triggered for {detector}. However, there are no contacts added.")
