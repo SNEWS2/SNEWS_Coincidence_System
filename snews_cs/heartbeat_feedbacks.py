@@ -160,7 +160,7 @@ def check_frequencies_and_send_mail(detector, given_contact=None):
 def plot_beats(df, detector, figname):
     """ Requires QT libraries: sudo apt-get install qt5-default
     """
-        latency = pd.to_timedelta(df['Latency'].values).total_seconds()
+    latency = pd.to_timedelta(df['Latency'].values).total_seconds()
     received_times = df['Received Times']
     unique_days = list(set([datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d') for date in received_times]))
     if len(unique_days) > 1:
