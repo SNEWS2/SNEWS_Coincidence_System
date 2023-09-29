@@ -37,7 +37,7 @@ def send_email(alert_content):
     for k, v in alert_content.items():
         space = 40 - len(k)
         pretty_alert += f'{k} :{r" "*space}{v}\n'
-    subject = "SNEWS COINCIDENCE" + datetime.utcnow().isoformat()
+    subject = f"SNEWS COINCIDENCE {datetime.utcnow().isoformat()}"
     emails = 'snews2-test-ahabig@d.umn.edu'
 
     _smtp_sender(pretty_alert, subject, emails)
