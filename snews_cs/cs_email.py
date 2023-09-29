@@ -46,25 +46,6 @@ def send_email(alert_content):
 ### _smtp_sender service function.  All other functions in this file 
 ### call this for mail handling.
 def _smtp_sender(body, subject, addr, attachment=None):
-    # Create a text/plain message
-    msg = email.mime.multipart.MIMEMultipart()
-    msg['Subject'] = subject
-
-    msg['From'] = 'SNEWS USER <' + sender + '>'
-    msg['To'] = addr
-
-    # The main body is just another attachment
-    emailbody = email.mime.text.MIMEText(body)
-    msg.attach(emailbody)
-
-    if attachment is not None:
-         fp=open(attachment,'rb')
-         att = email.mime.application.MIMEApplication(fp.read(),_subtype="octet-stream")
-         fp.close()
-         att.add_header('Content-Disposition','attachment',filename=attachment)
-         msg.attach(att)
-
-    # TODO: This should be defined as a os env
     with smtplib.SMTP(smtpserver) as smtp:
          smtp.connect(smtpserver)
          # TODO: We may need this.  Leaving for now.
@@ -72,11 +53,41 @@ def _smtp_sender(body, subject, addr, attachment=None):
          #smtp.starttls()
          #smtp.login(sender,password)
 
-         #SMTP.sendmail(from_addr, to_addrs, msg, mail_options=(), rcpt_options=())
-         smtp.sendmail(sender,['cjorr@purdue.edu'], msg.as_string())
-         smtp.sendmail(sender, addr, msg.as_string())
+         # Convert addr to a list, incase it is passed in as a
+         # string.  smtplib will take both, but ultimately it wants a list.
+         if type(addr) == str:
+               addr = [addr]
 
-    log.info(f"\t\t> An e-mail was sent at {datetime.utcnow().isoformat()} to {addr} via _smtp_sender")
+         # While smtplib will take a list for the to: address, the envelope
+         # ought to be addressed to one person.  If we get a list of people,
+         # break them up into separate emails.
+         for to_addr in addr:
+              # Create a text/plain message
+              msg = email.mime.multipart.MIMEMultipart()
+              msg['Subject'] = subject
+
+              msg['From'] = 'SNEWS USER <' + sender + '>'
+              msg['To'] = to_addr
+
+              # The main body is just another attachment
+              emailbody = email.mime.text.MIMEText(body)
+              msg.attach(emailbody)
+
+              if attachment is not None:
+                   fp=open(attachment,'rb')
+                   att = email.mime.application.MIMEApplication(fp.read(),_subtype="octet-stream")
+                   fp.close()
+                   att.add_header('Content-Disposition','attachment',filename=attachment)
+                   msg.attach(att)
+
+              #SMTP.sendmail(from_addr, to_addrs, msg, mail_options=(), rcpt_options=())
+              smtp.sendmail(sender,['cjorr@purdue.edu'], msg.as_string())
+              smtp.sendmail(sender, to_addr, msg.as_string())
+              log.info(f"\t\t> An e-mail was sent at {datetime.utcnow().isoformat()} to {to_addr} via _smtp_sender")
+
+              # call the destructor for msg, so we don't inadvertently start adding
+              # things to the object if more than one loop is needed.
+              del msg
 
 ### FEEDBACK EMAIL
 def send_feedback_mail(detector, attachment=None, message_content=None, given_contact=None):
