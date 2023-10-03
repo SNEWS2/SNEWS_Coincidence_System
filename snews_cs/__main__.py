@@ -14,7 +14,14 @@ from . import cs_utils
 from . import snews_coinc as snews_coinc
 from . heartbeat_feedbacks import FeedBack
 from socket import gethostname
+from Distributed.Lock import DistributedLock
+from rich.console import Console
 
+import multiprocessing as mp
+
+def runlock(state: mp.Value, me: str, peers: List):
+    dl = DistributedLock(me, peers)
+    dl.run(state)
 
 @click.group(invoke_without_command=True)
 @click.version_option(__version__)
@@ -32,7 +39,6 @@ def main(ctx, env):
     cs_utils.set_env(env_path)
     ctx.obj['env'] = env
 
-
 @main.command()
 @click.option('--local/--no-local', default=True, show_default='True', help='Whether to use local database server or take from the env file')
 @click.option('--firedrill/--no-firedrill', default=True, show_default='True', help='Whether to use firedrill brokers or default ones')
@@ -42,21 +48,41 @@ def main(ctx, env):
 def run_coincidence(local, firedrill, dropdb, email, slackbot):
     """ Initiate Coincidence Decider 
     """
-    HOST = gethostname()
+    # Globally
+    mp.set_start_method('spawn')
+    leader = mp.Value('i', 0, lock=True)
+
+    me = os.getenv('DISTRIBUTED_LOCK_ENDPOINT')
+    peers = list(os.getenv('DISTRIBUTED_LOCK_PEERS').split(','))
+
+    server_tag = gethostname()
     coinc = snews_coinc.CoincidenceDistributor(use_local_db=local,
                                                drop_db=dropdb,
                                                firedrill_mode=firedrill,
-                                               server_tag=HOST,
+                                               server_tag=server_tag,
                                                send_email=email,
                                                send_slack=slackbot)
-    try: 
-        coinc.run_coincidence()
-    except KeyboardInterrupt: 
+
+    try:
+        coincidenceproc = mp.Process(target=coinc.run_coincidence, args=leader)
+        distributedlockproc = mp.Process(target=runlock, args=(leader, me, peers))
+        listenproc = mp.Process(target=coinc.run_alert_listener)
+
+        listenproc.start()
+        distributedlockproc.start()
+        coincidenceproc.start()
+
+        coincidenceproc.join()
+        distributedlockproc.join()
+        listenproc.join()
+
+    except KeyboardInterrupt:
         pass
     except Exception as e:
         print(e)
     finally:
         click.secho(f'\n{"="*30}DONE{"="*30}', fg='white', bg='green')
+
 
 @main.command()
 @click.option('--verbose', '-v', default=False, show_default='False', help='Verbose print')
@@ -66,7 +92,6 @@ def run_feedback(verbose):
     feedback = FeedBack(verbose=verbose)
     click.secho(f'\nInvoking Feedback search, verbose={verbose}\n', fg='white', bg='green')
     feedback()
-
 
 
 if __name__ == "__main__":

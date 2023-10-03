@@ -17,6 +17,16 @@ class CoincidenceTierAlert:
     def __init__(self, env_path=None):
         set_env(env_path)
 
+    def __eq__(self, other):
+        timedelta = datetime.fromtimestamp(other.sent_time) - datetime.fromtimestamp(self.sent_time)
+
+        return (
+            set(other.detectornames) == set(self.detector_names)
+            and set(other.p_vals) == set(self.p_values)
+            and set(other.neutrino_times) == set(self.neutrino_times)
+            and timedelta.total_seconds() < 4
+        )
+
     def id_format(self, num_detectors):
         """ Returns formatted message ID
             time format should always be same for all detectors.

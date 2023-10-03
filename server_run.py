@@ -17,6 +17,11 @@ def runlock(state: mp.Value, me: str, peers: List):
 
 if __name__ == '__main__':
     print(f'hop version: {hop.__version__}')
+
+    # XXX - Need to load the env before here.
+    me = os.getenv('DISTRIBUTED_LOCK_ENDPOINT')
+    peers = os.getenv('DISTRIBUTED_LOCK_PEERS')
+
     # print(f'SNEWS CS version: {_version.__version__}')
     server_tag = gethostname()
     coinc = CoincidenceDistributor(use_local_db=True,
@@ -28,11 +33,14 @@ if __name__ == '__main__':
     mp.set_start_method('spawn')
     leader = mp.Value('i', 0, lock=True)
 
-    coincidenceproc = mp.Process(target=coinc.run_coincidence(), args=(leader))
+    coincidenceproc = mp.Process(target=coinc.run_coincidence, args=leader)
     distributedlockproc = mp.Process(target=runlock, args=(leader, me, peers))
+    listenproc = mp.Process(target=coinc.run_alert_listener)
 
+    listenproc.start()
     distributedlockproc.start()
     coincidenceproc.start()
 
     coincidenceproc.join()
     distributedlockproc.join()
+    listenproc.join()

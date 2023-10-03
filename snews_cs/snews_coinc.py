@@ -2,7 +2,7 @@ from . import cs_utils
 from .snews_db import Storage
 import os, click
 from datetime import datetime
-from .alert_pub import AlertPublisher
+from .alert_pub import AlertPublisher, AlertListener
 import numpy as np
 import pandas as pd
 from multiprocessing import Value
@@ -324,10 +324,13 @@ class CoincidenceDistributor:
         self.exit_on_error = False  # True
         self.initial_set = False
         self.alert = AlertPublisher(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
+        self.alert_listener = AlertListener(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
         if firedrill_mode:
             self.observation_topic = os.getenv("FIREDRILL_OBSERVATION_TOPIC")
+            self.alert_topic = os.getenv("FIREDRILL_ALERT_TOPIC")
         else:
             self.observation_topic = os.getenv("OBSERVATION_TOPIC")
+            self.alert_topic = os.getenv("ALERT_TOPIC")
         self.alert_schema = CoincidenceTierAlert(env_path)
         # handle heartbeat
         self.store_heartbeat = bool(os.getenv("STORE_HEARTBEAT", "True"))
@@ -389,7 +392,7 @@ class CoincidenceDistributor:
                                   false_alarm_prob=false_alarm_prob,
                                   server_tag=self.server_tag,
                                   alert_type=alert_type)
-                if self.replicationleader:
+                if self.announcealert(alert_data):
                     with self.alert as pub:
                         alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
                         pub.send(alert)
@@ -406,6 +409,31 @@ class CoincidenceDistributor:
                     log.debug('\t> An alert is updated, but not sent since I am not the replication leader!')
 
             self.coinc_data.updated = []
+
+    def run_alert_listener(self):
+        """
+        This method listens to self.alert_topic for coincidence alerts. This is to facilitate
+        automagic redundancy in alerting, when we think one should be announced, but hasn't been.
+        Timing will be non-trivial.
+
+        This also runs in its own multiprocessing process. State will need to be returned.
+        """
+        self.alert_listener().run()
+
+    def announcealert(self, live_alert: dict) -> Bool:
+        """
+            Decide if we should speak up and announce the coincidence alert.
+        """
+        last_announced_alert = self.storage.get_coincidence_tier_archive()[-1]
+
+        # sent_time doesn't exist in live_alert
+        alert_time_delta = datetime.fromtimestamp(live_alert.sent_time) - datetime.fromtimestamp(last_announced_alert.sent_time)
+
+        return ( set(last_announced_alert.detector_names) != set(live_alert.detector_names)
+                 and set(last_announced_alert.neutrino_times) != set(live_alert.neutrino_times)
+                 and set(last_announced_alert.p_vals) != set(live_alert.p_vals)
+                 ) or self.replicationleader
+
 
     # ------------------------------------------------------------------------------------------------------------------
     def hype_mode_publish(self):
@@ -447,7 +475,7 @@ class CoincidenceDistributor:
                                   false_alarm_prob=false_alarm_prob,
                                   server_tag=self.server_tag,
                                   alert_type=alert_type)
-                if self.replicationleader:
+                if self.announcealert(alert_data):
                     with self.alert as pub:
                         alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
                         pub.send(alert)
@@ -511,7 +539,6 @@ class CoincidenceDistributor:
                             self.update_message_alert()
                             self.storage.insert_mgs(snews_message)
                             sys.stdout.flush()
-
 
                         # for each read message reduce the retriable err count
                         if self.retriable_error_count > 1:

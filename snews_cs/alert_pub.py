@@ -8,6 +8,7 @@ Melih Kara
 Sebastian Torres-Lara
 """
 import os, click
+import time
 from hop import Stream
 from . import cs_utils
 from .snews_db import Storage
@@ -78,6 +79,12 @@ class AlertPublisher:
 # maybe we can get rid of "Sending TEST ALERT" message
 
 
+# XXX
+# Perhaps this doesn't belong in this file
+
+# XXX - TODO
+#   sent_time threshold
+
 class AlertListener:
     """ Class to receive SNEWS SuperNova Alerts based on coincidence
 
@@ -136,6 +143,8 @@ class AlertListener:
                     snews_message = message
 
                 self.storage.insert_mgs(snews_message)
+
+            time.sleep(1)
 
     def display_message(self, message):
         if self.verbose:
