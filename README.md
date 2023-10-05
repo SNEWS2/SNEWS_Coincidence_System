@@ -17,25 +17,41 @@ cd SNEWS_Coincidence_System
 
 Build and install the package using one of the two following methods:
 ### Install option 1: Poetry
+[Poetry](https://python-poetry.org/) makes it easy to manage and install dependencies, build projects, and publish packages to PyPI.
+
+
 If you don't already have poetry installed (check with `poetry --version`), install it:
 ```bash
 pip3 install poetry
 ```
 
-Then build and install the package
+Poetry relies on the `pyproject.toml` file for project-related stuff, so be sure to issue the following poetry commands from the same directory with that file (i.e., the root directory of this codebase).
+
+The below command will install the package and all its dependicies. When run for the first time, poetry will create a new virtual environment on your filesystem (but not in your working directory). Poetry will know where to find this virtual environment in the future; there is no need to source it.
+
+> Note: By default, Poetry will create the virtual environment based on your locally installed version of python (i.e., `$(which python)`). If you would like to specify a specific version of python, you can run the optional command listed below.
+
 ```bash
-poetry build
+# Optional: Tell Poetry which version of python you want to use by pointing to the appropriate binary.
+#
+# poetry env use <path-to-python>
+# ex. poetry env use /usr/local/bin/python3.9
+# ex. poetry env use $(which python3.9)
+
 poetry install
 ```
-
-Poetry will create a virtual environment, download and install dependencies into it, and install the
-`snews_cs` script.
 
 To run in the virtual environment, you can either enter its shell directly from the terminal
 (`poetry shell`, then `exit` to deactivate the environment), or you can run individual commands like
 so: `poetry run <command>`.
 
 For example, to run `snews_cs`, you can do ether:
+```bash
+# Poetry will execute everything after "run" in the virtual environment
+poetry run snews_cs --help
+```
+or (if you still want to activate/deactivate your venv)
+
 ```bash
 poetry shell
 # Note: Your prompt will now include text like this (snews-cs-py3.11)
@@ -47,12 +63,60 @@ snews_cs --help
 # Leave virtual environment; return to original shell
 exit
 ```
-or
-```bash
-# Poetry will execute everything after "run" in the virtual environment
-poetry run snews_cs --help
+
+#### Poetry notes for developers
+**Q: Why Poetry? A: Dependency hell.**
+
+`requirements.txt` mixes top-level dependencies and lower-level dependencies in a single file. Want to upgrade the version of a middle-level dependency that is compatible with multiple python versions? Good luck! Try this command:
+```shell
+poetry show --tree # Show dependencies and sub-dependencies
+
+# EXAMPLE OUTPUT:
+# flake8 6.1.0 the modular source code checker: pep8 pyflakes and co
+# ├── mccabe >=0.7.0,<0.8.0
+# ├── pycodestyle >=2.11.0,<2.12.0
+# └── pyflakes >=3.1.0,<3.2.0
+# hop-client 0.8.0 A pub-sub client library for Multi-messenger Astrophysics
+# ├── adc-streaming >=2.1.0
+# │   ├── authlib *
+# │   │   └── cryptography >=3.2
+# │   │       └── cffi >=1.12
+# │   │           └── pycparser *
 ```
 
+**Q: Wait, how do I activate/deactivate my environment? A: Don't.**
+
+If you're coming from the world of `virtualenv`, you're used to creating your env in a subdirectory of your projcet, sourcing the `venv/bin/activate` file, and using `deactivate` when you're done. But why polute your working directory? Poetry will create the venv elsewhere. When you use `poetry run <command>` it will run your `<command>` in the venv for you. When you say `poetry install`, it installs to the venv for you. No need to source/deactivate it.
+
+**Q: How do I add a new dependcies? A: Similar to pip, but a bit different.**
+
+```shell
+# The following command is equivalent to:
+# "source venv/bin/activate; pip install numpy; pip freeze > requirements.txt; deactivate"
+poetry add numpy
+```
+
+**Q: But how do I know what venv I'm using? How do I delete it and start fresh?" A: Poetry can answer that for you.**
+
+Check which environments are available with `poetry env list`. It will tell you which one is currently "active" ("active" != sourced; "active" == the one poetry will use when you issue poetry from that directory). If you want to switch to a specific environment, use `poetry env use <name from poetry env list>`. If you want to remove a virtual envirnoment so you can start fresh, use `poetry env remove <name from poetry env list>`.
+
+**Q: So this replaces `pip` and `requirements.txt`? A: Not necessarily.**
+
+This takes a lot of hassle out of maintaining `requirements.txt`, but it can co-exist so that folks can choose which method they prefer for installing dependencies. But maintaining 2 files that define dependencies sounds like a lot. Poetry can generate a `requirements.txt` like so:
+```shell
+poetry export --without-hashes --format=requirements.txt > requirements.txt
+```
+
+**Q: How do I publish this package to PyPI or some other index? A: Great!**
+
+```shell
+poetry build # Builds sdist and wheel
+poetry publish # Credentials required
+```
+
+**Q: I still have questions about how to use poetry... A: you can get command help.**
+
+Type `poetry` into any shell to see a manual of commands.
 
 ### Install option 2: Pip and virtualenv
 First install `virtualenv` if you don't already have it: `pip3 install virtualenv`.
