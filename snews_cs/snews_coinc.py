@@ -121,9 +121,9 @@ class CacheManager:
             #  reset the index, for the sake of keeping things organized
             sub_cache = sub_cache.reset_index(drop=True)
             # select the initial nu time of the sub group
-            sub_ini_t = sub_cache['neutrino_time_as_datetime'][0]
+            sub_ini_t = sub_cache['neutrino_time_as_datetime'].min()
             #  make the nu time delta series
-            delta = (message['neutrino_time_as_datetime'] - sub_ini_t).total_seconds()
+            delta = abs(message['neutrino_time_as_datetime'] - sub_ini_t).total_seconds()
             #  if the message's nu time is within the coincidence window
             if 0 < delta <= 10.0:
                 # to the message add the corresponding sub group and nu time delta
