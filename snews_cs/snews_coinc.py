@@ -557,6 +557,14 @@ class CoincidenceDistributor:
                         if self.retriable_error_count > 1:
                             self.retriable_error_count -= 1
 
+            # handle a keyboard interrupt (ctrl+c)
+            except KeyboardInterrupt:
+                print("Caught a keyboard interrupt.  Goodbye world!")
+                log.error(f"(2) Caught a keyboard interrupt. Exiting.\n")
+                fatal_error = True
+                self.exit_on_error = True
+                sys.exit(0)
+
             # if there is a KafkaException, check if retriable
             except adc.errors.KafkaException as e:
                 if e.retriable:
