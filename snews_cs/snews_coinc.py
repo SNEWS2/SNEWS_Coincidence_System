@@ -422,12 +422,16 @@ class CoincidenceDistributor:
 
     def announcealert(self, live_alert: dict) -> Bool:
         """
-            Decide if we should speak up and announce the coincidence alert.
+            Decide if _we_ should announce the coincidence alert.
+
+            Perhaps dropping time resolution to seconds (or tenths) and hashing the contents of the message would
+            be a better way of comparing?
         """
         last_announced_alert = self.storage.get_coincidence_tier_archive()[-1]
 
-        # sent_time doesn't exist in live_alert
-        alert_time_delta = datetime.fromtimestamp(live_alert.sent_time) - datetime.fromtimestamp(last_announced_alert.sent_time)
+        # Do we actually need this?
+        # How long since the last alert?
+        # alert_time_delta = datetime.utcnow() - datetime.fromtimestamp(last_announced_alert.sent_time)
 
         return ( set(last_announced_alert.detector_names) != set(live_alert.detector_names)
                  and set(last_announced_alert.neutrino_times) != set(live_alert.neutrino_times)
