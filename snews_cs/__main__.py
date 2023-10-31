@@ -14,7 +14,7 @@ from . import cs_utils
 from . import snews_coinc as snews_coinc
 from . heartbeat_feedbacks import FeedBack
 from socket import gethostname
-from Distributed.Lock import DistributedLock
+from distributed.lock import DistributedLock
 from rich.console import Console
 
 import multiprocessing as mp
@@ -45,6 +45,7 @@ def main(ctx, env):
 @click.option('--dropdb/--no-dropdb', default=True, show_default='True', help='Whether to drop the current database')
 @click.option('--email/--no-email', default=True, show_default='True', help='Whether to send emails along with the alert')
 @click.option('--slackbot/--no-slackbot', default=True, show_default='True', help='Whether to send the alert on slack')
+@click.option('--distributedlock/--no-distributedlock', default=False, show_default='True', help='Run distributed locking subsystem.')
 def run_coincidence(local, firedrill, dropdb, email, slackbot):
     """ Initiate Coincidence Decider 
     """
@@ -65,15 +66,21 @@ def run_coincidence(local, firedrill, dropdb, email, slackbot):
 
     try:
         coincidenceproc = mp.Process(target=coinc.run_coincidence, args=leader)
-        distributedlockproc = mp.Process(target=runlock, args=(leader, me, peers))
-        listenproc = mp.Process(target=coinc.run_alert_listener)
-
-        listenproc.start()
-        distributedlockproc.start()
         coincidenceproc.start()
 
+        if distributedlock:
+            distributedlockproc = mp.Process(target=runlock, args=(leader, me, peers))
+            distributedlockproc.start()
+        else:
+            leader = True
+
+        listenproc = mp.Process(target=coinc.run_alert_listener)
+        listenproc.start()
+
         coincidenceproc.join()
-        distributedlockproc.join()
+        if distributedlock:
+            distributedlockproc.join()
+
         listenproc.join()
 
     except KeyboardInterrupt:
