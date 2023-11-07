@@ -288,7 +288,7 @@ class CoincidenceDataHandler:
 
 class CoincidenceDistributor:
 
-    def __init__(self, env_path=None, use_local_db=True, drop_db=False, firedrill_mode=True, hb_path=None,
+    def __init__(self, replicationleader:Value, env_path=None, use_local_db=True, drop_db=False, firedrill_mode=True, hb_path=None,
                  server_tag=None, send_email=False, send_slack=True):
         """This class is in charge of sending alerts to SNEWS when CS is triggered
 
@@ -311,7 +311,8 @@ class CoincidenceDistributor:
         self.server_tag = server_tag
         #
         # ['leader', 'follower']
-        self.replicationleader = 0
+        # mp threadlock object, use .value() to get value
+        self.replicationleader = replicationleader
 
         self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
         self.topic_type = "CoincidenceTier"
@@ -324,7 +325,7 @@ class CoincidenceDistributor:
         self.exit_on_error = False  # True
         self.initial_set = False
         self.alert = AlertPublisher(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
-        self.alert_listener = AlertListener(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
+#        self.alert_listener = AlertListener(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
         if firedrill_mode:
             self.observation_topic = os.getenv("FIREDRILL_OBSERVATION_TOPIC")
             self.alert_topic = os.getenv("FIREDRILL_ALERT_TOPIC")
@@ -410,17 +411,17 @@ class CoincidenceDistributor:
 
             self.coinc_data.updated = []
 
-    def run_alert_listener(self):
-        """
-        This method listens to self.alert_topic for coincidence alerts. This is to facilitate
-        automagic redundancy in alerting, when we think one should be announced, but hasn't been.
-        Timing will be non-trivial.
+#    def run_alert_listener(self):
+#        """
+#        This method listens to self.alert_topic for coincidence alerts. This is to facilitate
+#        automagic redundancy in alerting, when we think one should be announced, but hasn't been.
+#        Timing will be non-trivial.
+#
+#        This also runs in its own multiprocessing process. State will need to be returned.
+#        """
+#        self.alert_listener().run()
 
-        This also runs in its own multiprocessing process. State will need to be returned.
-        """
-        self.alert_listener().run()
-
-    def announcealert(self, live_alert: dict) -> Bool:
+    def announcealert(self, live_alert: dict) -> bool:
         """
             Decide if _we_ should announce the coincidence alert.
 
@@ -436,7 +437,7 @@ class CoincidenceDistributor:
         return ( set(last_announced_alert.detector_names) != set(live_alert.detector_names)
                  and set(last_announced_alert.neutrino_times) != set(live_alert.neutrino_times)
                  and set(last_announced_alert.p_vals) != set(live_alert.p_vals)
-                 ) or self.replicationleader
+                 ) or self.replicationleader.value
 
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -498,7 +499,7 @@ class CoincidenceDistributor:
         self.coinc_data.old_count = new_count
 
     # ------------------------------------------------------------------------------------------------------------------
-    def run_coincidence(self, replicationleader: Value):
+    def run_coincidence(self):
         """
         As the name states this method runs the coincidence system.
         Starts by subscribing to the hop observation_topic.
@@ -521,10 +522,6 @@ class CoincidenceDistributor:
                     click.secho(f'{datetime.utcnow().isoformat()} (re)Initializing Coincidence System for '
                                 f'{self.observation_topic}\n')
                     for snews_message in s:
-                        # check replica state with every message
-                        if replicationleader:
-                            self.replicationeleader = replicationleader.value
-
                         # check for the hop version
                         try:
                             snews_message = snews_message.content

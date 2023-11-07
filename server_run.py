@@ -1,14 +1,13 @@
-from distributed.lock import DistributedLock
-from snews_cs.snews_coinc import CoincidenceDistributor
-import hop
 from socket import gethostname
 from typing import List
 from time import sleep
-from rich.console import Console
-
 import multiprocessing as mp
 
-# from  snews_cs import  _version
+from rich.console import Console
+import hop
+from distributed.lock import DistributedLock
+
+from snews_cs.snews_coinc import CoincidenceDistributor
 
 def runlock(state: mp.Value, me: str, peers: List):
     dl = DistributedLock(me, peers)
@@ -20,7 +19,9 @@ if __name__ == '__main__':
 
     # XXX - Need to load the env before here.
     me = os.getenv('DISTRIBUTED_LOCK_ENDPOINT')
-    peers = list(os.getenv('DISTRIBUTED_LOCK_PEERS').split(','))
+    peerenv = os.getenv('DISTRIBUTED_LOCK_PEERS')
+    if peerenv is not None:
+        peers = peerenv.split(',')
 
     # print(f'SNEWS CS version: {_version.__version__}')
     server_tag = gethostname()
@@ -33,7 +34,7 @@ if __name__ == '__main__':
     mp.set_start_method('spawn')
     leader = mp.Value('i', 0, lock=True)
 
-    coincidenceproc = mp.Process(target=coinc.run_coincidence, args=leader)
+    coincidenceproc = mp.Process(target=coinc.run_coincidence, args=(leader,))
 
     if distributedlock:
         distributedlockproc = mp.Process(target=runlock, args=(leader, me, peers))

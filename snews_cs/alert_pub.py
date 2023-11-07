@@ -10,6 +10,8 @@ Sebastian Torres-Lara
 import os, click
 import time
 from hop import Stream
+import adc.errors
+
 from . import cs_utils
 from .snews_db import Storage
 
@@ -118,33 +120,75 @@ class AlertListener:
         if topic is not None:
             self.alert_topic = topic
 
+        # Some Kafka errors are retryable.
+        self.retriable_error_count = 0
+        self.max_retriable_errors = 20
+        self.exit_on_error = False  # True
+
         self.verbose = verbose
         self.storage = Storage(drop_db=False, use_local_db=use_local)
-
-    def __enter__(self):
         self.stream = Stream(until_eos=True, auth=self.auth).open(self.alert_topic, 'r')
-        return self
+
+#    def __enter__(self):
+#        self.stream = Stream(until_eos=True, auth=self.auth).open(self.alert_topic, 'r')
+#        return self
 
     def __exit__(self, *args):
         self.stream.close()
 
     def run(self):
         while True:
-            for message in self.stream:
-                snews_message = None
-                # XXX - Debug
-                self.display_message(message)
+            try:
+                for message in self.stream:
+                    snews_message = None
+                    # XXX - Debug
+                    self.display_message(message)
 
-                # check for the hop version
-                try:
-                    snews_message = message.content
-                except Exception as e:
-                    log.error(f"A message with older hop version is found. {e}\n{snews_message}")
-                    snews_message = message
+                    # check for the hop version
+                    try:
+                        snews_message = message.content
+                    except Exception as e:
+                        log.error(f"A message with older hop version is found. {e}\n{snews_message}")
+                        snews_message = message
 
-                self.storage.insert_mgs(snews_message)
+                    self.storage.insert_mgs(snews_message)
 
-            time.sleep(1)
+                time.sleep(10)
+            # handle a keyboard interrupt (ctrl+c)
+            except KeyboardInterrupt:
+                print("Caught a keyboard interrupt.  Goodbye world!")
+                log.error(f"(2) Caught a keyboard interrupt. Exiting.\n")
+                fatal_error = True
+                self.exit_on_error = True
+                sys.exit(0)
+
+            # if there is a KafkaException, check if retriable
+            except adc.errors.KafkaException as e:
+                if e.retriable:
+                    self.retriable_error_count += 1
+                    if self.retriable_error_count >= self.max_retriable_errors:
+                        log.error(f"Max retryable errors exceeded. Here is the most recent exception:\n{e}\n")
+                        fatal_error = True
+                    else:
+                        log.error(f"Retryable error! \n{e}\n")
+                        # sleep with exponential backoff and a bit of jitter.
+                        time.sleep((1.5 ** self.retriable_error_count) * (1 + random.random()) / 2)
+                else:
+                    log.error(
+                        f"(1) Something crashed the server, not a retriable error, here is the Exception raised\n{e}\n")
+                    fatal_error = True
+
+            # any other exception is logged, but not fatal (?)
+            except Exception as e:
+                log.error(f"(2) Something crashed the server, here is the Exception raised\n{e}\n")
+                fatal_error = False  # True # maybe not a fatal error?
+
+            finally:
+                # if we are breaking on errors and there is a fatal error, break
+                if self.exit_on_error and fatal_error:
+                    break
+                # otherwise continue by re-initiating
+                continue
 
     def display_message(self, message):
         if self.verbose:

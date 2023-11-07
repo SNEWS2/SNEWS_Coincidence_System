@@ -7,17 +7,20 @@
 
 """
 
+from socket import gethostname
+import multiprocessing as mp
+import os
+
 # https://click.palletsprojects.com/en/8.0.x/utils/
-import click, os
+import click
+from rich.console import Console
+
+from distributed.lock import DistributedLock
+
 from . import __version__
 from . import cs_utils
 from . import snews_coinc as snews_coinc
 from . heartbeat_feedbacks import FeedBack
-from socket import gethostname
-from distributed.lock import DistributedLock
-from rich.console import Console
-
-import multiprocessing as mp
 
 def runlock(state: mp.Value, me: str, peers: List):
     dl = DistributedLock(me, peers)
@@ -50,11 +53,14 @@ def run_coincidence(local, firedrill, dropdb, email, slackbot):
     """ Initiate Coincidence Decider 
     """
     # Globally
-    mp.set_start_method('spawn')
+    #mp.set_start_method('spawn')
     leader = mp.Value('i', 0, lock=True)
 
     me = os.getenv('DISTRIBUTED_LOCK_ENDPOINT')
-    peers = list(os.getenv('DISTRIBUTED_LOCK_PEERS').split(','))
+    peerenv = os.getenv('DISTRIBUTED_LOCK_PEERS')
+    if peerenv is not None:
+        peers = peerenv.split(',')
+
 
     server_tag = gethostname()
     coinc = snews_coinc.CoincidenceDistributor(use_local_db=local,
@@ -65,7 +71,7 @@ def run_coincidence(local, firedrill, dropdb, email, slackbot):
                                                send_slack=slackbot)
 
     try:
-        coincidenceproc = mp.Process(target=coinc.run_coincidence, args=leader)
+        coincidenceproc = mp.Process(target=coinc.run_coincidence, args=(leader,))
         coincidenceproc.start()
 
         if distributedlock:
