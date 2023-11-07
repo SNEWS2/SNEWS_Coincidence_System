@@ -6,7 +6,7 @@ Start the server in 'development' mode.
 from typing import List
 import os
 
-from snews_cs.cs_utils import Director
+from snews_cs.cs_director import Director
 
 
 def main():
