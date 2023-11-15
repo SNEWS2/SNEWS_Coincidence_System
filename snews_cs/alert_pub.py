@@ -10,7 +10,7 @@ Sebastian Torres-Lara
 import os, click
 from hop import Stream
 from . import cs_utils
-from .snews_db import Storage
+
 
 
 class AlertPublisher:
@@ -39,7 +39,7 @@ class AlertPublisher:
         else:
             self.alert_topic = os.getenv("ALERT_TOPIC")
         self.verbose = verbose
-        self.storage = Storage(drop_db=False, use_local_db=use_local)
+
 
     def __enter__(self):
         self.stream = Stream(until_eos=True, auth=self.auth).open(self.alert_topic, 'w')
