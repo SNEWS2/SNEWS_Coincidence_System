@@ -1,5 +1,4 @@
 from . import cs_utils
-from .snews_db import Storage
 import os, click
 from datetime import datetime
 from .alert_pub import AlertPublisher
@@ -17,7 +16,7 @@ import sys
 import random
 import time
 import adc.errors
-
+from .snews_sql import  Storage
 
 log = getLogger(__name__)
 
@@ -29,13 +28,14 @@ class CoincidenceDataHandler:
     adding messages, organizing sub-groups, retractions and updating cache entries
     """
 
-    def __init__(self):
+    def __init__(self, storage=None):
         self.cache = pd.DataFrame(columns=[
             "_id", "detector_name", "received_time", "machine_time", "neutrino_time",
             'neutrino_time_as_datetime',
             "p_val", "meta", "sub_group", "neutrino_time_delta"])
         self.old_count = self.cache.groupby(by='sub_group').size()
         self.updated = []
+        self.storage = storage
 
     def add_to_cache(self, message):
         """
@@ -448,6 +448,7 @@ class CoincidenceDistributor:
 
                 with self.alert as pub:
                     alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
+                    self.storage.insert_alert(alert, 'COINC')
                     pub.send(alert)
                     if self.send_email:
                         send_email(alert)
@@ -500,7 +501,7 @@ class CoincidenceDistributor:
                             # self.display_table() ## don't display on the server
                             self.hype_mode_publish()
                             self.update_message_alert()
-                            self.storage.insert_mgs(snews_message)
+                            self.storage.insert_mgs(snews_message, 'COINC')
                             sys.stdout.flush()
 
                         # for each read message reduce the retriable err count
