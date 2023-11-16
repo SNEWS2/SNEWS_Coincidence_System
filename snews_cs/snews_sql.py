@@ -320,6 +320,32 @@ class Storage:
         self.conn.close()
         return schema
 
+    def insert_coinc_cache(self, cache):
+        """
+        Inserts coincidence cache dataframe into the coincidence_tier_archive table.
+
+        Parameters
+        ----------
+        cache : dataframe
+            dictionary of the SNEWS message
+
+        """
+        # to sent time datetime string and expiration datetime string
+        exp_date = datetime.fromisoformat(cache['sent_time'][0]) + timedelta(hours=48)
+        exp_date = exp_date.isoformat()
+        self.reconnect()
+        # coincidence_tier_archive is not empty delete all rows
+        self.cursor.execute('''DELETE FROM coincidence_tier_archive''')
+
+        # insert dataframe into table
+        for index, row in cache.iterrows():
+            self.cursor.execute('''INSERT INTO coincidence_tier_archive VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                                (row['_id'], row['schema_version'], row['detector_name'], row['p_value'],
+                                 row['neutrino_time'], row['sent_time'], row['machine_time'],
+                                 str(row['meta']), exp_date))
+        self.conn.commit()
+        self.conn.close()
+
 
 
 
