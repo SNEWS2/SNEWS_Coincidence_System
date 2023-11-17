@@ -1,5 +1,5 @@
 from . import cs_utils
-from .snews_db import Storage
+from .snews_sql import Storage
 import os, click
 from datetime import datetime
 from .alert_pub import AlertPublisher
@@ -489,12 +489,14 @@ class CoincidenceDistributor:
                 #  yet another pretty terminal output
                 click.secho(f'SUB GROUP {sub_group_tag}:{"A MESSGAE HAS BEEN UPDATED".upper():^100}', bg='bright_green',
                             fg='red')
-                click.secho(f'{"Publishing an updated  Alert!!!".upper():^100}', bg='bright_green', fg='red')
-                click.secho(f'{"=" * 100}', fg='bright_red')
                 log.debug('\t> An UPDATE message is received')
-                # publish update alert
-                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
-                log.debug('\t> An alert is updated!')
+                # only publish an alert if the sub group has more than 1 message
+                if len(self.coinc_data.cache.query('sub_group==@sub_group_tag')) == 1:
+                    click.secho(f'{"Publishing an updated  Alert!!!".upper():^100}', bg='bright_green', fg='red')
+                    click.secho(f'{"=" * 100}', fg='bright_red')
+                    # publish update alert
+                    self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
+                    log.debug('\t> An alert is updated!')
                 continue
             elif state == 'COINC_MSG':
                 #  yet another pretty terminal output
@@ -546,7 +548,7 @@ class CoincidenceDistributor:
                             if self.show_table:
                                 self.display_table()  ## don't display on the server
                             self.alert_decider()
-                            self.storage.insert_mgs(snews_message)
+                            self.storage.insert_coinc_cache(self.coinc_data.cache)
                             sys.stdout.flush()
                             # reset state of each sub group
                             for key in self.coinc_data.sub_group_state.keys():
