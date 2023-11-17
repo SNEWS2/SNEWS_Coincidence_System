@@ -10,8 +10,6 @@ Sebastian Torres-Lara
 import os, click
 from hop import Stream
 from . import cs_utils
-from .snews_db import Storage
-
 
 class AlertPublisher:
     """ Class to publish SNEWS SuperNova Alerts based on coincidence
