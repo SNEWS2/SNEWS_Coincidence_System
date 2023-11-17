@@ -491,7 +491,7 @@ class CoincidenceDistributor:
                             fg='red')
                 log.debug('\t> An UPDATE message is received')
                 # only publish an alert if the sub group has more than 1 message
-                if len(self.coinc_data.cache.query('sub_group==@sub_group_tag')) == 1:
+                if len(self.coinc_data.cache.query('sub_group==@sub_group_tag')) > 1:
                     click.secho(f'{"Publishing an updated  Alert!!!".upper():^100}', bg='bright_green', fg='red')
                     click.secho(f'{"=" * 100}', fg='bright_red')
                     # publish update alert
