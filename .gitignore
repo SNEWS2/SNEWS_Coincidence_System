@@ -17,3 +17,5 @@ doc/_build/
 /snews_cs/auxiliary/test-config.env
 firedrill.ipynb
 server_run_me.py
+*.db
+*.sqlite
