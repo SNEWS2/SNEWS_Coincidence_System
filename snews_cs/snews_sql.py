@@ -26,7 +26,7 @@ class Storage:
         self.mgs_expiration = int(os.getenv('MSG_EXPIRATION'))
         self.coinc_threshold = int(os.getenv('COINCIDENCE_THRESHOLD'))
         # define the db path
-        self.db_path = 'snews_db.db'
+        self.db_path = 'snews_db.sqlite'
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
         self.create_message_tables()
