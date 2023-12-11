@@ -15,7 +15,7 @@ class AlertPublisher:
     """ Class to publish SNEWS SuperNova Alerts based on coincidence
 
     """
-    def __init__(self, env_path=None, verbose=True, auth=True, use_local=False, firedrill_mode=True):
+    def __init__(self, env_path=None, verbose=True, auth=True, firedrill_mode=True):
         """
         Alert publisher constructor 
         Parameters
@@ -59,7 +59,6 @@ class AlertPublisher:
 
     def display_message(self, message):
         if self.verbose:
-            # print(message['_id'])
             tier = 'TEST ALERT'
             click.secho(f'{"-" * 64}', fg='bright_blue')
             click.secho(f'Sending {tier}', fg='bright_red')
