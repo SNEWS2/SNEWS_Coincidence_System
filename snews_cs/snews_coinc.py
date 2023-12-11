@@ -446,10 +446,9 @@ class CoincidenceDistributor:
         nu_times = sub_df['neutrino_time'].to_list()
         detector_names = sub_df['detector_name'].to_list()
         false_alarm_prob = cache_false_alarm_rate(cache_sub_list=sub_df, hb_cache=self.heartbeat.cache_df)
-
         alert_data = dict(p_vals=p_vals,
                           p_val_avg=p_vals_avg,
-                          sub_list_num=sub_group_tag,
+                          sub_list_num=int(sub_group_tag),
                           neutrino_times=nu_times,
                           detector_names=detector_names,
                           false_alarm_prob=false_alarm_prob,
