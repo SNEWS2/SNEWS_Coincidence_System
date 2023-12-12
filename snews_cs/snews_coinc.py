@@ -589,8 +589,6 @@ class CoincidenceDistributor:
                             self.storage.insert_coinc_cache(self.coinc_data.cache)
                             sys.stdout.flush()
 
-
-
                             self.coinc_data.updated = []
 
                         # for each read message reduce the retriable err count
