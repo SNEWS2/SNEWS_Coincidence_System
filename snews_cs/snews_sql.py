@@ -16,12 +16,10 @@ class Storage:
         Path to env file, defaults to './auxiliary/test-config.env'
     drop_db : `bool`, optional
         drops all items in the DB every time Storage is initialized, defaults to False
-    use_local_db : `bool`, optional
-        Tells Storage to set up a local DB, defaults to False.
 
     """
 
-    def __init__(self, env=None, drop_db=True, use_local_db=False):
+    def __init__(self, env=None, drop_db=True):
         cs_utils.set_env(env)
         self.mgs_expiration = int(os.getenv('MSG_EXPIRATION'))
         self.coinc_threshold = int(os.getenv('COINCIDENCE_THRESHOLD'))

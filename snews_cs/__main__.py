@@ -33,17 +33,15 @@ def main(ctx, env):
     ctx.obj['env'] = env
 
 @main.command()
-@click.option('--local/--no-local', default=True, show_default='True', help='Whether to use local database server or take from the env file')
 @click.option('--firedrill/--no-firedrill', default=False, show_default='False', help='Whether to use firedrill brokers or default ones')
 @click.option('--dropdb/--no-dropdb', default=True, show_default='True', help='Whether to drop the current database')
 @click.option('--email/--no-email', default=True, show_default='True', help='Whether to send emails along with the alert')
 @click.option('--slackbot/--no-slackbot', default=True, show_default='True', help='Whether to send the alert on slack')
-def run_coincidence(local, firedrill, dropdb, email, slackbot):
+def run_coincidence(firedrill, dropdb, email, slackbot):
     """ Initiate Coincidence Decider 
     """
     HOST = gethostname()
-    coinc = snews_coinc.CoincidenceDistributor(use_local_db=local,
-                                               drop_db=dropdb,
+    coinc = snews_coinc.CoincidenceDistributor(drop_db=dropdb,
                                                firedrill_mode=firedrill,
                                                server_tag=HOST,
                                                send_email=email,
