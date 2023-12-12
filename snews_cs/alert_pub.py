@@ -26,8 +26,6 @@ class AlertPublisher:
             Show alert, defaults to True
         auth: bool
             Use hop-auth credentials, defaults to True
-        use_local: bool
-            Use local MongoClient, defaults to False
         """
         cs_utils.set_env(env_path)
         self.auth = auth

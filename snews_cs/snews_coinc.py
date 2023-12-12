@@ -364,7 +364,7 @@ class CacheManager:
 
 class CoincidenceDistributor:
 
-    def __init__(self, env_path=None, use_local_db=True, drop_db=False, firedrill_mode=True, hb_path=None,
+    def __init__(self, env_path=None, drop_db=False, firedrill_mode=True, hb_path=None,
                  server_tag=None, send_email=False, send_slack=True, show_table=False):
         """This class is in charge of sending alerts to SNEWS when CS is triggered
 
@@ -372,8 +372,6 @@ class CoincidenceDistributor:
         ----------
         env_path : `str`
             path to env file, defaults to '/auxiliary/test-config.env'
-        use_local_db: `bool`
-            tells CoincDecider to use local MongoClient, defaults to True
         send_slack: `bool`
             Whether to send alerts on slack
 
@@ -387,7 +385,7 @@ class CoincidenceDistributor:
         # name of your sever, used for alerts
         self.server_tag = server_tag
         # initialize local MongoDB
-        self.storage = Storage(drop_db=drop_db, use_local_db=use_local_db)
+        self.storage = Storage(drop_db=drop_db)
         # declare topic type, used for alerts
         self.topic_type = "CoincidenceTier"
         #  from the env var get the coinc thresh, 10sec
@@ -399,7 +397,7 @@ class CoincidenceDistributor:
         self.max_retriable_errors = 20
         self.exit_on_error = False  # True
         self.initial_set = False
-        self.alert = AlertPublisher(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
+        self.alert = AlertPublisher(env_path=env_path, firedrill_mode=firedrill_mode)
         if firedrill_mode:
             self.observation_topic = os.getenv("FIREDRILL_OBSERVATION_TOPIC")
         else:
