@@ -20,9 +20,12 @@ from email.mime.multipart import MIMEMultipart
 log = getLogger(__name__)
 
 ### Pull in environment variables for use with _smtp_sender service function
-smtpserver = os.getenv("smtp_server_addr")
+smtpserver = "127.0.0.1"
 sender = os.getenv("snews_sender_email")
 password = os.getenv("snews_sender_pass")
+
+if os.getenv("smtp_server_addr") is not None:
+    smtpserver = os.getenv("smtp_server_addr")
 
 contact_list_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/contact_list.json'))
 with open(contact_list_file) as file:
