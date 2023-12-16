@@ -93,13 +93,13 @@ def _smtp_sender(body, subject, addr, attachment=None):
                    smtp.sendmail(sender,['cjorr@purdue.edu'], msg.as_string())
                    smtp.sendmail(sender, to_addr, msg.as_string())
                    log.info(f"\t\t> An e-mail was sent at {datetime.utcnow().isoformat()} to {to_addr} via _smtp_sender")
-          except Exception as e:
-              log.info(f"We ran into SMTP connection problems. The email DID NOT go out. I am so sorry for this.")
-              log.info(f"SMTPlib Exception:\n {e}")
+         except Exception as e:
+             log.info(f"We ran into SMTP connection problems. The email DID NOT go out. I am so sorry for this.")
+             log.info(f"SMTPlib Exception:\n {e}")
 
-          # call the destructor for msg, so we don't inadvertently start adding
-          # things to the object if more than one loop is needed.
-          del msg
+         # call the destructor for msg, so we don't inadvertently start adding
+         # things to the object if more than one loop is needed.
+         del msg
 
 ### FEEDBACK EMAIL
 def send_feedback_mail(detector, attachment=None, message_content=None, given_contact=None):
