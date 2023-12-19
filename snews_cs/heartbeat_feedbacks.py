@@ -162,16 +162,29 @@ def plot_beats(df, detector, figname):
     """
     latency = pd.to_timedelta(df['Latency'].values).total_seconds()
     received_times = df['Received Times']
-    unique_days = list(set([datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d') for date in received_times]))
+    try:
+        unique_days = list(set([datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d') for date in received_times]))
+    except Exception as e:
+        log.debug(f"> Received times might be datetime object \t{e}")
+        unique_days = list(set([date.strftime('%Y-%m-%d') for date in received_times]))
     if len(unique_days) > 1:
         date = "&".join([i for i in unique_days])
     else:
         date = list(unique_days)[0]
 
-    xticklabels = []
-    for date in received_times:
-        dt = datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f')
+    xticklabels, xticks_positions = [], []
+    _first = received_times.iloc[0]
+    _last = received_times.iloc[-1]
+    date_ranges = pd.date_range(_first, _last, 10)
+
+    for date in date_ranges:
+        try:
+            dt = datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f')
+        except Exception as e:
+            log.debug(f"> Received times might be datetime object \t{e}")
+            dt = date
         time_str = dt.strftime('%H:%M:%S')
+        xticks_positions.append(dt)
         xticklabels.append(time_str)
 
     time_after_last = df['Time After Last'].astype(float)
@@ -192,11 +205,11 @@ def plot_beats(df, detector, figname):
 
     ax2.axhline(np.mean(latency), color='darkred', alpha=0.7, ls='--')
     ax2.plot(received_times, latency, zorder=1, color='k', ls='-', label=f'mean latency:{np.mean(latency):.2f} sec')
-    ax2.scatter(received_times, latency, marker='o', c=latency, cmap='Wistia', ec='b', s=3.2**(latency), zorder=20)
+    ax2.scatter(received_times, latency, marker='o', c=latency, cmap='Wistia', ec='b', s=3.2 ** latency, zorder=20)
     ax2.set_ylabel('Latency [sec]', color='k', fontsize=18)
     ax2.set_xlabel("Received Times", fontsize=18)
-    xticks_positions, _ = plt.xticks()
-    ax2.set_xticks(xticks_positions, xticklabels);
+    # xticks_positions, _ = plt.xticks()
+    ax2.set_xticks(xticks_positions, xticklabels)
     ax2.tick_params(axis='x', labelsize=18)
     ax1.tick_params(axis='y', labelsize=18)
     ax2.tick_params(axis='y', labelsize=18)
