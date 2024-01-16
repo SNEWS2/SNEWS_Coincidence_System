@@ -114,10 +114,10 @@ class FeedBack:
             if last_hb == self.last_feedback_time[detector]:
                 # this warning has already been sent! Skip it
                 return None
-            expected_hb = last_hb + np.timedelta64(int(mean), 's')  # +/- std
+            expected_hb = np.datetime_as_string(last_hb + np.timedelta64(int(mean), 's'), unit='s')  # +/- std
             text = f" Your -{detector}- heartbeat frequency is every {mean:.2f}+/-{std:.2f} sec. " \
-                   f" Expected a heartbeat at {expected_hb.isoformat()} +/- {std:.2f} sec. " \
-                   f" Since last heartbeat there has been {since_lasthb.total_seconds():.2f} sec. " \
+                   f" Expected a heartbeat at {expected_hb} +/- {std:.2f} sec. " \
+                   f" Since last heartbeat there has been {seconds_since_lasthb:.2f} sec. " \
                    f" Is everything alright? Do you wanna talk about it?"
             vprint(f"[DEBUG] >>>>> Warning for {detector} is created, trying to send.", self.verbose)
             # send warning to detector
