@@ -103,8 +103,6 @@ class FeedBack:
         std = np.std(df['Time After Last'])
 
         last_hb = df['Received Times'].values[-1] # this is a numpy.datetime
-        # last_hb = pd.to_datetime(last_hb)         # we have to convert it to datetime.datetime
-        # since_lasthb = datetime.utcnow() - last_hb
         since_lasthb = np.datetime64('now', 'us') - last_hb
         seconds_since_lasthb = since_lasthb.astype('timedelta64[s]').item().total_seconds()
         vprint(f"[DEBUG] >>>>> mean:{mean:.2f}, std:{std:.2f}, trigger at {mean + 3 * std:.2f}", self.verbose)

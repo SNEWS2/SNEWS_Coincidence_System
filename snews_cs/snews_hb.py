@@ -252,7 +252,7 @@ class HeartBeat:
 
     def electrocardiogram(self, message):
         try:
-            message["Received Times"] = np.datetime64('now', 'us') #datetime.utcnow()
+            message["Received Times"] = np.datetime_as_string(np.datetime64(datetime.utcnow().isoformat()), unit='ns')
             if self.sanity_checks(message):
                 self.make_entry(message)
                 self.store_beats()
