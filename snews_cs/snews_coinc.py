@@ -21,14 +21,18 @@ import adc.errors
 log = getLogger(__name__)
 to_numpy_datetime = lambda x: np.datetime64(x) if not isinstance(x, np.datetime64) else x
 
+@np.vectorize
 def np_datetime_delta_sec(t_1, t_2):
     """Return the time difference between two numpy datetime64 objects in seconds
-        Returns: float (seconds)"""
+        Returns: float (seconds)
+
+        Notes
+        -----
+        t_1 is expected to be the earlier time (no absolute value is taken)
+        """
     # check if they are already numpy datetime64 objects (failsafe)
     t_1, t_2 = to_numpy_datetime(t_1), to_numpy_datetime(t_2)
-    difference = t_1 - t_2
-    u, _ = np.datetime_data(difference)
-    total_seconds = difference.astype(f'timedelta64[{u}]').item().total_seconds()
+    total_seconds = (t_2 - t_1) / np.timedelta64(1, 's')  # Convert to seconds
     return total_seconds
 
 
