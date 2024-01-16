@@ -359,7 +359,7 @@ class CacheManager:
 
                 else:
                     # set new initial nu time
-                    new_initial_time = pd.to_datetime(other_sub['neutrino_time_as_datetime'].min())
+                    new_initial_time = other_sub['neutrino_time_as_datetime'].min()
                     # drop the old delta
                     other_sub = other_sub.drop(columns=['neutrino_time_delta'])
                     #  make new delta
