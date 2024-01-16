@@ -579,7 +579,7 @@ class CoincidenceDistributor:
                         handler = CommandHandler(snews_message)
                         # if a coincidence tier message (or retraction) run through the logic
                         if handler.handle(self):
-                            snews_message['received_time'] = datetime.utcnow().isoformat()
+                            snews_message['received_time'] = np.datetime_as_string(np.datetime64('now', 'ns'))# datetime.utcnow().isoformat()
                             click.secho(f'{"-" * 57}', fg='bright_blue')
                             click.secho(f'{"Coincidence Tier Message Received":^57}', fg='bright_blue')
                             self.coinc_data.add_to_cache(message=snews_message)
