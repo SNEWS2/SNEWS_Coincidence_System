@@ -35,6 +35,14 @@ def get_data_strings(df_input):
                 df.at[i, col] = df.at[i, col].isotime()
     return df
 
+def to_numpy_datetime(input_datetime):
+    if isinstance(input_datetime, (str, np.datetime64, pd.Timestamp, datetime)):
+        # If the input is already a string or NumPy datetime64, return it as is
+        return np.datetime64(input_datetime)
+    else:
+        raise ValueError("Unsupported datetime type. Supported types: str, np.datetime64, pd.Timestamp, datetime.datetime")
+
+
 
 ## TODO: make a list of internal heartbeats, and send us = SERVER heartbeats.
 # How many times a day can server log these heartbeats, (what is the livetime of server)
@@ -150,8 +158,10 @@ class HeartBeat:
                 current version would ignore the previous logs and overwrite a new one
 
         """
-        df = get_data_strings(self.cache_df)  # the object types need to be converted for json
-        curr_data = df.to_json(orient='columns')
+        # TODO: maybe not needed?
+        # df = get_data_strings(self.cache_df)  # the object types need to be converted for json
+        # curr_data = df.to_json(orient='columns')
+        curr_data  = self.cache_df.to_json(orient='columns')
         today = datetime.utcnow()
         today_str = datetime.strftime(today, "%y-%m-%d")
         output_json_name = os.path.join(beats_path, f"{today_str}_heartbeat_log.json")
