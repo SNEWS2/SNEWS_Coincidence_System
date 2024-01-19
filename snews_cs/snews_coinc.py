@@ -20,10 +20,20 @@ import adc.errors
 
 log = getLogger(__name__)
 
+# needs more work. Vectorization converts the datatype to object in the dataframe and crashes
+# to_numpy_datetime = lambda x: np.datetime64(x) if not isinstance(x, np.datetime64) else x
+# check if they are already numpy datetime64 objects (failsafe)
+# t_1, t_2 = to_numpy_datetime(t_1), to_numpy_datetime(t_2)
+# @np.vectorize
 
 def np_datetime_delta_sec(t_1, t_2):
-    time_delta = t_2 - t_1
-    total_seconds = time_delta / np.timedelta64(1, 's')  # Convert to seconds
+    """Return the time difference between two numpy datetime64 objects in seconds
+        Returns: float (seconds)
+        Notes
+        -----
+        t_1 is expected to be the earlier time (no absolute value is taken)
+        """
+    total_seconds = (t_2 - t_1) / np.timedelta64(1, 's')  # Convert to seconds
     return total_seconds
 
 
@@ -56,7 +66,6 @@ class CacheManager:
             SNEWS Message, must be PT valid
 
         """
-
         # retraction
         if 'retract_latest' in message.keys():
             print('RETRACTING MESSAGE FROM')
@@ -166,7 +175,7 @@ class CacheManager:
             new_sub_group_early = new_sub_group_early.drop(columns='sub_group', axis=0)
             # make new sub-group tag
             new_sub_group_early['sub_group'] = new_sub_tag
-            new_sub_group_post['sub_group'] = new_sub_tag + 1
+            new_sub_group_post['sub_group'] = int(new_sub_tag + 1)
             # sort sub-group by nu time
             new_sub_group_early = new_sub_group_early.sort_values(by='neutrino_time_as_datetime')
             new_sub_group_post = new_sub_group_post.sort_values(by='neutrino_time_as_datetime')
@@ -324,7 +333,7 @@ class CacheManager:
 
     def cache_retraction(self, retraction_message):
         """
-        This method handdles message retraction by parsing the cache and dumping any instance of the target detector
+        This method handles message retraction by parsing the cache and dumping any instance of the target detector
 
 
         Parameters
@@ -350,7 +359,7 @@ class CacheManager:
 
                 else:
                     # set new initial nu time
-                    new_initial_time = pd.to_datetime(other_sub['neutrino_time_as_datetime'].min())
+                    new_initial_time = other_sub['neutrino_time_as_datetime'].min()
                     # drop the old delta
                     other_sub = other_sub.drop(columns=['neutrino_time_delta'])
                     #  make new delta
@@ -570,7 +579,7 @@ class CoincidenceDistributor:
                         handler = CommandHandler(snews_message)
                         # if a coincidence tier message (or retraction) run through the logic
                         if handler.handle(self):
-                            snews_message['received_time'] = datetime.utcnow().isoformat()
+                            snews_message['received_time'] = np.datetime_as_string(np.datetime64(datetime.utcnow().isoformat()), unit='ns')
                             click.secho(f'{"-" * 57}', fg='bright_blue')
                             click.secho(f'{"Coincidence Tier Message Received":^57}', fg='bright_blue')
                             self.coinc_data.add_to_cache(message=snews_message)

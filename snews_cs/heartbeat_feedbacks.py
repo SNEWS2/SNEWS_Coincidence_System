@@ -34,7 +34,7 @@ class FeedBack:
         self.detectors = snews_detectors
         self.last_feedback_time = dict()
         for k in self.detectors:
-            self.last_feedback_time[k] = datetime(2022, 1, 1)
+            self.last_feedback_time[k] = np.datetime64("2022-01-01")
         self.day_in_min = 1440
         self.running_min = 0
         self.verbose = verbose
@@ -73,7 +73,8 @@ class FeedBack:
 
         """
         # get the heartbeats of this detector from last 24 hours
-        last24hours = (datetime.utcnow() - timedelta(hours=24))
+        current_utc_time = np.datetime64('now', 'us')  # 's' for second precision
+        last24hours = current_utc_time - np.timedelta64(24, 'h')  # 'h' for hour precision
         data = df[df['Received Times'] > last24hours]
         data.sort_values('Received Times', inplace=True)
 
@@ -102,19 +103,19 @@ class FeedBack:
         std = np.std(df['Time After Last'])
 
         last_hb = df['Received Times'].values[-1] # this is a numpy.datetime
-        last_hb = pd.to_datetime(last_hb)         # we have to convert it to datetime.datetime
-        since_lasthb = datetime.utcnow() - last_hb
+        since_lasthb = np.datetime64('now', 'us') - last_hb
+        seconds_since_lasthb = since_lasthb.astype('timedelta64[s]').item().total_seconds()
         vprint(f"[DEBUG] >>>>> mean:{mean:.2f}, std:{std:.2f}, trigger at {mean + 3 * std:.2f}", self.verbose)
-        vprint(f"[DEBUG] >>>>> Delay since last: {since_lasthb.total_seconds():.2f}", self.verbose)
-        if since_lasthb > timedelta(seconds=(mean + 3 * std)):
+        vprint(f"[DEBUG] >>>>> Delay since last: {seconds_since_lasthb:.2f}", self.verbose)
+        if seconds_since_lasthb > (mean + 3 * std):
             # something is wrong!
             if last_hb == self.last_feedback_time[detector]:
                 # this warning has already been sent! Skip it
                 return None
-            expected_hb = last_hb + timedelta(seconds=float(mean))  # +/- std
+            expected_hb = np.datetime_as_string(last_hb + np.timedelta64(int(mean), 's'), unit='s')  # +/- std
             text = f" Your -{detector}- heartbeat frequency is every {mean:.2f}+/-{std:.2f} sec. " \
-                   f" Expected a heartbeat at {expected_hb.isoformat()} +/- {std:.2f} sec. " \
-                   f" Since last heartbeat there has been {since_lasthb.total_seconds():.2f} sec. " \
+                   f" Expected a heartbeat at {expected_hb} +/- {std:.2f} sec. " \
+                   f" Since last heartbeat there has been {seconds_since_lasthb:.2f} sec. " \
                    f" Is everything alright? Do you wanna talk about it?"
             vprint(f"[DEBUG] >>>>> Warning for {detector} is created, trying to send.", self.verbose)
             # send warning to detector
@@ -145,7 +146,6 @@ def check_frequencies_and_send_mail(detector, given_contact=None):
         out = send_feedback_mail(detector, None, fail_text, given_contact=given_contact)
         return "-No Attachment Created, Warned-", out
 
-    last_hb = pd.to_datetime(last_hb)  # we have to convert it to datetime.datetime
     text = f" Your heartbeat frequency is every {mean:.2f}+/-{std:2f} sec." \
            f" The last heartbeat received at {last_hb}. " \
            f" The received heartbeat frequency, together with the computed latency" \
@@ -161,31 +161,28 @@ def plot_beats(df, detector, figname):
     """ Requires QT libraries: sudo apt-get install qt5-default
     """
     latency = pd.to_timedelta(df['Latency'].values).total_seconds()
-    received_times = df['Received Times']
+    received_times = df['Received Times'] # should be numpy datetime object
     try:
-        unique_days = list(set([datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d') for date in received_times]))
+        unique_days_np = np.unique(received_times.astype('datetime64[D]'))
+        unique_days_list = list(unique_days_np)
     except Exception as e:
         log.debug(f"> Received times might be datetime object \t{e}")
-        unique_days = list(set([date.strftime('%Y-%m-%d') for date in received_times]))
-    if len(unique_days) > 1:
-        date = "&".join([i for i in unique_days])
+        unique_days_list = list(set([date.strftime('%Y-%m-%d') for date in received_times]))
+    if len(unique_days_list) > 1:
+        date = "&".join([i for i in unique_days_list])
     else:
-        date = list(unique_days)[0]
+        date = list(unique_days_list)[0]
 
     xticklabels, xticks_positions = [], []
     _first = received_times.iloc[0]
     _last = received_times.iloc[-1]
-    date_ranges = pd.date_range(_first, _last, 10)
 
+    date_ranges = pd.date_range(_first, _last, 10)
     for date in date_ranges:
-        try:
-            dt = datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f')
-        except Exception as e:
-            log.debug(f"> Received times might be datetime object \t{e}")
-            dt = date
-        time_str = dt.strftime('%H:%M:%S')
+        dt = np.datetime64(date)
+        dt_str = np.datetime_as_string(dt, unit='s').replace('T', ' ')[11:19]
         xticks_positions.append(dt)
-        xticklabels.append(time_str)
+        xticklabels.append(dt_str)
 
     time_after_last = df['Time After Last'].astype(float)
     mean = np.mean(time_after_last)
