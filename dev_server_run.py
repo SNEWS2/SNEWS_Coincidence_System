@@ -10,9 +10,8 @@ from snews_cs.cs_director import Director
 
 
 def main():
-
     peers = ()
-    # XXX - Need to load the env before here.
+
     me = os.getenv('DISTRIBUTED_LOCK_ENDPOINT')
     peerenv = os.getenv('DISTRIBUTED_LOCK_PEERS')
     if peerenv is not None:

@@ -288,8 +288,8 @@ class CoincidenceDataHandler:
 
 class CoincidenceDistributor:
 
-    def __init__(self, replicationleader:Value, env_path=None, use_local_db=True, drop_db=False, firedrill_mode=True, hb_path=None,
-                 server_tag=None, send_email=False, send_slack=True):
+    def __init__(self, replicationleader:Value, env_path=None, use_local_db=True, drop_db=False, firedrill_mode=True,
+                 hb_path=None, server_tag=None, send_email=False, send_slack=True, remotecomm=False):
         """This class is in charge of sending alerts to SNEWS when CS is triggered
 
         Parameters
@@ -304,8 +304,11 @@ class CoincidenceDistributor:
         """
         log.debug("Initializing CoincDecider\n")
         cs_utils.set_env(env_path)
-        self.send_email = send_email
-        self.send_slack = send_slack
+# mwl
+#        self.send_email = send_email
+        self.send_email = False
+#        self.send_slack = send_slack
+        self.send_slack = False
         self.hype_mode_ON = True
         self.hb_path = hb_path
         self.server_tag = server_tag
@@ -322,7 +325,7 @@ class CoincidenceDistributor:
         # Some Kafka errors are retryable.
         self.retriable_error_count = 0
         self.max_retriable_errors = 20
-        self.exit_on_error = False  # True
+        self.exit_on_error = True
         self.initial_set = False
         self.alert = AlertPublisher(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
 #        self.alert_listener = AlertListener(env_path=env_path, use_local=use_local_db, firedrill_mode=firedrill_mode)
@@ -393,7 +396,7 @@ class CoincidenceDistributor:
                                   false_alarm_prob=false_alarm_prob,
                                   server_tag=self.server_tag,
                                   alert_type=alert_type)
-                if self.announcealert(alert_data):
+                if False and self.announcealert(alert_data):
                     with self.alert as pub:
                         alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
                         pub.send(alert)
@@ -411,29 +414,18 @@ class CoincidenceDistributor:
 
             self.coinc_data.updated = []
 
-#    def run_alert_listener(self):
-#        """
-#        This method listens to self.alert_topic for coincidence alerts. This is to facilitate
-#        automagic redundancy in alerting, when we think one should be announced, but hasn't been.
-#        Timing will be non-trivial.
-#
-#        This also runs in its own multiprocessing process. State will need to be returned.
-#        """
-#        self.alert_listener().run()
 
     def announcealert(self, live_alert: dict) -> bool:
         """
-            Decide if _we_ should announce the coincidence alert.
+            Decide if this server instance should announce the coincidence alert.
 
             Perhaps dropping time resolution to seconds (or tenths) and hashing the contents of the message would
             be a better way of comparing?
         """
         last_announced_alert = self.storage.get_coincidence_tier_archive()[-1]
 
-        # Do we actually need this?
-        # How long since the last alert?
-        # alert_time_delta = datetime.utcnow() - datetime.fromtimestamp(last_announced_alert.sent_time)
-
+        # Should we also calculate how long since the last alert?
+        #
         return ( set(last_announced_alert.detector_names) != set(live_alert.detector_names)
                  and set(last_announced_alert.neutrino_times) != set(live_alert.neutrino_times)
                  and set(last_announced_alert.p_vals) != set(live_alert.p_vals)
@@ -480,7 +472,7 @@ class CoincidenceDistributor:
                                   false_alarm_prob=false_alarm_prob,
                                   server_tag=self.server_tag,
                                   alert_type=alert_type)
-                if self.announcealert(alert_data):
+                if False and self.announcealert(alert_data):
                     with self.alert as pub:
                         alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
                         pub.send(alert)
