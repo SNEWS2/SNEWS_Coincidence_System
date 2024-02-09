@@ -14,7 +14,10 @@ import adc.errors
 
 from . import cs_utils
 from .snews_db import Storage
+from .core.logging import getLogger
 
+# mwl
+log = getLogger(__name__)
 
 class AlertPublisher:
     """ Class to publish SNEWS SuperNova Alerts based on coincidence
@@ -60,7 +63,9 @@ class AlertPublisher:
             dict containing observation message.
 
         """
-        self.stream.write(message)
+        # Log it for now
+        log.info(f"Want to publish: {message}")
+        #self.stream.write(message)
         self.display_message(message)
 
     def display_message(self, message):
@@ -91,7 +96,8 @@ class AlertListener:
     """ Class to receive SNEWS SuperNova Alerts based on coincidence
 
     """
-    def __init__(self, env_path=None, verbose=True, auth=True, use_local=False, firedrill_mode=True, topic=None):
+    def __init__(self, env_path=None, verbose=True, auth=True, use_local=False, firedrill_mode=True, topic=None,
+                 remotecomm=False):
         """
         Alert listener constructor
         Parameters
