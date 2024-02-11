@@ -177,11 +177,10 @@ def runlock(state: mp.Value, me: str, peers: List, remotecomm: Connection):
 
 
 def runlistener(
-    env_path: str, use_local_db: bool, firedrill_mode: bool, remotecomm: Connection
+    env_path: str, firedrill_mode: bool, remotecomm: Connection
 ) -> None:
     al = AlertListener(
         env_path=env_path,
-        use_local=use_local_db,
         firedrill_mode=firedrill_mode,
         remotecomm=remotecomm,
     )
@@ -192,7 +191,6 @@ def runcoincidence(leader: Value, remotecomm: Connection) -> None:
     server_tag = gethostname() + "_dev"
     coinc = CoincidenceDistributor(
         leader,
-        use_local_db=False,
         drop_db=True,
         firedrill_mode=False,
         server_tag=server_tag,

@@ -365,7 +365,7 @@ class CacheManager:
 
 class CoincidenceDistributor:
 
-    def __init__(self, replicationleader:Value, env_path=None, use_local_db=True, drop_db=False, firedrill_mode=True,
+    def __init__(self, replicationleader:Value, env_path=None, drop_db=False, firedrill_mode=True,
                  hb_path=None, server_tag=None, send_email=False, send_slack=True, remotecomm=False, show_table=False):
         """This class is in charge of sending alerts to SNEWS when CS is triggered
 

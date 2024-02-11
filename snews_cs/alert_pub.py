@@ -13,7 +13,7 @@ from hop import Stream
 import adc.errors
 
 from . import cs_utils
-from .snews_db import Storage
+from .snews_sql import Storage
 from .core.logging import getLogger
 
 # mwl
@@ -92,7 +92,7 @@ class AlertListener:
     """ Class to receive SNEWS SuperNova Alerts based on coincidence
 
     """
-    def __init__(self, env_path=None, verbose=True, auth=True, use_local=False, firedrill_mode=True, topic=None,
+    def __init__(self, env_path=None, verbose=True, auth=True, firedrill_mode=True, topic=None,
                  remotecomm=False):
         """
         Alert listener constructor
@@ -104,8 +104,6 @@ class AlertListener:
             Show alert, defaults to True
         auth: bool
             Use hop-auth credentials, defaults to True
-        use_local: bool
-            Use local MongoClient, defaults to False
         topic: str
             Allows multiple instances of this class for the multiple alert tiers
         """
@@ -128,7 +126,7 @@ class AlertListener:
         self.exit_on_error = False  # True
 
         self.verbose = verbose
-        self.storage = Storage(drop_db=False, use_local_db=use_local)
+        self.storage = Storage(drop_db=False)
         self.stream = Stream(until_eos=True, auth=self.auth).open(self.alert_topic, 'r')
 
 #    def __enter__(self):
