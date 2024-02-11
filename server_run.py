@@ -25,8 +25,7 @@ if __name__ == '__main__':
 
     # print(f'SNEWS CS version: {_version.__version__}')
     server_tag = gethostname()
-    coinc = CoincidenceDistributor(use_local_db=True,
-                                   drop_db=True,
+    coinc = CoincidenceDistributor(drop_db=True,
                                    firedrill_mode=False,
                                    server_tag=server_tag,
                                    send_email=True)

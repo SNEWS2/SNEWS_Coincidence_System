@@ -5,7 +5,7 @@ This a module to handle all heartbeat related work
 
 import os, json
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 import numpy as np
 from .cs_utils import set_env, make_beat_directory
 from .core.logging import getLogger
@@ -85,7 +85,10 @@ class HeartBeat:
         msg["Status"] = message["detector_status"]
         self._last_row = pd.DataFrame([msg])
         # add this new entry to cache
-        self.cache_df = pd.concat([self.cache_df, self._last_row], ignore_index=True)
+        if len(self.cache_df) == 0:
+            self.cache_df = self._last_row
+        else:
+            self.cache_df = pd.concat([self.cache_df, self._last_row], ignore_index=True)
 
     def store_beats(self):
         """ log the heartbeats, and save locally

@@ -23,7 +23,7 @@ class AlertPublisher:
     """ Class to publish SNEWS SuperNova Alerts based on coincidence
 
     """
-    def __init__(self, env_path=None, verbose=True, auth=True, use_local=False, firedrill_mode=True):
+    def __init__(self, env_path=None, verbose=True, auth=True, firedrill_mode=True):
         """
         Alert publisher constructor 
         Parameters
@@ -34,8 +34,6 @@ class AlertPublisher:
             Show alert, defaults to True
         auth: bool
             Use hop-auth credentials, defaults to True
-        use_local: bool
-            Use local MongoClient, defaults to False
         """
         cs_utils.set_env(env_path)
         self.auth = auth
@@ -45,7 +43,6 @@ class AlertPublisher:
         else:
             self.alert_topic = os.getenv("ALERT_TOPIC")
         self.verbose = verbose
-        self.storage = Storage(drop_db=False, use_local_db=use_local)
 
     def __enter__(self):
         self.stream = Stream(until_eos=True, auth=self.auth).open(self.alert_topic, 'w')
@@ -70,7 +67,6 @@ class AlertPublisher:
 
     def display_message(self, message):
         if self.verbose:
-            # print(message['_id'])
             tier = 'TEST ALERT'
             click.secho(f'{"-" * 64}', fg='bright_blue')
             click.secho(f'Sending {tier}', fg='bright_red')

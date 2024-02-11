@@ -24,7 +24,7 @@ HOST = gethostname()
 log_date = date.today().strftime("%Y-%m-%d")
 log_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../logs"))
 
-log_file = f"{log_dir}/{log_date}.log"
+log_file = f"{log_dir}/snews_cs.log"
 fh = FileHandler(log_file)
 
 formatter = Formatter(
