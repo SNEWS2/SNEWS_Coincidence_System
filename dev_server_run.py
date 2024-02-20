@@ -17,7 +17,7 @@ def main():
     if peerenv is not None:
         peers = peerenv.split(',')
 
-    director = Director(False, me, peers)
+    director = Director(True, me, peers)
     director.run()
 
 

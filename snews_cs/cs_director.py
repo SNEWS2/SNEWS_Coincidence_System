@@ -64,7 +64,7 @@ class DistributedBase(ABC):
 
     def state(self, tag: str) -> int:
         if tag in self._state:
-            return self._state[tag].value
+            return self._state[tag]
 
     def comm(self, tag: str, direction: str) -> Connection:
         if tag in self._comms:
@@ -171,10 +171,12 @@ def runlock(state: mp.Value, me: str, peers: List, remotecomm: Connection):
     # XXX - TODO - Pick up here.
     #    e = remotecomm.recv()
     #    if isinstance(e, Exception):
-
-    dl = DistributedLock(me, peers, lockid="coincidenceLock", leader=state)
-    dl.run()
-
+    try:
+        dl = DistributedLock(me, peers, lockid="coincidenceLock", leader=state)
+        dl.run()
+    except:
+        dl.shutdown()
+        raise
 
 def runlistener(
     env_path: str, firedrill_mode: bool, remotecomm: Connection
@@ -237,8 +239,8 @@ class Director(DistributedBase):
                 runlock,
                 (
                     self.state("leader"),
-                    self.dl_me,
-                    self.dl_peers,
+                    self.dl_endpoint,
+                    self.dl_peerenv,
                     self.comm("lock", "remote"),
                 ),
             )
@@ -246,7 +248,7 @@ class Director(DistributedBase):
             self.set_state("leader", True)
 
         self.register_proc(
-            "listener", runlistener, (None, False, False, self.comm("listen", "remote"))
+            "listener", runlistener, (None, False, self.comm("listen", "remote"))
         )
 
     def run(self):

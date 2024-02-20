@@ -491,7 +491,13 @@ class CoincidenceDistributor:
                                   false_alarm_prob=false_alarm_prob,
                                   server_tag=self.server_tag,
                                   alert_type=alert_type)
+
+                log.debug("send_alert(): COINCIDENCE!! Checking distributed logic before sending alert.")
+
                 if False and self.announcealert(alert_data):
+
+                    log.debug("send_alert(): Passed announcealert() check, sending alerts.")
+
                     with self.alert as pub:
                         alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
                         pub.send(alert)
