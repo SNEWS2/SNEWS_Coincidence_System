@@ -159,6 +159,10 @@ class Storage:
         expiration = datetime.fromisoformat(mgs['received_time']) + timedelta(hours=48)
         expiration = expiration.isoformat()
 
+        # MK: proposed change
+        # expiration = np.datetime64(mgs['received_time'][0]) + np.timedelta64(48, 'h')
+        # expiration = np.datetime_as_string(expiration, unit='ns')
+
         if tier == 'SIG':
             self.cursor.execute('''INSERT INTO all_mgs VALUES (?, ?, ?, ?, ?)''',
                                 (mgs['_id'], mgs['received_time'], 'SIG', str(mgs), expiration))
@@ -337,8 +341,11 @@ class Storage:
 
         """
         # to sent time datetime string and expiration datetime string
-        expiration = datetime.fromisoformat(cache['sent_time'][0]) + timedelta(hours=48)
-        expiration = expiration.isoformat()
+        expiration = np.datetime64(cache['sent_time'][0]) + np.timedelta64(48, 'h')
+        expiration = np.datetime_as_string(expiration, unit='ns')
+
+        # expiration = datetime.fromisoformat(cache['sent_time'][0]) + timedelta(hours=48)
+        # expiration = expiration.isoformat()
 
         # coincidence_tier_archive is not empty delete all rows
         self.cursor.execute('''DELETE FROM coincidence_tier_archive''')
