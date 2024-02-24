@@ -485,13 +485,13 @@ class CoincidenceDistributor:
         # mkae a pretty terminal output
         click.secho(f'{"=" * 100}', fg='bright_red')
         # loop through the sub group tag and state
-        print(f'TEST {self.coinc_data.sub_group_state}')
+        # print(f'TEST {self.coinc_data.sub_group_state}')
 
         for sub_group_tag, state in self.coinc_data.sub_group_state.items():
             print('CHECKING FOR ALERTS IN SUB GROUP: ', sub_group_tag)
             # if state is none skip the sub group
             if state is None:
-                print(f'NO ALERTS IN SUB GROUP: {sub_group_tag}\n\n')
+                print(f'NO ALERTS IN SUB GROUP: {sub_group_tag}')
                 continue
             # check if sub_cache is COINC_MSG_STAGGERED
             elif state == 'COINC_MSG_STAGGERED':
@@ -580,8 +580,12 @@ class CoincidenceDistributor:
                         # if a coincidence tier message (or retraction) run through the logic
                         if handler.handle(self):
                             snews_message['received_time'] = np.datetime_as_string(np.datetime64(datetime.utcnow().isoformat()), unit='ns')
-                            click.secho(f'{"-" * 57}', fg='bright_blue')
-                            click.secho(f'{"Coincidence Tier Message Received":^57}', fg='bright_blue')
+                            # print info on the servers terminal, (important info is logged)
+                            terminal_output = click.style(f'{"-" * 57}\n', fg='bright_blue')
+                            terminal_output += click.style(f'{"Coincidence Tier Message Received":^57}\n', fg='bright_blue')
+                            terminal_output += click.style(f"\t>{snews_message['detector_name']}, {snews_message['received_time']}", fg='bright_blue')
+                            click.secho(terminal_output)
+                            # add to cache
                             self.coinc_data.add_to_cache(message=snews_message)
                             if self.show_table:
                                 self.display_table()  ## don't display on the server
