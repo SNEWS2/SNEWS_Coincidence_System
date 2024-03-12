@@ -8,8 +8,11 @@ from slack_sdk import WebClient
 import os
 from . import cs_utils
 from .cs_alert_schema import CoincidenceTierAlert
+from .core.logging import getLogger
 import warnings
 import pandas as pd
+
+log = getLogger(__name__)
 
 cs_utils.set_env()
 slack_token = os.getenv('SLACK_TOKEN')
@@ -87,12 +90,16 @@ def send_table(alert_data, alert, is_test, topic):
         Both alert_data (dictionary with info from each detector)
         and the alert (single dict with collected info) are required
     """
-    df = pd.DataFrame.from_dict(alert_data)
-    df_simplified = df[["detector_names", "neutrino_times", "p_vals"]]
-    df_simplified.sort_values("neutrino_times", inplace=True)
-    table = df_simplified.to_markdown() # tablefmt="grid"
-    image_block = get_image(is_test, alert, topic)
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore")
-        client.chat_postMessage(channel=slack_channel_id, blocks=image_block)
-        client.chat_postMessage(channel=slack_channel_id, text=f'```{table}```')
+    try:
+        df = pd.DataFrame.from_dict(alert_data)
+        df_simplified = df[["detector_names", "neutrino_times", "p_vals"]]
+        df_simplified.sort_values("neutrino_times", inplace=True)
+        table = df_simplified.to_markdown() # tablefmt="grid"
+        image_block = get_image(is_test, alert, topic)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            client.chat_postMessage(channel=slack_channel_id, blocks=image_block)
+            client.chat_postMessage(channel=slack_channel_id, text=f'```{table}```')
+    except Exception as e:
+        log.info(f"We ran into slack connection problems. slack message DID NOT go out.")
+        log.info(f"Slack Exception:\n {e}")

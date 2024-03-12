@@ -1,7 +1,5 @@
 from .cs_utils import set_env
 from datetime import datetime
-import sys
-
 
 class CoincidenceTierAlert:
     """ The Message scheme for the alert and observations
