@@ -1,28 +1,33 @@
 import numpy as np
-from scipy.stats import poisson
-import pandas as pd
-import json
+import math
 
+def ncr(n, r):
+    f = math.factorial
+    return int(f(n) / f(r) / f(n - r))
 
 def cache_false_alarm_rate(cache_sub_list, hb_cache):
+    """ Assume false alarm rate of 1 per week
+        returns the combined false alarm rate in years
+        meaning; if there are 8 active detectors, each with false alarm rate of 1/week
+        We would get a false alarm with 2-fold coincidence every X years
+        The formula;
+            n = number of detectors
+            r = number of coincidences
+            C(n,r) = \frac{n!}{r!(n-r)!}
+
+            R_{combined} = C(n,r)+1 \times F_{im, d1} * F_{im, d2} ... * F_{im, dn} \times δt^{r-1}
+
     """
-    Generates false alarm rates for a set of detector heartbeats
-
-    Parameters
-    ----------
-
-
-    Returns
-    -------
-    false alarm probability: float
-        probability that SNEWS alert is  a false alarm
-
-    """
-    # convert our n-fold coicidence from n-fold/day to n-fold/per week
-    num_coinc_detectors = len(cache_sub_list['detector_name']) * (1/7)
-    num_detectors_online = len(hb_cache)
-    mu = 1 * num_detectors_online   # expected number of false coincidence for a week
-    prob_false_alarm_rate = poisson.pmf(k=num_coinc_detectors, mu=mu)
-    return np.round(prob_false_alarm_rate, decimals=5)
+    seconds_year = 31_556_926
+    seconds_week = 604800
+    single_imitation_freq = 1 / seconds_week  # 1/week in seconds
+    online_detectors = len(hb_cache.Detector.unique())            # n
+    coincident_detectors = len(cache_sub_list['detector_name'])   # r
+    time_window = 10  # seconds
+    combinations = ncr(online_detectors, coincident_detectors)
+    combined_imitation_freq = (combinations + 1) * np.power(single_imitation_freq, coincident_detectors) * np.power(
+        time_window, coincident_detectors - 1)
+    comb_Fim_year = combined_imitation_freq / seconds_year
+    return 1/comb_Fim_year
 
 
