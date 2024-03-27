@@ -116,15 +116,14 @@ def send_feedback_mail(detector, attachment=None, message_content=None, given_co
     if len(contacts) > 0:
         time = datetime.utcnow().isoformat()
         subject = "SNEWS FEEDBACK " + time
-        base_msg = f"echo {message_content} | s-nail -s 'SNEWS FEEDBACK {time}' "
         if attachment is not None:
             attached_file = os.path.join(beats_path, attachment)
-            base_msg += f" -a {attached_file}"
+        else:
+            attached_file = None
 
         for contact in contacts:
-            base_msg += f" {contact}"
             log.info(f"\t\t> Trying to send feedback to {contact} for {detector}")
-            _smtp_sender(message_content, subject, contact, attachment)
+            _smtp_sender(message_content, subject, contact, attached_file)
     else:
         log.info(f"\t\t> Feedback mail is requested for {detector}. However, there are no contacts added.")
 

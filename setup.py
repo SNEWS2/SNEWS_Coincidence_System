@@ -1,5 +1,6 @@
 import os
 import re
+
 from setuptools import find_packages, setup
 
 # read in README
@@ -17,11 +18,11 @@ version = version_match.group(1)
 install_requires = [
     "hop-client=0.8.0",
     "jsonschema=4.4.0",
-    "numpy=1.22.2",
-    "pymongo=4.0.2",
+    "numpy=1.26.3",
+    "pymongo=4.6.1",
     "python-dotenv=0.19.2",
-    "pandas=1.4.1",
-    "slack-sdk=3.15.2",
+    "pandas=2.2.0",
+    "slack-sdk=3.26.2",
 ]
 
 def read_requirements():
@@ -36,7 +37,7 @@ extras_require = {
         'autopep8',
         'flake8',
         'mongomock',
-        'pytest >= 5.0, < 5.4',
+        'pytest < 6.3.0',
         'pytest-console-scripts',
         'pytest-cov',
         'pytest-mongodb',
