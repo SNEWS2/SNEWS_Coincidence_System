@@ -246,13 +246,14 @@ class HeartBeat:
             # do not log each time
             return True
         else:
-            log.error(f"\t> {message} is received at snews_hb.py but not valid.")
+            log.error(f"\t> {message} is received at snews_hb.py but not valid.\n"
+                      f"issue is: {issue}")
             return False
 
 
     def electrocardiogram(self, message):
         try:
-            message["Received Times"] = np.datetime_as_string(np.datetime64(datetime.utcnow().isoformat()), unit='ns')
+            message["Received Times"] = np.datetime64('now', 'ns') #np.datetime_as_string(np.datetime64('now'), unit='ns')
             if self.sanity_checks(message):
                 self.make_entry(message)
                 self.store_beats()
