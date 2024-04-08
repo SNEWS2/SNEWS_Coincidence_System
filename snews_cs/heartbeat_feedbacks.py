@@ -208,7 +208,7 @@ def plot_beats(df, detector, figname):
     divider1 = make_axes_locatable(ax1)
     cax1 = divider1.append_axes('right', size='2%', pad=0.05)
     cbar1 = fig.colorbar(plt.cm.ScalarMappable(cmap=cm1), cax=cax1, ticks=[0.25, 0.75], orientation='vertical')
-    cbar1.ax.set_yticklabels(['ON', 'OFF'])
+    cbar1.ax.set_yticklabels(['OFF', 'ON'])
 
     ax2.axhline(np.mean(latency), color='darkred', alpha=0.7, ls='--')
     ax2.plot(received_times, latency, zorder=1, color='k', ls='-', label=f'mean latency:{np.mean(latency):.2f} sec')
