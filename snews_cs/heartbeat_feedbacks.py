@@ -160,8 +160,11 @@ def check_frequencies_and_send_mail(detector, given_contact=None):
 def plot_beats(df, detector, figname):
     """ Requires QT libraries: sudo apt-get install qt5-default
     """
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    from matplotlib.colors import LinearSegmentedColormap, Normalize
+
     latency = pd.to_timedelta(df['Latency'].values).total_seconds()
-    received_times = df['Received Times'] # should be numpy datetime object
+    received_times = df['Received Times']  # should be numpy datetime object
     try:
         unique_days_np = np.unique(received_times.astype('datetime64[D]'))
         unique_days_list = list(unique_days_np)
@@ -190,19 +193,33 @@ def plot_beats(df, detector, figname):
 
     fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(17, 7), sharex=True)
     plt.subplots_adjust(hspace=0.05)
-    
+
     ax1.set_title(f"HeartBeat data for {detector}, {date}", fontsize=20)
     ax1.fill_between(received_times, mean - 3 * std, mean + 3 * std, alpha=0.5, color='aqua')
     ax1.fill_between(received_times, mean - std, mean + std, alpha=1, color='darkturquoise')
     ax1.axhline(mean, label=f'mean freq:{mean:.2f} sec', color='0.5', ls='--')
     colors = ['yellowgreen' if i == 'ON' else 'crimson' for i in df['Status']]
     ax1.plot(received_times, time_after_last, color='k', zorder=1)
-    ax1.scatter(received_times, time_after_last, marker='o', c=colors, ec='k', s=time_after_last*50, zorder=20)
+    ax1.scatter(received_times, time_after_last, marker='o', c=colors, ec='k', s=150, zorder=20)
     ax1.set_ylabel("Frequency\nSeconds after last", fontsize=18)
+
+    # Define the custom colormap with two colors
+    cm1 = LinearSegmentedColormap.from_list('red-green', [(0.863, 0.078, 0.235), (0.604, 0.804, 0.196)], N=2)
+    divider1 = make_axes_locatable(ax1)
+    cax1 = divider1.append_axes('right', size='2%', pad=0.05)
+    cbar1 = fig.colorbar(plt.cm.ScalarMappable(cmap=cm1), cax=cax1, ticks=[0.25, 0.75], orientation='vertical')
+    cbar1.ax.set_yticklabels(['ON', 'OFF'])
 
     ax2.axhline(np.mean(latency), color='darkred', alpha=0.7, ls='--')
     ax2.plot(received_times, latency, zorder=1, color='k', ls='-', label=f'mean latency:{np.mean(latency):.2f} sec')
-    ax2.scatter(received_times, latency, marker='o', c=latency, cmap='Wistia', ec='b', s=3.2 ** latency, zorder=20)
+    normalize = Normalize(vmin=0, vmax=15)
+    ax2.scatter(received_times, latency, marker='o', c=latency, cmap='Reds', ec='k', s=250, zorder=20, norm=normalize)
+    # Add a color bar
+    divider2 = make_axes_locatable(ax2)
+    cax2 = divider2.append_axes('right', size='2%', pad=0.05)
+    cbar2 = fig.colorbar(plt.cm.ScalarMappable(norm=Normalize(vmin=0, vmax=15), cmap='Reds'),
+                         cax=cax2, orientation='vertical')
+    cbar2.set_label('Latency')
     ax2.set_ylabel('Latency [sec]', color='k', fontsize=18)
     ax2.set_xlabel("Received Times", fontsize=18)
     # xticks_positions, _ = plt.xticks()
@@ -212,7 +229,8 @@ def plot_beats(df, detector, figname):
     ax2.tick_params(axis='y', labelsize=18)
     ax2.set_ylim(0, np.max([8, np.max(latency)]))
 
-    ax1.legend(loc='upper right', fontsize=18); ax2.legend(loc='upper right', fontsize=18)
+    ax1.legend(loc='upper right', fontsize=18)
+    ax2.legend(loc='upper right', fontsize=18)
     plt.savefig(os.path.join(beats_path, figname))
 
 def delete_old_figures():
