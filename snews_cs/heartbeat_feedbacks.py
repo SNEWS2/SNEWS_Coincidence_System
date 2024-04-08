@@ -219,7 +219,7 @@ def plot_beats(df, detector, figname):
     cax2 = divider2.append_axes('right', size='2%', pad=0.05)
     cbar2 = fig.colorbar(plt.cm.ScalarMappable(norm=Normalize(vmin=0, vmax=15), cmap='Reds'),
                          cax=cax2, orientation='vertical')
-    cbar2.set_label('Latency')
+    cbar2.set_label('Latency [sec]')
     ax2.set_ylabel('Latency [sec]', color='k', fontsize=18)
     ax2.set_xlabel("Received Times", fontsize=18)
     # xticks_positions, _ = plt.xticks()
