@@ -16,11 +16,11 @@ version = version_match.group(1)
 
 # requirements
 install_requires = [
-    "hop-client=0.8.0",
+    "hop-client~=0.9",
     "jsonschema=4.4.0",
     "numpy=1.26.3",
     "pymongo=4.6.1",
-    "python-dotenv=0.19.2",
+    "python-dotenv~=0.19.2",
     "pandas=2.2.0",
     "slack-sdk=3.26.2",
 ]
