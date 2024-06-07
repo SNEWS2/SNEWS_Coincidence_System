@@ -31,8 +31,8 @@ snews_cs = "snews_cs.__main__:main"
 [tool.poetry.dependencies]
 python = ">=3.9, <3.13"
 click = "^8.1.7"
-hop-client = "^0.8.0"
-ipython = "<7.33.0"  # Constrained by snews_pt
+hop-client = "~0.9"
+ipython = "~8.7"  # Constrained by snews_pt
 numpy = "^1.26.0"
 pandas = "^2.1.1"
 python-dotenv = "0.19.2"  # Constrained by snews_pt

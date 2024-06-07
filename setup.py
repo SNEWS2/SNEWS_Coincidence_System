@@ -21,7 +21,7 @@ install_requires = [
     "numpy=1.26.3",
     "pymongo=4.6.1",
     "python-dotenv~=0.19.2",
-    "pandas=2.2.0",
+    "pandas~=2.2",
     "slack-sdk=3.26.2",
 ]
 
