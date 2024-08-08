@@ -60,13 +60,17 @@ class DistributedBase(ABC):
         self._procs = {}
         self._comms = {}
         self._state = {}
-        self._err_hndlr = {}
+        self._err_hndlr = []
 
     def state(self, tag: str) -> int:
+        """ state getter
+        """
         if tag in self._state:
             return self._state[tag]
 
     def comm(self, tag: str, direction: str) -> Connection:
+        """ comm getter
+        """
         if tag in self._comms:
             if direction in self._comms[tag]:
                 return self._comms[tag][direction]
@@ -74,22 +78,25 @@ class DistributedBase(ABC):
         return None
 
     def proc(self, tag: str):
+        """ proc getter
+        """
         if tag in self._procs:
             return self._procs[tag]
-        else:
-            return None
+
+        return None
 
     def set_state(self, tag: str, state: int) -> bool:
+        """ state setter
+        """
         if tag in self._state:
             with self._state[tag].get_lock():
                 self._state[tag].value = state
         else:
             return False
 
-    """
-    The methods below are half-implemented. Need to consider server-side (parent) (send and receive) 
-    as well as client-side (child) (send and receive)
-    """
+    # The methods below are half-implemented.
+    # Need to consider server-side (parent) (send and receive)
+    # as well as client-side (child) (send and receive)
 
     def broadcast(self, excpt: Exception):
         """
@@ -117,7 +124,7 @@ class DistributedBase(ABC):
         """
         Register callable to be notified of remote error conditions
         """
-        self.err_hndlr.append(func)
+        self._err_hndlr.append(func)
 
     def checkerror(self):
         """ Parent process, reads the remote Pipe connection
@@ -129,7 +136,7 @@ class DistributedBase(ABC):
                 rdata = self.comm(com, "remote").receive()
 
             if isinstance(rdata, Exception):
-                if len(self.err_hndlr) > 0:
+                if len(self._err_hndlr) > 0:
                     for hndlr in self.err_hndlr:
                         hndlr(rdata)
                 else:
@@ -155,14 +162,13 @@ class DistributedBase(ABC):
 
     @abstractmethod
     def run(self):
-        pass
+        """ unimplemented stub
+        """
 
 
-"""
-The existence of the functions below is a peculiarity of multiprocessing, pickle and python classes.
-Classes can't be simply pickled, which is required by multiprocessing for Process()es. Opportunities for
-future improvement here.
-"""
+# The existence of the functions below is a peculiarity of multiprocessing,
+# pickle and python classes. Classes can't be simply pickled, which is
+# required by multiprocessing for Process()es. Opportunities for future improvement here.
 
 def runlock(state: mp.Value, me: str, peers: List, remotecomm: Connection):
     """ So many questions/problems with implementing this remotecomm parameter!
@@ -175,12 +181,14 @@ def runlock(state: mp.Value, me: str, peers: List, remotecomm: Connection):
         dl = DistributedLock(me, peers, lockid="coincidenceLock", leader=state)
         dl.run()
     except:
-        dl.shutdown()
+        dl.stop()
         raise
 
 def runlistener(
     env_path: str, firedrill_mode: bool, remotecomm: Connection
 ) -> None:
+    """ Wrap the alert listener invocation so we can thread it
+    """
     al = AlertListener(
         env_path=env_path,
         firedrill_mode=firedrill_mode,
@@ -190,6 +198,8 @@ def runlistener(
 
 
 def runcoincidence(leader: Value, remotecomm: Connection) -> None:
+    """ Wrap the coincidence distributor invocation so we can thread it
+    """
     server_tag = gethostname() + "_dev"
     coinc = CoincidenceDistributor(
         leader,
@@ -252,6 +262,8 @@ class Director(DistributedBase):
         )
 
     def run(self):
+        """ Run the core director logic
+        """
         print(f"hop version: {hop.__version__}")
 
         try:
@@ -273,9 +285,7 @@ class Director(DistributedBase):
             print("Caught a keyboard interrupt. Exiting.")
             log.error("(2) Caught a keyboard interrupt. Exiting.\n")
 
-            """ 
-            Propagate this error to the other processes!
-            """
+            # Propagate this error to the other processes!
             self.broadcast(e)
 
             self.proc("coincidence").join()

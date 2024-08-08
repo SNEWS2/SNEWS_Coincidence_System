@@ -18,6 +18,8 @@ class CoincidenceTierAlert:
         set_env(env_path)
 
     def __eq__(self, other):
+        # XXXX - TODO - possibly bad form here. tz naive, coverts to localtime, if tz argument not supplied.
+        # use epoch for this calculation?
         timedelta = datetime.fromtimestamp(other.sent_time) - datetime.fromtimestamp(self.sent_time)
 
         return (

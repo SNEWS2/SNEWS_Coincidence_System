@@ -1,12 +1,20 @@
-from . import cs_utils
-from .snews_sql import Storage
-import os, click
+import os
+import sys
+import random
+import time
 from datetime import datetime
-from .alert_pub import AlertPublisher, AlertListener
+from multiprocessing import Value
+
+import click
 import numpy as np
 import pandas as pd
-from multiprocessing import Value
+
+import adc.errors
 from hop import Stream
+
+from . import cs_utils
+from .snews_sql import Storage
+from .alert_pub import AlertPublisher, AlertListener
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
 from .cs_remote_commands import CommandHandler
@@ -14,10 +22,6 @@ from .core.logging import getLogger
 from .cs_email import send_email
 from .snews_hb import HeartBeat
 from .cs_stats import cache_false_alarm_rate
-import sys
-import random
-import time
-import adc.errors
 
 log = getLogger(__name__)
 
@@ -540,7 +544,7 @@ class CoincidenceDistributor:
         submits an observation message
 
         """
-        # mkae a pretty terminal output
+        # make a pretty terminal output
         click.secho(f'{"=" * 100}', fg='bright_red')
         # loop through the sub group tag and state
         print(f'TEST {self.coinc_data.sub_group_state}')
