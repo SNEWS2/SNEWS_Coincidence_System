@@ -25,6 +25,22 @@ from .cs_stats import cache_false_alarm_rate
 
 log = getLogger(__name__)
 
+# needs more work. Vectorization converts the datatype to object in the dataframe and crashes
+# to_numpy_datetime = lambda x: np.datetime64(x) if not isinstance(x, np.datetime64) else x
+# check if they are already numpy datetime64 objects (failsafe)
+# t_1, t_2 = to_numpy_datetime(t_1), to_numpy_datetime(t_2)
+# @np.vectorize
+
+def np_datetime_delta_sec(t_1, t_2):
+    """Return the time difference between two numpy datetime64 objects in seconds
+        Returns: float (seconds)
+        Notes
+        -----
+        t_1 is expected to be the earlier time (no absolute value is taken)
+        """
+    total_seconds = (t_2 - t_1) / np.timedelta64(1, 's')  # Convert to seconds
+    return total_seconds
+
 
 # TODO: duplicate for a test-cache. Do not drop actual cache each time there are tests
 class CacheManager:
@@ -55,13 +71,12 @@ class CacheManager:
             SNEWS Message, must be PT valid
 
         """
-
         # retraction
         if 'retract_latest' in message.keys():
             print('RETRACTING MESSAGE FROM')
             self.cache_retraction(retraction_message=message)
             return None  # break if message is meant for retraction
-        message['neutrino_time_as_datetime'] = datetime.fromisoformat(message['neutrino_time'])
+        message['neutrino_time_as_datetime'] = np.datetime64(message['neutrino_time'])
         # update
         if message['detector_name'] in self.cache['detector_name'].to_list():
             self._update_message(message)
@@ -128,7 +143,7 @@ class CacheManager:
             # select the initial nu time of the sub group
             sub_ini_t = sub_cache['neutrino_time_as_datetime'].min()
             #  make the nu time delta series
-            delta = abs(message['neutrino_time_as_datetime'] - sub_ini_t).total_seconds()
+            delta = np_datetime_delta_sec(t_2=message['neutrino_time_as_datetime'], t_1=sub_ini_t)
             #  if the message's nu time is within the coincidence window
             if 0 < delta <= 10.0:
                 # to the message add the corresponding sub group and nu time delta
@@ -143,7 +158,6 @@ class CacheManager:
                 #  declare the state the sub group to COINC_MSG
                 self.sub_group_state[tag] = 'COINC_MSG'
 
-
         # if the message is not coincident with any of the sub groups create a new sub group
         if not is_coinc:
             # set the message's nu time, as the initial nu time
@@ -157,8 +171,7 @@ class CacheManager:
             #  drop dublicates of detector name and nu time
             temp_cache = temp_cache.drop_duplicates(subset=['detector_name', 'neutrino_time'])
             # create  a new time delta
-            temp_cache['neutrino_time_delta'] = (
-                    pd.to_datetime(temp_cache['neutrino_time_as_datetime']) - new_ini_t).dt.total_seconds()
+            temp_cache['neutrino_time_delta'] = np_datetime_delta_sec(t_1=new_ini_t, t_2=temp_cache['neutrino_time_as_datetime'])
             # Make two subgroup one for early signal and post
             new_sub_group_early = temp_cache.query('-10 <= neutrino_time_delta <= 0')
             new_sub_group_post = temp_cache.query('0 <= neutrino_time_delta <= 10.0')
@@ -167,7 +180,7 @@ class CacheManager:
             new_sub_group_early = new_sub_group_early.drop(columns='sub_group', axis=0)
             # make new sub-group tag
             new_sub_group_early['sub_group'] = new_sub_tag
-            new_sub_group_post['sub_group'] = new_sub_tag + 1
+            new_sub_group_post['sub_group'] = int(new_sub_tag + 1)
             # sort sub-group by nu time
             new_sub_group_early = new_sub_group_early.sort_values(by='neutrino_time_as_datetime')
             new_sub_group_post = new_sub_group_post.sort_values(by='neutrino_time_as_datetime')
@@ -200,7 +213,7 @@ class CacheManager:
         ids = sub_cache['_id']
 
         # # if this sub group only contains a single message and the detector name is already present in the cache return True
-        if len(sub_cache) == 1 and sub_cache['_id'].to_list()[0] in self.cache['_id'].to_list() :
+        if len(sub_cache) == 1 and sub_cache['_id'].to_list()[0] in self.cache['_id'].to_list():
             return True
         #  loop through the other sub group tags
         for sub_tag in self.cache['sub_group'].unique():
@@ -232,7 +245,7 @@ class CacheManager:
         # if the initial nu time is negative then fix it by passing the sub group to fix_deltas
         if sub_cache['neutrino_time_delta'][0] < 0:
             sub_cache = self._fix_deltas(sub_df=sub_cache)
-        if len(sub_cache)>1:
+        if len(sub_cache) > 1:
             #  set the state of the sub group to COINC_MSG_STAGGERED
             self.sub_group_state[sub_cache['sub_group'][0]] = 'COINC_MSG_STAGGERED'
         else:
@@ -241,7 +254,6 @@ class CacheManager:
         self.cache = pd.concat([self.cache, sub_cache], ignore_index=True)
         #  sort the values of the cache by their sub group and nu time ( ascending order)
         self.cache = self.cache.sort_values(by=['sub_group', 'neutrino_time_as_datetime']).reset_index(drop=True)
-
 
     def _fix_deltas(self, sub_df):
         """
@@ -262,8 +274,7 @@ class CacheManager:
         #  drop the old delta col
         sub_df = sub_df.drop(columns='neutrino_time_delta', axis=0)
         #  make the new delta col
-        sub_df['neutrino_time_delta'] = (
-                pd.to_datetime(sub_df['neutrino_time_as_datetime']) - initial_time).dt.total_seconds()
+        sub_df['neutrino_time_delta'] = np_datetime_delta_sec(t_1=initial_time, t_2=sub_df['neutrino_time_as_datetime'])
         #  sort the nu times by ascending order
         sub_df = sub_df.sort_values(by=['neutrino_time_as_datetime'])
         return sub_df
@@ -297,15 +308,15 @@ class CacheManager:
             #  get the initial nu time of the sub group
             initial_time = self.cache.query('sub_group==@sub_tag')['neutrino_time_as_datetime'].min()
             # ignore update if the updated message is outside the coincident window
-            if abs((message['neutrino_time_as_datetime'] - initial_time).total_seconds()) > 10.0:
+            if abs(np_datetime_delta_sec(t_2=message['neutrino_time_as_datetime'], t_1=initial_time)) > 10.0:
                 continue
             # update the message if it is coincident with the current sub group
             else:
                 #  find the ind to be updated and replace its contents with
                 for key in message.keys():
                     self.cache.at[ind, key] = message[key]
-                self.cache.at[ind, 'neutrino_time_delta'] = (
-                        message['neutrino_time_as_datetime'] - initial_time).total_seconds()
+                self.cache.at[ind, 'neutrino_time_delta'] = np_datetime_delta_sec(
+                    t_2=message['neutrino_time_as_datetime'], t_1=initial_time)
                 # append the updated list
                 self.updated.append(self.cache['sub_group'][ind])
 
@@ -327,7 +338,7 @@ class CacheManager:
 
     def cache_retraction(self, retraction_message):
         """
-        This method handdles message retraction by parsing the cache and dumping any instance of the target detector
+        This method handles message retraction by parsing the cache and dumping any instance of the target detector
 
 
         Parameters
@@ -353,12 +364,12 @@ class CacheManager:
 
                 else:
                     # set new initial nu time
-                    new_initial_time = pd.to_datetime(other_sub['neutrino_time_as_datetime'].min())
+                    new_initial_time = other_sub['neutrino_time_as_datetime'].min()
                     # drop the old delta
                     other_sub = other_sub.drop(columns=['neutrino_time_delta'])
                     #  make new delta
-                    other_sub['neutrino_time_delta'] = (pd.to_datetime(
-                        other_sub['neutrino_time_as_datetime']) - new_initial_time).dt.total_seconds()
+                    other_sub['neutrino_time_delta'] = np_datetime_delta_sec(
+                        t_2=other_sub['neutrino_time_as_datetime'] , t_1= new_initial_time)
                 # concat retracted sub group to the cache
                 self.cache = self.cache.query('sub_group!=@sub_tag')
                 self.cache = pd.concat([self.cache, other_sub], ignore_index=True)
@@ -547,13 +558,13 @@ class CoincidenceDistributor:
         # make a pretty terminal output
         click.secho(f'{"=" * 100}', fg='bright_red')
         # loop through the sub group tag and state
-        print(f'TEST {self.coinc_data.sub_group_state}')
+        # print(f'TEST {self.coinc_data.sub_group_state}')
 
         for sub_group_tag, state in self.coinc_data.sub_group_state.items():
             print('CHECKING FOR ALERTS IN SUB GROUP: ', sub_group_tag)
             # if state is none skip the sub group
             if state is None:
-                print(f'NO ALERTS IN SUB GROUP: {sub_group_tag}\n\n')
+                print(f'NO ALERTS IN SUB GROUP: {sub_group_tag}')
                 continue
             # check if sub_cache is COINC_MSG_STAGGERED
             elif state == 'COINC_MSG_STAGGERED':
@@ -567,7 +578,7 @@ class CoincidenceDistributor:
                 self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
                 continue
             # publish a retraction alert for the sub group is its state is RETRACTION
-            elif state == 'RETRACTION' and len(self.coinc_data.cache.query('sub_group==@sub_group_tag')) <  self.message_count[sub_group_tag]:
+            elif state == 'RETRACTION' and len(self.coinc_data.cache.query('sub_group==@sub_group_tag')) < self.message_count[sub_group_tag]:
                 #  yet another pretty terminal output
                 click.secho(f'SUB GROUP {sub_group_tag}:{"RETRACTION HAS BEEN MADE".upper():^100}', bg='bright_green',
                             fg='red')
@@ -607,7 +618,6 @@ class CoincidenceDistributor:
                 self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
                 continue
 
-
     # ------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
         """
@@ -642,9 +652,13 @@ class CoincidenceDistributor:
                         handler = CommandHandler(snews_message)
                         # if a coincidence tier message (or retraction) run through the logic
                         if handler.handle(self):
-                            snews_message['received_time'] = datetime.utcnow().isoformat()
-                            click.secho(f'{"-" * 57}', fg='bright_blue')
-                            click.secho(f'{"Coincidence Tier Message Received":^57}', fg='bright_blue')
+                            snews_message['received_time'] = np.datetime_as_string(np.datetime64(datetime.utcnow().isoformat()), unit='ns')
+                            # print info on the servers terminal, (important info is logged)
+                            terminal_output = click.style(f'{"-" * 57}\n', fg='bright_blue')
+                            terminal_output += click.style(f'{"Coincidence Tier Message Received":^57}\n', fg='bright_blue')
+                            terminal_output += click.style(f"\t>{snews_message['detector_name']}, {snews_message['received_time']}", fg='bright_blue')
+                            click.secho(terminal_output)
+                            # add to cache
                             self.coinc_data.add_to_cache(message=snews_message)
                             if self.show_table:
                                 self.display_table()  ## don't display on the server

@@ -43,6 +43,14 @@ def get_data_strings(df_input):
                 df.at[i, col] = df.at[i, col].isotime()
     return df
 
+def to_numpy_datetime(input_datetime):
+    if isinstance(input_datetime, (str, np.datetime64, pd.Timestamp, datetime)):
+        # If the input is already a string or NumPy datetime64, return it as is
+        return np.datetime64(input_datetime)
+    else:
+        raise ValueError("Unsupported datetime type. Supported types: str, np.datetime64, pd.Timestamp, datetime.datetime")
+
+
 
 ## TODO: make a list of internal heartbeats, and send us = SERVER heartbeats.
 # How many times a day can server log these heartbeats, (what is the livetime of server)
@@ -79,7 +87,8 @@ class HeartBeat:
         msg = {"Received Times": message["Received Times"],
                "Detector": message["detector_name"]}
 
-        stamped_time_obj = datetime.fromisoformat(message["sent_time"])
+        # stamped_time_obj = datetime.fromisoformat(message["sent_time"])
+        stamped_time_obj = np.datetime64(message["sent_time"])
         msg["Stamped Times"] = stamped_time_obj
         msg["Latency"] = msg["Received Times"] - msg["Stamped Times"]
 
@@ -158,8 +167,10 @@ class HeartBeat:
                 current version would ignore the previous logs and overwrite a new one
 
         """
-        df = get_data_strings(self.cache_df)  # the object types need to be converted for json
-        curr_data = df.to_json(orient='columns')
+        # TODO: maybe not needed?
+        # df = get_data_strings(self.cache_df)  # the object types need to be converted for json
+        # curr_data = df.to_json(orient='columns')
+        curr_data  = self.cache_df.to_json(orient='columns')
         today = datetime.utcnow()
         today_str = datetime.strftime(today, "%y-%m-%d")
         output_json_name = os.path.join(beats_path, f"{today_str}_heartbeat_log.json")
@@ -232,8 +243,8 @@ class HeartBeat:
             if key not in message.keys():
                issue = f" {key} is not in message keys"
         if issue == "no issue":
-            if not isinstance(message['Received Times'], datetime):
-                issue = f" {message['Received Times']} is not a datetime object"
+            if not isinstance(message['Received Times'], np.datetime64):
+                issue = f" {message['Received Times']} is not a np.datetime64 object"
             if not message['detector_status'].lower() in ['on','off']:
                 issue = f" {message['detector_status']} is neither ON nor OFF"
             if not message['detector_name'] in snews_detectors:
@@ -243,13 +254,14 @@ class HeartBeat:
             # do not log each time
             return True
         else:
-            log.error(f"\t> {message} is received at snews_hb.py but not valid.")
+            log.error(f"\t> {message} is received at snews_hb.py but not valid.\n"
+                      f"issue is: {issue}")
             return False
 
 
     def electrocardiogram(self, message):
         try:
-            message["Received Times"] = datetime.utcnow()
+            message["Received Times"] = np.datetime64('now', 'ns') #np.datetime_as_string(np.datetime64('now'), unit='ns')
             if self.sanity_checks(message):
                 self.make_entry(message)
                 self.store_beats()
