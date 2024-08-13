@@ -67,7 +67,8 @@ class HeartBeat:
         self.store = store
         log.info(f"\t> Heartbeats are stored in {beats_path}.")
         make_beat_directory(beats_path)
-        self.stash_time = float(os.getenv("HB_STASH_TIME", "24"))  # hours
+# TO DO: Delete these two lines...
+#        self.stash_time = float(os.getenv("HB_STASH_TIME", "24"))  # hours
         self.delete_after = float(os.getenv("HB_DELETE_AFTER", "7"))  # days
         if firedrill_mode:
             self.heartbeat_topic = os.getenv("FIREDRILL_OBSERVATION_TOPIC")
@@ -82,11 +83,6 @@ class HeartBeat:
         try:
             #- Try reading cached data from SQL DB
             self.cache_df = pd.read_sql_table('cached_heartbeats', self.cache_engine, parse_dates=['Received Times', 'Stamped Times'])
-
-            #- Remove any cached alerts older than 7 days
-            delta_t = pd.to_datetime('now', utc=True) - pd.to_datetime(self.cache_df['Stamped Times'], utc=True)
-            select = delta_t < pd.Timedelta('7 day')
-            self.cache_df = self.cache_df[select]
         except:
             #- Fall-through if cache does not exist; create it
             self.cache_df = pd.DataFrame(columns=self.column_names)
@@ -131,17 +127,14 @@ class HeartBeat:
             self.dump_csv()
             self.dump_JSON()
 
-    def drop_old_messages(self, delta='7 day'):
+    def drop_old_messages(self):
         """ Keep the heartbeats for a time period delta.
             Drop the earlier messages from cache
-
-        Parameters
-        ----------
-        delta : str
-            A timedelta unit, e.g., '24 hour' or '7 day'
         """
         # first store a csv/JSON before dumping anything
         # self.store_beats()
+        delta = f'{self.delete_after} day'
+
         curr_time = pd.to_datetime('now', utc=True)
         delta_t = curr_time - pd.to_datetime(self.cache_df['Received Times'])
         select = delta_t < pd.Timedelta(delta)
@@ -156,29 +149,34 @@ class HeartBeat:
 #        self.cache_df = self.cache_df.reset_index(drop=True).loc[locs]
 #        self.cache_df.sort_values(by=['Received Times'], inplace=True)
 
-    def update_cache_csv(self):
-        """ The daily csv file is kept as a file per day
-            For heartbeat checks I need one that mirrors the current cache.
+    def update_cache(self):
+        """Update the alert cache with whatever we decided to keep.
         """
-        self.drop_old_messages()
-        self.cache_df.to_csv(mirror_csv, mode='w', header=True, index=False)
+        self.cache_df.to_sql('cached_heartbeats', engine, if_exists='replace', index=False)
 
-    def dump_csv(self):
-        """ dump a local csv file once a day
-            and keep appending the messages within that day
-            into the same csv file
-
-            Note:
-                This is a temporary back up of the data. Ideally, we need only update_cache_csv
-
-        """
-        today = datetime.utcnow()
-        today_str = datetime.strftime(today, "%y-%m-%d")
-        output_csv_name = os.path.join(beats_path, f"{today_str}_heartbeat_log.csv")
-        if os.path.exists(output_csv_name):
-            self._last_row.to_csv(output_csv_name, mode='a', header=False, index=False)
-        else:
-            self.cache_df.to_csv(output_csv_name, mode='w', header=True, index=False)
+#    def update_cache_csv(self):
+#        """ The daily csv file is kept as a file per day
+#            For heartbeat checks I need one that mirrors the current cache.
+#        """
+#        self.drop_old_messages()
+#        self.cache_df.to_csv(mirror_csv, mode='w', header=True, index=False)
+#
+#    def dump_csv(self):
+#        """ dump a local csv file once a day
+#            and keep appending the messages within that day
+#            into the same csv file
+#
+#            Note:
+#                This is a temporary back up of the data. Ideally, we need only update_cache_csv
+#
+#        """
+#        today = datetime.utcnow()
+#        today_str = datetime.strftime(today, "%y-%m-%d")
+#        output_csv_name = os.path.join(beats_path, f"{today_str}_heartbeat_log.csv")
+#        if os.path.exists(output_csv_name):
+#            self._last_row.to_csv(output_csv_name, mode='a', header=False, index=False)
+#        else:
+#            self.cache_df.to_csv(output_csv_name, mode='w', header=True, index=False)
 
     def dump_JSON(self):
         """ dump a local JSON file once a day
@@ -217,36 +215,36 @@ class HeartBeat:
         else:
             self.cache_df.to_csv(master_csv, mode='w', header=True, index=False)
 
-    def burn_logs(self):
-        """ Remove the logs after pre-decided time
-
-        """
-        today_fulldate = datetime.utcnow()
-        today_str = datetime.strftime(today_fulldate, "%y-%m-%d")
-        today = datetime.strptime(today_str, "%y-%m-%d")
-        existing_logs = os.listdir(beats_path)
-        if self.store:
-            existing_logs = np.array([x for x in existing_logs if (x.endswith('log.json') or x.endswith('log.csv')) and
-                                      ("complete_heartbeat_log.csv" not in x)])
-
-        # take only dates
-        dates_str = [i.split('/')[-1].split("_heartbeat")[0] for i in existing_logs]
-        dates, files = [], []
-        for d_str, logfile in zip(dates_str, existing_logs):
-            try:
-                dates.append(datetime.strptime(d_str, "%y-%m-%d"))
-                files.append(logfile)
-            except:
-                continue
-
-        time_differences = np.array([(date - today).days for date in dates])
-        older_than_limit = np.where(np.abs(time_differences) > self.delete_after)
-        files = np.array(files)
-        log.debug(f"\t> The following logs are older than {self.delete_after} days and will be removed; \n{files[older_than_limit[0]]}")
-        for file in files[older_than_limit[0]]:
-            filepath = os.path.join(beats_path, file)
-            os.remove(filepath)
-            log.debug(f"\t> {file} deleted.")
+#    def burn_logs(self):
+#        """ Remove the logs after pre-decided time
+#
+#        """
+#        today_fulldate = datetime.utcnow()
+#        today_str = datetime.strftime(today_fulldate, "%y-%m-%d")
+#        today = datetime.strptime(today_str, "%y-%m-%d")
+#        existing_logs = os.listdir(beats_path)
+#        if self.store:
+#            existing_logs = np.array([x for x in existing_logs if (x.endswith('log.json') or x.endswith('log.csv')) and
+#                                      ("complete_heartbeat_log.csv" not in x)])
+#
+#        # take only dates
+#        dates_str = [i.split('/')[-1].split("_heartbeat")[0] for i in existing_logs]
+#        dates, files = [], []
+#        for d_str, logfile in zip(dates_str, existing_logs):
+#            try:
+#                dates.append(datetime.strptime(d_str, "%y-%m-%d"))
+#                files.append(logfile)
+#            except:
+#                continue
+#
+#        time_differences = np.array([(date - today).days for date in dates])
+#        older_than_limit = np.where(np.abs(time_differences) > self.delete_after)
+#        files = np.array(files)
+#        log.debug(f"\t> The following logs are older than {self.delete_after} days and will be removed; \n{files[older_than_limit[0]]}")
+#        for file in files[older_than_limit[0]]:
+#            filepath = os.path.join(beats_path, file)
+#            os.remove(filepath)
+#            log.debug(f"\t> {file} deleted.")
 
     def display_table(self):
         """ When printed out, these table can be read from the purdue servers
@@ -290,9 +288,9 @@ class HeartBeat:
             if self.sanity_checks(message):
                 self.make_entry(message)
                 self.store_beats()
-                self.update_cache_csv()
-                # self.drop_old_messages()
-                self.burn_logs()
+                self.update_cache()
+                self.drop_old_messages()
+                # self.burn_logs()
                 # if all successful, return True. Not logging each time, not to overcrowd
                 return True
             else:
