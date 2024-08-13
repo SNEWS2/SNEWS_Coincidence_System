@@ -15,8 +15,7 @@ git clone https://github.com/SNEWS2/SNEWS_Coincidence_System.git
 cd SNEWS_Coincidence_System
 ```
 
-Build and install the package using one of the two following methods:
-### Install option 1: Poetry
+### Install using Poetry
 [Poetry](https://python-poetry.org/) makes it easy to manage and install dependencies, build projects, and publish packages to PyPI.
 
 
@@ -134,7 +133,12 @@ pip install ./ --user
 ````
 
 ## Usage
-The backend tools that needs to run in order for the observation messages to be cached and compared. The latest snews coincidence logic allows for efficiently searching coincidences on a pandas dataframe. The [coincidence script](https://github.com/SNEWS2/SNEWS_Coincidence_System/blob/main/snews_cs/snews_coinc.py) needs to be running for this. Furthermore, we have a [slack bot](https://github.com/SNEWS2/SNEWS_Coincidence_System/blob/main/snews_cs/snews_bot.py) which can be enabled within the coincidence script (requires channel token). This bot listens to the alert topics and publishes a slack-post as soon as it receives an alert. This way, we are aiming to reach subscribed members faster, and with a slack notification.<br>
+The backend tools that needs to run in order for the observation messages to be cached and compared. 
+The latest snews coincidence logic allows for efficiently searching coincidences on a pandas dataframe. 
+The [coincidence script](https://github.com/SNEWS2/SNEWS_Coincidence_System/blob/main/snews_cs/snews_coinc.py) 
+needs to be running for this. 
+
+Furthermore, we have a [slack bot](https://github.com/SNEWS2/SNEWS_Coincidence_System/blob/main/snews_cs/snews_bot.py) which can be enabled within the coincidence script (requires channel token). This bot listens to the alert topics and publishes a slack-post as soon as it receives an alert. This way, we are aiming to reach subscribed members faster, and with a slack notification.<br>
 
 The **observation messages** submitted to a given kafka topic using the [SNEWS Publishing Tools](https://github.com/SNEWS2/SNEWS_Publishing_Tools). The SNEWS Coincidence System listen this topic and caches all the messages submitted. These messages then assigned to different _sublists_ depending on their `neutrino_time`.
 
@@ -167,7 +171,6 @@ All the observation messages are kept in cache for 24 hours after their `neutrin
 
 ```bash
 (venv) User$: snews_cs run-coincidence
-(venv) User$: snews_cs run-slack-bot
 ```
 
 Details about the commands can also be displayed via passing `--help` flag. The slack bot requires authentication through a token, contact Melih Kara or Sebastian Torres-Lara if needed.

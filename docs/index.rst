@@ -9,6 +9,7 @@ User's Guide
 
    user/installation
    user/quickstart
+   user/Heartbeats
    
 
 API Reference

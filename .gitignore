@@ -5,7 +5,7 @@ tests/.eggs/
 *.egg-info/
 dist/
 __pycache__/
-doc/_build/
+docs/_build/
 *.pyc
 .coverage
 *test*.ipynb

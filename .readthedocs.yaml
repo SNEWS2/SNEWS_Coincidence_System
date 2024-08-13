@@ -9,7 +9,7 @@ build:
     python: "3.12"
   jobs:
     pre_install:
-      - git update-index --assume-unchanged doc/conf.py
+      - git update-index --assume-unchanged docs/conf.py
     post_create_environment:
       # Install poetry
       # https://python-poetry.org/docs/#installing-manually
@@ -22,9 +22,9 @@ build:
       - poetry install --with docs
 
 sphinx:
-  configuration: doc/conf.py
+  configuration: docs/conf.py
 
 # See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
 python:
   install:
-    - requirements: doc/requirements.txt
+    - requirements: docs/requirements.txt
