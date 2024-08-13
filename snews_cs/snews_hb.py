@@ -4,9 +4,11 @@ This a module to handle all heartbeat related work
 """
 
 import os, json
+import numpy as np
 import pandas as pd
 from datetime import datetime
-import numpy as np
+from sqlalchemy import create_engine
+
 from .cs_utils import set_env, make_beat_directory
 from .core.logging import getLogger
 
@@ -14,13 +16,18 @@ log = getLogger(__name__)
 
 # Check if detector name is in registered list.
 detector_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/detector_properties.json'))
+
 with open(detector_file) as file:
     snews_detectors = json.load(file)
+
 snews_detectors = list(snews_detectors.keys())
 
+#- Cache of old heartbeats
 beats_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../beats"))
-mirror_csv = os.path.abspath(os.path.join(beats_path, f"cached_heartbeats_mirror.csv"))
-master_csv = os.path.abspath(os.path.join(beats_path, f"complete_heartbeat_log.csv"))
+cache_db = os.path.abspath(os.path.join(beats_path, 'cached_heartbeats_mirror.db')
+
+#mirror_csv = os.path.abspath(os.path.join(beats_path, f"cached_heartbeats_mirror.csv"))
+#master_csv = os.path.abspath(os.path.join(beats_path, f"complete_heartbeat_log.csv"))
 
 def get_data_strings(df_input):
     """ Convert datetime objects to strings
@@ -68,7 +75,22 @@ class HeartBeat:
             self.heartbeat_topic = os.getenv("OBSERVATION_TOPIC")
 
         self.column_names = ["Received Times", "Detector", "Stamped Times", "Latency", "Time After Last", "Status"]
-        self.cache_df = pd.DataFrame(columns=self.column_names)
+
+        #- Update the alert cache
+        self.cache_engine = create_engine(f'sqlite:///{cache_db}')
+        self.cache_df = None
+        try:
+            #- Try reading cached data from SQL DB
+            self.cache_df = pd.read_sql_table('cached_heartbeats', self.cache_engine, parse_dates=['Received Times', 'Stamped Times'])
+
+            #- Remove any cached alerts older than 7 days
+            delta_t = pd.to_datetime('now', utc=True) - pd.to_datetime(self.cache_df['Stamped Times'], utc=True)
+            select = delta_t < pd.Timedelta('7 day')
+            self.cache_df = self.cache_df[select]
+        except:
+            #- Fall-through if cache does not exist; create it
+            self.cache_df = pd.DataFrame(columns=self.column_names)
+
         self._last_row = pd.DataFrame(columns=self.column_names) #pd.Series(index=self.column_names)
 
     def make_entry(self, message):
@@ -109,19 +131,30 @@ class HeartBeat:
             self.dump_csv()
             self.dump_JSON()
 
-    def drop_old_messages(self):
-        """ Keep the heartbeats for 24 hours
-            Drop the earlier-than-24hours messages from cache
+    def drop_old_messages(self, delta='7 day'):
+        """ Keep the heartbeats for a time period delta.
+            Drop the earlier messages from cache
 
+        Parameters
+        ----------
+        delta : str
+            A timedelta unit, e.g., '24 hour' or '7 day'
         """
         # first store a csv/JSON before dumping anything
         # self.store_beats()
-        curr_time = datetime.utcnow()
-        existing_times = self.cache_df["Received Times"]
-        del_t = (curr_time - existing_times).dt.total_seconds() / 60 / 60 # in hours
-        locs = np.where(del_t < self.stash_time)[0] # keep only times within stash time e.g. 24 hours
-        self.cache_df = self.cache_df.reset_index(drop=True).loc[locs]
+        curr_time = pd.to_datetime('now', utc=True)
+        delta_t = curr_time - pd.to_datetime(self.cache_df['Received Times'])
+        select = delta_t < pd.Timedelta(delta)
+
+        self.cache_df = self.cache_df[select]
         self.cache_df.sort_values(by=['Received Times'], inplace=True)
+
+#        curr_time = datetime.utcnow()
+#        existing_times = self.cache_df["Received Times"]
+#        del_t = (curr_time - existing_times).dt.total_seconds() / 60 / 60 # in hours
+#        locs = np.where(del_t < self.stash_time)[0] # keep only times within stash time e.g. 24 hours
+#        self.cache_df = self.cache_df.reset_index(drop=True).loc[locs]
+#        self.cache_df.sort_values(by=['Received Times'], inplace=True)
 
     def update_cache_csv(self):
         """ The daily csv file is kept as a file per day
