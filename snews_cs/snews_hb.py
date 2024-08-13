@@ -126,7 +126,7 @@ class HeartBeat:
         msg["Stamped Times"] = stamped_time_obj
         msg["Latency"] = msg["Received Times"] - msg["Stamped Times"]
         # keep latency as integer seconds
-        msg["Latency"] = msg["Latency"].total_seconds()
+        msg["Latency"] = msg["Latency"].astype('timedelta64[s]').astype(int)
 
         # check the last message of given detector
         detector_df = self.cache_df[self.cache_df["Detector"] == msg['Detector']]
