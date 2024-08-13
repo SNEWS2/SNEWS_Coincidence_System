@@ -188,7 +188,8 @@ def plot_beats(df, detector, figname):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib.colors import LinearSegmentedColormap, Normalize
 
-    latency = pd.to_timedelta(df['Latency'].values).total_seconds()
+    # latency = pd.to_timedelta(df['Latency'].values).total_seconds()
+    latency = df['Latency'].values
     received_times = df['Received Times']  # should be numpy datetime object
     try:
         unique_days_np = np.unique(received_times.astype('datetime64[D]'))
