@@ -112,13 +112,6 @@ class HeartBeat:
 
         self._last_row = pd.DataFrame(columns=self.column_names) #pd.Series(index=self.column_names)
 
-# """
-# ("Received Times",            "Detector",    "Stamped Times",           "Latency",              "Time After Last",  "Status")
-# ('2024-08-13 22:03:22.000000', 'XENONnT', '2024-08-13 22:03:20.372654', 1627346000,                          0.0,   'ON'),
-# ('2024-08-13 22:06:30.000000', 'XENONnT', '2024-08-13 22:06:27.229600', Timedelta('0 days 00:00:02.770400'), 188.0, 'ON'),
-# ('2024-08-13 22:06:38.000000', 'XENONnT', '2024-08-13 22:06:35.875603', Timedelta('0 days 00:00:02.124397'), 8.0,   'ON')
-# """
-
     def make_entry(self, message):
         """ Make an entry in the cache df using new message
             # NOTE:
@@ -127,9 +120,13 @@ class HeartBeat:
         msg = {"Received Times": message["Received Times"],
                "Detector": message["detector_name"]}
 
+        # "sent_time" in the message has the following format;
+        #  message["sent_time"] = np.datetime_as_string(np.datetime64(datetime.utcnow().isoformat()), unit='ns')
         stamped_time_obj = np.datetime64(message["sent_time"])
         msg["Stamped Times"] = stamped_time_obj
         msg["Latency"] = msg["Received Times"] - msg["Stamped Times"]
+        # keep latency as integer seconds
+        msg["Latency"] = msg["Latency"].total_seconds()
 
         # check the last message of given detector
         detector_df = self.cache_df[self.cache_df["Detector"] == msg['Detector']]
