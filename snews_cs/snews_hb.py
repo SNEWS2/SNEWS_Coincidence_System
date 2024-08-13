@@ -24,7 +24,7 @@ snews_detectors = list(snews_detectors.keys())
 
 #- Cache of old heartbeats
 beats_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../beats"))
-cache_db = os.path.abspath(os.path.join(beats_path, 'cached_heartbeats_mirror.db')
+cache_db = os.path.abspath(os.path.join(beats_path, 'cached_heartbeats_mirror.db'))
 
 #mirror_csv = os.path.abspath(os.path.join(beats_path, f"cached_heartbeats_mirror.csv"))
 #master_csv = os.path.abspath(os.path.join(beats_path, f"complete_heartbeat_log.csv"))
