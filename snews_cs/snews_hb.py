@@ -54,6 +54,34 @@ def to_numpy_datetime(input_datetime):
 ## TODO: make a list of internal heartbeats, and send us = SERVER heartbeats.
 # How many times a day can server log these heartbeats, (what is the livetime of server)
 
+def sanity_checks(message):
+    """ check if the message will crash the server
+        Check  the following
+             - detector frequencies are reasonable
+             - latencies are reasonable
+             - At least one detector is operational
+    """
+    issue = "no issue"
+    for key in ['detector_name', 'detector_status']:
+        if key not in message.keys():
+           issue = f" {key} is not in message keys"
+    if issue == "no issue":
+        if not isinstance(message['Received Times'], np.datetime64):
+            issue = f" {message['Received Times']} is not a np.datetime64 object"
+        if not message['detector_status'].lower() in ['on','off']:
+            issue = f" {message['detector_status']} is neither ON nor OFF"
+        if not message['detector_name'] in snews_detectors:
+            issue = f" {message['detector_name']} is not a valid detector"
+
+    if issue == "no issue":
+        # do not log each time
+        return True
+    else:
+        log.error(f"\t> {message} is received at snews_hb.py but not valid.\n"
+                  f"issue is: {issue}")
+        return False
+
+
 class HeartBeat:
     """ Class to handle heartbeat message stream
     """
@@ -117,15 +145,15 @@ class HeartBeat:
         else:
             self.cache_df = pd.concat([self.cache_df, self._last_row], ignore_index=True)
 
-    def store_beats(self):
-        """ log the heartbeats, and save locally
-
-        """
-        # for now store one master csv in any case
-        self.store_master_csv()
-        if self.store:
-            self.dump_csv()
-            self.dump_JSON()
+    # def store_beats(self):
+    #     """ log the heartbeats, and save locally
+    #
+    #     """
+    #     # for now store one master csv in any case
+    #     # self.store_master_csv()
+    #     if self.store:
+    #         # self.dump_csv()
+    #         self.dump_JSON()
 
     def drop_old_messages(self):
         """ Keep the heartbeats for a time period delta.
@@ -152,7 +180,7 @@ class HeartBeat:
     def update_cache(self):
         """Update the alert cache with whatever we decided to keep.
         """
-        self.cache_df.to_sql('cached_heartbeats', engine, if_exists='replace', index=False)
+        self.cache_df.to_sql('cached_heartbeats', self.cache_engine, if_exists='replace', index=False)
 
 #    def update_cache_csv(self):
 #        """ The daily csv file is kept as a file per day
@@ -178,42 +206,42 @@ class HeartBeat:
 #        else:
 #            self.cache_df.to_csv(output_csv_name, mode='w', header=True, index=False)
 
-    def dump_JSON(self):
-        """ dump a local JSON file once a day
-            and keep appending the messages within that day
-            into the same csv file
+    # def dump_JSON(self):
+    #     """ dump a local JSON file once a day
+    #         and keep appending the messages within that day
+    #         into the same csv file
+    #
+    #         Notes:
+    #             It is risky at the moment as I overwrite each time instead
+    #             Ideally we should compare the existing json file with the new one
+    #             and append the new ones. If the script is re-run in the same day,
+    #             current version would ignore the previous logs and overwrite a new one
+    #
+    #     """
+    #     # TODO: maybe not needed?
+    #     # df = get_data_strings(self.cache_df)  # the object types need to be converted for json
+    #     # curr_data = df.to_json(orient='columns')
+    #     curr_data  = self.cache_df.to_json(orient='columns')
+    #     today = datetime.utcnow()
+    #     today_str = datetime.strftime(today, "%y-%m-%d")
+    #     output_json_name = os.path.join(beats_path, f"{today_str}_heartbeat_log.json")
+    #     # if os.path.exists(output_json_name):
+    #     with open(output_json_name, 'w') as file:
+    #         #     file_data = json.load(file)
+    #         #     # append missing keys?
+    #         # OVERWRITE INSTEAD
+    #         file.seek(0)
+    #         json.dump(curr_data, file, indent=4)
 
-            Notes:
-                It is risky at the moment as I overwrite each time instead
-                Ideally we should compare the existing json file with the new one
-                and append the new ones. If the script is re-run in the same day,
-                current version would ignore the previous logs and overwrite a new one
-
-        """
-        # TODO: maybe not needed?
-        # df = get_data_strings(self.cache_df)  # the object types need to be converted for json
-        # curr_data = df.to_json(orient='columns')
-        curr_data  = self.cache_df.to_json(orient='columns')
-        today = datetime.utcnow()
-        today_str = datetime.strftime(today, "%y-%m-%d")
-        output_json_name = os.path.join(beats_path, f"{today_str}_heartbeat_log.json")
-        # if os.path.exists(output_json_name):
-        with open(output_json_name, 'w') as file:
-            #     file_data = json.load(file)
-            #     # append missing keys?
-            # OVERWRITE INSTEAD
-            file.seek(0)
-            json.dump(curr_data, file, indent=4)
-
-    def store_master_csv(self):
-        """ For now, also keep a csv that doesn't distinguish dates
-            Append and save everything
-
-        """
-        if os.path.exists(master_csv):
-            self._last_row.to_csv(master_csv, mode='a', header=False, index=False)
-        else:
-            self.cache_df.to_csv(master_csv, mode='w', header=True, index=False)
+    # def store_master_csv(self):
+    #     """ For now, also keep a csv that doesn't distinguish dates
+    #         Append and save everything
+    #
+    #     """
+    #     if os.path.exists(master_csv):
+    #         self._last_row.to_csv(master_csv, mode='a', header=False, index=False)
+    #     else:
+    #         self.cache_df.to_csv(master_csv, mode='w', header=True, index=False)
 
 #    def burn_logs(self):
 #        """ Remove the logs after pre-decided time
@@ -253,41 +281,12 @@ class HeartBeat:
         """
         print(f"\nCurrent cache \n{'=' * 133}\n{self.cache_df.to_markdown()}\n{'=' * 133}\n")
 
-
-    def sanity_checks(self, message):
-        """ check if the message will crash the server
-            Check  the following
-                 - detector frequencies are reasonable
-                 - latencies are reasonable
-                 - At least one detector is operational
-        """
-        issue = "no issue"
-        for key in ['detector_name', 'detector_status']:
-            if key not in message.keys():
-               issue = f" {key} is not in message keys"
-        if issue == "no issue":
-            if not isinstance(message['Received Times'], np.datetime64):
-                issue = f" {message['Received Times']} is not a np.datetime64 object"
-            if not message['detector_status'].lower() in ['on','off']:
-                issue = f" {message['detector_status']} is neither ON nor OFF"
-            if not message['detector_name'] in snews_detectors:
-                issue = f" {message['detector_name']} is not a valid detector"
-
-        if issue == "no issue":
-            # do not log each time
-            return True
-        else:
-            log.error(f"\t> {message} is received at snews_hb.py but not valid.\n"
-                      f"issue is: {issue}")
-            return False
-
-
     def electrocardiogram(self, message):
         try:
             message["Received Times"] = np.datetime64('now', 'ns') #np.datetime_as_string(np.datetime64('now'), unit='ns')
-            if self.sanity_checks(message):
+            if sanity_checks(message):
                 self.make_entry(message)
-                self.store_beats()
+                # self.store_beats()
                 self.update_cache()
                 self.drop_old_messages()
                 # self.burn_logs()
