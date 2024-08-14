@@ -12,13 +12,21 @@ from .core.logging import getLogger
 
 log = getLogger(__name__)
 
+snewsdata = os.path.normpath(os.getenv('SNEWSDATA', os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))))
+if not snewsdata.exists():
+    os.mkdir(snewsdata)
+
 # Check if detector name is in registered list.
-detector_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/detector_properties.json'))
+detector_file = os.path.join(snewsdata, 'snews_cs/auxiliary/detector_properties.json')
+
 with open(detector_file) as file:
     snews_detectors = json.load(file)
 snews_detectors = list(snews_detectors.keys())
 
-beats_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../beats"))
+beats_path = os.path.join(snewsdata, "beats")
+if not beats_path.exists():
+     os.mkdir(beats_path)
+
 mirror_csv = os.path.abspath(os.path.join(beats_path, f"cached_heartbeats_mirror.csv"))
 master_csv = os.path.abspath(os.path.join(beats_path, f"complete_heartbeat_log.csv"))
 

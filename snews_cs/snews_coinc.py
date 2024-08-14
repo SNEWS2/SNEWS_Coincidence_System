@@ -1,11 +1,20 @@
-from . import cs_utils
-from .snews_sql import Storage
-import os, click
+import os
+import sys
+import random
+import time
 from datetime import datetime
-from .alert_pub import AlertPublisher
+from multiprocessing import Value
+
+import click
 import numpy as np
 import pandas as pd
+
+import adc.errors
 from hop import Stream
+
+from . import cs_utils
+from .snews_sql import Storage
+from .alert_pub import AlertPublisher, AlertListener
 from . import snews_bot
 from .cs_alert_schema import CoincidenceTierAlert
 from .cs_remote_commands import CommandHandler
@@ -13,10 +22,6 @@ from .core.logging import getLogger
 from .cs_email import send_email
 from .snews_hb import HeartBeat
 from .cs_stats import cache_false_alarm_rate
-import sys
-import random
-import time
-import adc.errors
 
 log = getLogger(__name__)
 
@@ -375,8 +380,8 @@ class CacheManager:
 
 class CoincidenceDistributor:
 
-    def __init__(self, env_path=None, drop_db=False, firedrill_mode=True, hb_path=None,
-                 server_tag=None, send_email=False, send_slack=True, show_table=False):
+    def __init__(self, replicationleader:Value, env_path=None, drop_db=False, firedrill_mode=True,
+                 hb_path=None, server_tag=None, send_email=False, send_slack=True, remotecomm=False, show_table=False):
         """This class is in charge of sending alerts to SNEWS when CS is triggered
 
         Parameters
@@ -389,15 +394,27 @@ class CoincidenceDistributor:
         """
         log.debug("Initializing CoincDecider\n")
         cs_utils.set_env(env_path)
+
         self.show_table = show_table
-        self.send_email = send_email
-        self.send_slack = send_slack
+# mwl
+#        self.send_email = send_email
+        self.send_email = False
+#        self.send_slack = send_slack
+        self.send_slack = False
+        self.hype_mode_ON = True
         self.hb_path = hb_path
         # name of your sever, used for alerts
         self.server_tag = server_tag
+
+        #
+        # ['leader', 'follower']
+        # mp threadlock object, use .value() to get value
+        self.replicationleader = replicationleader
+
         # initialize local MongoDB
         self.storage = Storage(drop_db=drop_db)
         # declare topic type, used for alerts
+
         self.topic_type = "CoincidenceTier"
         #  from the env var get the coinc thresh, 10sec
         self.coinc_threshold = float(os.getenv('COINCIDENCE_THRESHOLD'))
@@ -406,13 +423,16 @@ class CoincidenceDistributor:
         # Some Kafka errors are retryable.
         self.retriable_error_count = 0
         self.max_retriable_errors = 20
-        self.exit_on_error = False  # True
+        self.exit_on_error = True
         self.initial_set = False
         self.alert = AlertPublisher(env_path=env_path, firedrill_mode=firedrill_mode)
+
         if firedrill_mode:
             self.observation_topic = os.getenv("FIREDRILL_OBSERVATION_TOPIC")
+            self.alert_topic = os.getenv("FIREDRILL_ALERT_TOPIC")
         else:
             self.observation_topic = os.getenv("OBSERVATION_TOPIC")
+            self.alert_topic = os.getenv("ALERT_TOPIC")
         self.alert_schema = CoincidenceTierAlert(env_path)
         # handle heartbeat
         self.store_heartbeat = bool(os.getenv("STORE_HEARTBEAT", "True"))
@@ -464,16 +484,69 @@ class CoincidenceDistributor:
                           server_tag=self.server_tag,
                           alert_type=alert_type)
 
-        with self.alert as pub:
-            alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
-            pub.send(alert)
-            if self.send_email:
-                send_email(alert)
-            if self.send_slack:
-                snews_bot.send_table(alert_data,
-                                     alert,
-                                     is_test=True,
-                                     topic=self.observation_topic)
+        if len(self.coinc_data.updated) == 0:
+            pass
+        else:
+            alert_type = 'UPDATE'
+
+            log.debug('\t> An UPDATE message is received')
+            for updated_sub in self.coinc_data.updated:
+                _sub_df = self.coinc_data.cache.query('sub_group==@updated_sub')
+                p_vals = _sub_df['p_val'].to_list()
+                p_vals_avg = np.round(_sub_df['p_val'].mean(), decimals=5)
+                nu_times = _sub_df['neutrino_time'].to_list()
+                detector_names = _sub_df['detector_name'].to_list()
+                false_alarm_prob = cache_false_alarm_rate(cache_sub_list=_sub_df, hb_cache=self.heartbeat.cache_df)
+
+                alert_data = dict(p_vals=p_vals,
+                                  p_val_avg=p_vals_avg,
+                                  sub_list_num=updated_sub,
+                                  neutrino_times=nu_times,
+                                  detector_names=detector_names,
+                                  false_alarm_prob=false_alarm_prob,
+                                  server_tag=self.server_tag,
+                                  alert_type=alert_type)
+
+                log.debug("send_alert(): COINCIDENCE!! Checking distributed logic before sending alert.")
+
+                if False and self.announcealert(alert_data):
+
+                    log.debug("send_alert(): Passed announcealert() check, sending alerts.")
+
+                    with self.alert as pub:
+                        alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
+                        pub.send(alert)
+                        if self.send_email:
+                            send_email(alert)
+                        if self.send_slack:
+                            snews_bot.send_table(alert_data,
+                                                 alert,
+                                                 is_test=True,
+                                                 topic=self.observation_topic)
+
+                    log.debug('\t> An alert is updated!')
+                else:
+                    log.debug('\t> An alert is updated, but not sent since I am not the replication leader!')
+
+            self.coinc_data.updated = []
+
+
+    def announcealert(self, live_alert: dict) -> bool:
+        """
+            Decide if this server instance should announce the coincidence alert.
+
+            Perhaps dropping time resolution to seconds (or tenths) and hashing the contents of the message would
+            be a better way of comparing?
+        """
+        last_announced_alert = self.storage.get_coincidence_tier_archive()[-1]
+
+        # Should we also calculate how long since the last alert?
+        #
+        return ( set(last_announced_alert.detector_names) != set(live_alert.detector_names)
+                 and set(last_announced_alert.neutrino_times) != set(live_alert.neutrino_times)
+                 and set(last_announced_alert.p_vals) != set(live_alert.p_vals)
+                 ) or self.replicationleader.value
+
 
     # ------------------------------------------------------------------------------------------------------------------
     def alert_decider(self):
@@ -482,7 +555,7 @@ class CoincidenceDistributor:
         submits an observation message
 
         """
-        # mkae a pretty terminal output
+        # make a pretty terminal output
         click.secho(f'{"=" * 100}', fg='bright_red')
         # loop through the sub group tag and state
         # print(f'TEST {self.coinc_data.sub_group_state}')
@@ -600,8 +673,6 @@ class CoincidenceDistributor:
 
                             self.storage.insert_coinc_cache(self.coinc_data.cache)
                             sys.stdout.flush()
-
-                            self.coinc_data.updated = []
 
                         # for each read message reduce the retriable err count
                         if self.retriable_error_count > 1:
