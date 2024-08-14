@@ -158,7 +158,8 @@ def check_frequencies_and_send_mail(detector, given_contact=None):
     """ Create a plot with latency and heartbeat frequencies
         and send it via emails
     """
-    df = pd.read_csv(mirror_csv, parse_dates=['Received Times'], )
+    # df = pd.read_csv(mirror_csv, parse_dates=['Received Times'], )
+    df = pd.read_sql_table('cached_heartbeats', cache_engine, parse_dates=['Received Times', 'Stamped Times'])
     df.query("Detector==@detector", inplace=True)
     now_str = datetime.utcnow().strftime("%Y-%m-%d_%HH%MM")
     mean = np.mean(df['Time After Last'])
