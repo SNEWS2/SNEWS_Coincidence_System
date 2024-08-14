@@ -22,7 +22,7 @@ class Storage:
     Parameters
     ----------
     env : `str`, optional
-        Path to env file, defaults to './auxiliary/test-config.env'
+        Path to env file, defaults to './etc/test-config.env'
     drop_db : `bool`, optional
         drops all items in the DB every time Storage is initialized, defaults to False
 

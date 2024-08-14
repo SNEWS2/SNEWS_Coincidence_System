@@ -8,7 +8,7 @@ class CoincidenceTierAlert:
     ----------
     env_path : `str`, optional
         The path containing the environment configuration file
-        If None, uses the default file in '/auxiliary/test-config.env'
+        If None, uses the default file in '/etc/test-config.env'
 
     """
 

@@ -27,7 +27,7 @@ password = os.getenv("snews_sender_pass")
 if os.getenv("smtp_server_addr") is not None:
     smtpserver = os.getenv("smtp_server_addr")
 
-contact_list_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/contact_list.json'))
+contact_list_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'etc/contact_list.json'))
 with open(contact_list_file) as file:
     contact_list = json.load(file)
 

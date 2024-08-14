@@ -40,10 +40,10 @@ def get_image(is_test, alert_data, topic):
 
     header = f"{test} *SUPERNOVA ALERT* {alert_type}".center(60, '=')+topic_str+f"{tag}" + \
              f"> False Alarm Probability= *{falseprob}*\n> Issued from {server}"
-    giflink = "https://raw.githubusercontent.com/SNEWS2/SNEWS_Coincidence_System/main/snews_cs/auxiliary/snalert.gif"
+    giflink = "https://raw.githubusercontent.com/SNEWS2/SNEWS_Coincidence_System/main/snews_cs/etc/snalert.gif"
     retractlink = "https://www.shutterstock.com/image-vector/ooops-word-bubble-pop-art-600w-408777070.jpg"
     updatelink = "https://www.shutterstock.com/image-vector/vector-illustration-modern-label-new-600w-1520423249.jpg"
-    # updatelink = "https://raw.githubusercontent.com/SNEWS2/SNEWS_Coincidence_System/main/snews_cs/auxiliary/update_image.png"
+    # updatelink = "https://raw.githubusercontent.com/SNEWS2/SNEWS_Coincidence_System/main/snews_cs/etc/update_image.png"
     #"https://www.ris.world/wp-content/uploads/2018/09/update.jpg"
     sendlink = giflink if alert_type=="NEW_MESSAGE" else (updatelink if alert_type=="UPDATE" else retractlink)
 

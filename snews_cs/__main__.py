@@ -19,8 +19,8 @@ from socket import gethostname
 @click.group(invoke_without_command=True)
 @click.version_option(__version__)
 @click.option('--env', type=str,
-    default='/auxiliary/test-config.env',
-    show_default='auxiliary/test-config.env',
+    default='/etc/test-config.env',
+    show_default='etc/test-config.env',
     help='environment file containing the configurations')
 @click.pass_context
 def main(ctx, env):
