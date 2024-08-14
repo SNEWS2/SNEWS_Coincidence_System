@@ -3,6 +3,10 @@ import math
 
 def ncr(n, r):
     f = math.factorial
+    # if the HB cache is empty, n-r returns negative number for which factorial is not defined
+    # as a temporary fix, let's return 0
+    if n-r < 0:
+        return 0
     return int(f(n) / f(r) / f(n - r))
 
 def cache_false_alarm_rate(cache_sub_list, hb_cache):

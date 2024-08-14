@@ -7,7 +7,8 @@ from datetime import datetime, timedelta
 from time import sleep
 from .core.logging import getLogger
 from .cs_email import send_warning_mail, send_feedback_mail
-from .snews_hb import beats_path, mirror_csv
+from .snews_hb import beats_path
+from sqlalchemy import create_engine
 
 log = getLogger(__name__)
 
@@ -24,6 +25,13 @@ snews_detectors = list(snews_detectors.keys())
 # verbose print. Prints only if verbose=True
 vprint = lambda inp, _bool: print(inp) if _bool else None
 
+# SQLite database for the cached heartbeats
+cache_db = os.path.abspath(os.path.join(beats_path, 'cached_heartbeats_mirror.db'))
+cache_engine = create_engine(f'sqlite:///{cache_db}')
+cache_df = None
+
+
+
 class FeedBack:
     """ Once every minute, check the HB of each detector
         If the last heartbeat is from longer than usual, send an email
@@ -37,6 +45,7 @@ class FeedBack:
             self.last_feedback_time[k] = np.datetime64("2022-01-01")
         self.day_in_min = 1440
         self.running_min = 0
+        self.db_found = False
         self.verbose = verbose
         log.info(f"\t> Heartbeat tracking initiated.")
 
@@ -48,15 +57,9 @@ class FeedBack:
         while True:
             # run every minute
             sleep(60)
-            try:
-                df = pd.read_csv(mirror_csv, parse_dates=['Received Times'], )
-            except FileNotFoundError:
-                log.error(f"{mirror_csv} does not exist yet! Maybe `snews_cs run-coincidence` is not invoked?")
-                while not os.path.isfile(mirror_csv):
-                    sleep(60)
-                df = pd.read_csv(mirror_csv, parse_dates=['Received Times'], )
-                log.debug(f"OK {mirror_csv} found! Moving on")
-
+            # The database is continuosly updated, read it every minute
+            # it will wait until it finds a database
+            df = self.read_database() # Received times are already parsed
             self.control(df) # check if a detector is taking longer than usual (mean+3*sigma>)
             self.running_min += 1
             vprint(f"[DEBUG] >>>>> Running minute: {self.running_min}", self.verbose)
@@ -66,6 +69,28 @@ class FeedBack:
                 self.running_min = 0  # reset the counter
                 delete_old_figures()
 
+    def read_database(self):
+        """ Try to read the database, if it is empty (or does not exist) wait
+        """
+        try:
+            # - Try reading cached data from SQL DB
+            cache_df = pd.read_sql_table('cached_heartbeats', cache_engine,
+                                         parse_dates=['Received Times', 'Stamped Times'])
+            if len(cache_df) < 1:
+                raise FileNotFoundError
+            log.debug(f"OK DataBase found! Moving on")
+        except FileNotFoundError:
+            log.error(f"DataBase does not exist yet! Maybe `snews_cs run-coincidence` is not invoked?\n"
+                      f"Sleeping until I find something")
+            sleep(60)
+            self.running_min += 1
+            return self.read_database()
+        # if it passes, that means it found a non-empty database
+        if not self.db_found:
+            log.debug(f"OK DataBase found! Moving on")
+            # log it once, then set db found true
+        self.db_found=True
+        return cache_df
 
     def control(self, df):
         """ Check the current cache, check if any detector
@@ -163,7 +188,8 @@ def plot_beats(df, detector, figname):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib.colors import LinearSegmentedColormap, Normalize
 
-    latency = pd.to_timedelta(df['Latency'].values).total_seconds()
+    # latency = pd.to_timedelta(df['Latency'].values).total_seconds()
+    latency = df['Latency'].values
     received_times = df['Received Times']  # should be numpy datetime object
     try:
         unique_days_np = np.unique(received_times.astype('datetime64[D]'))
