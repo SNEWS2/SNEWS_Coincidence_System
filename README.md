@@ -38,7 +38,9 @@ snews_pt run-feedback
 ```
 For more details and advanced usage, see the [documentation](https://snews-coincidence-system.readthedocs.io/en/latest/).
 
-
+# Note for the developers
+Please visit the [Developer Notes](./docs/user/Developers.md) page for more details. 
+Anytime a new package needs to be introduced, please do so over poetry and update the requirements.txt file for the setuptools using poetry as described in the notes. 
 
 # SNEWS Detector List
 
