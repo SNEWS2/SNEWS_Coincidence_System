@@ -9,7 +9,8 @@ User's Guide
 
    user/installation
    user/quickstart
-   
+   user/Heartbeats
+   user/Developers
 
 API Reference
 -------------

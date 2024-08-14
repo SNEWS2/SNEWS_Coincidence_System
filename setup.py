@@ -15,21 +15,26 @@ version_match = re.search(r"^version = ['\"]([^'\"]*)['\"]", version_file, re.M)
 version = version_match.group(1)
 
 # requirements
-install_requires = [
-    "hop-client=0.8.0",
-    "jsonschema=4.4.0",
-    "numpy=1.26.3",
-    "pymongo=4.6.1",
-    "python-dotenv=0.19.2",
-    "pandas=2.2.0",
-    "slack-sdk=3.26.2",
-]
+install_requires = []
+    # "hop-client=0.8.0",
+    # "jsonschema=4.4.0",
+    # "numpy=1.26.3",
+    # "pymongo=4.6.1",
+    # "python-dotenv=0.19.2",
+    # "pandas=2.2.0",
+    # "slack-sdk=3.26.2",
+# ]
 
-def read_requirements():
-    with open('doc/requirements.txt') as req:
-        content = req.read()
-        requirements = content.split('\n')
-    return install_requires.append(requirements)
+with open('requirements.txt', 'r') as f:
+    for line in f:
+        if line.strip():
+            install_requires.append(line.strip())
+
+# def read_requirements():
+#     with open('requirements.txt') as req:
+#         content = req.read()
+#         requirements = content.split('\n')
+#     return install_requires.append(requirements)
 
 
 extras_require = {
@@ -72,8 +77,8 @@ setup(
         ],
     },
 
-    python_requires='>=3.6.*',
-    install_requires=read_requirements(),
+    python_requires='>=3.9.*',
+    install_requires=install_requires, #read_requirements(),
     extras_require=extras_require,
 
     classifiers=[

@@ -2,7 +2,9 @@
 
 Coincidence System backend for snews alert trigger
 
-The backend tools that needs to run in order for the observation messages to be cached and compared. The latest snews coincidence logic allows for efficiently searching coincidences on a pandas dataframe. The [coincidence script](https://github.com/SNEWS2/SNEWS_Coincidence_System/blob/main/snews_cs/snews_coinc.py) needs to be running for this. Furthermore, we have a [slack bot](https://github.com/SNEWS2/SNEWS_Coincidence_System/blob/main/snews_cs/snews_bot.py) which can be enabled within the coincidence script (requires channel token). This bot listens to the alert topics and publishes a slack-post as soon as it receives an alert. This way, we are aiming to reach subscribed members faster, and with a slack notification.<br>
+The backend tools that needs to run in order for the observation messages to be cached and compared. The latest snews coincidence logic allows for efficiently searching coincidences on a pandas dataframe. The [coincidence script](https://github.com/SNEWS2/SNEWS_Coincidence_System/blob/main/snews_cs/snews_coinc.py) needs to be running for this. 
+
+Furthermore, we have a [slack bot](https://github.com/SNEWS2/SNEWS_Coincidence_System/blob/main/snews_cs/snews_bot.py) which can be enabled within the coincidence script (requires channel token). This bot listens to the alert topics and publishes a slack-post as soon as it receives an alert. This way, we are aiming to reach subscribed members faster, and with a slack notification.<br>
 
 The **observation messages** submitted to a given kafka topic using the [SNEWS Publishing Tools](https://github.com/SNEWS2/SNEWS_Publishing_Tools). The SNEWS Coincidence System listen this topic and caches all the messages submitted. These messages then assigned to different _sublists_ depending on their `neutrino_time`.
 
@@ -14,9 +16,9 @@ In case the new message is not coincident with the initial message of a sublist,
 
 Let's look at a simple example, imagine having three detectors submitting the following messages in this order;
 ```python
-detector1 = {'neutrion_time': "01/01/2022 12:30:00:000000"}
-detector2 = {'neutrion_time': "01/01/2022 12:30:09:000000"}
-detector3 = {'neutrion_time': "01/01/2022 12:30:11:000000"}
+detector1 = {'neutrino_time': "01/01/2022 12:30:00:000000"}
+detector2 = {'neutrino_time': "01/01/2022 12:30:09:000000"}
+detector3 = {'neutrino_time': "01/01/2022 12:30:11:000000"}
 ```
 
 `detector1` sets a new sublist; `sublist=0` and opens a coincidence window. Later, `detector2` submits and it is a coincidence with `detector1` thus it is added in the same sublist and a SNEWS alert is published, everyone is happy, popping champaigns, celebrations are in order. Then, `detector3` publishes their message. The `delta time` with the _initial message_ of the `sublist=0` is 11 seconds, thus it does not enter this sublist. It creates a new sublist `sublist=1`. Since there is a new sublist created, we go back and look if any of the existing messages would also satisfy the coincidence condition with this sublist. Indeed, the `detector2` has a `delta time` of -2 seconds! Since this is an _earlier message_ we assign `detector2` to be the _initial message_ of `sublist=2` and keep the `detector3` as a second message in sublist with a `delta time=+2`. Finally, we sent another message with this new coincidence sublist. At the end, there will be two alerts corresponding to `sublist=0` and `sublist=1`. Notice, if there were a 4th message at a much later time, it would also create a `sublist=3` and look through the cache. However, since nothing would match, it would sit alone and wait for more messages to come without triggering any alert.
