@@ -382,7 +382,7 @@ class CoincidenceDistributor:
         Parameters
         ----------
         env_path : `str`
-            path to env file, defaults to '/auxiliary/test-config.env'
+            path to env file, defaults to '/etc/test-config.env'
         send_slack: `bool`
             Whether to send alerts on slack
 
