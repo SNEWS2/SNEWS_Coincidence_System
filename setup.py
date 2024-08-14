@@ -78,7 +78,7 @@ setup(
     },
 
     python_requires='>=3.9.*',
-    install_requires=read_requirements(),
+    install_requires=install_requires, #read_requirements(),
     extras_require=extras_require,
 
     classifiers=[
