@@ -11,12 +11,12 @@ from .snews_hb import beats_path, mirror_csv
 
 log = getLogger(__name__)
 
-contact_list_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/contact_list.json'))
+contact_list_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'etc/contact_list.json'))
 with open(contact_list_file) as file:
     contact_list = json.load(file)
 
 # Check if detector name is in registered list.
-detector_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/detector_properties.json'))
+detector_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'etc/detector_properties.json'))
 with open(detector_file) as file:
     snews_detectors = json.load(file)
 snews_detectors = list(snews_detectors.keys())
