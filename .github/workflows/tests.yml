@@ -52,7 +52,28 @@ jobs:
       - name: Install SNEWS_Coincidence_System
         run: |
           python -m poetry install
-      
+
+    - shell: bash
+      env:
+        USERNAME: ${{ secrets.hop_user_name }}
+        PASSWORD: ${{ secrets.hop_user_password }}
+      run: |
+        sudo apt-get install -y expect
+        which expect
+        /usr/bin/expect << HOP
+        spawn hop auth add
+        expect "Username:"
+        send "$USERNAME\n"
+        expect "Password:"
+        send "$PASSWORD\n"
+        expect "Hostname (may be empty):"
+        send "kafka.scimma.org\n"
+        expect "Token endpoint (empty if not applicable):"
+        send "\n"
+        expect eof
+        HOP
+        hop auth locate
+
       # Run the unit tests
       - name: Test with pytest
         run: |
