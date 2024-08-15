@@ -505,80 +505,53 @@ class CoincidenceDistributor:
     # ------------------------------------------------------------------------------------------------------------------
     def alert_decider(self, is_test=False):
         """
-        This method will publish an alert every time a new detector
-        submits an observation message
-
+        This method will publish an alert every time a new detector submits an observation message.
         """
-        # mkae a pretty terminal output
         click.secho(f'{"=" * 100}', fg='bright_red')
 
-        # decide which cache to use
-        if not is_test:
-            cache_data = self.coinc_data
-            _message_count = self.message_count
-            log_info = " [TEST] "
-        else:
-            cache_data = self.test_coinc_data
-            _message_count = self.test_message_count
-            log_info = " "
+        # Determine which cache to use
+        cache_data = self.test_coinc_data if is_test else self.coinc_data
+        _message_count = self.test_message_count if is_test else self.message_count
+        log_info = " [TEST] " if is_test else " "
+
+        def publish_alert(sub_group_tag, state, message):
+            click.secho(f'SUB GROUP {sub_group_tag}: {message:^100}'.upper(), bg='bright_green', fg='red')
+            click.secho(f'{"Publishing an Alert!!!".upper():^100}', bg='bright_green', fg='red')
+            click.secho(f'{"=" * 100}', fg='bright_red')
+            log.info(f"\t> {log_info} An alert was published: {state} !")
+            self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, is_test=is_test)
 
         for sub_group_tag, state in cache_data.sub_group_state.items():
-            print('CHECKING FOR ALERTS IN SUB GROUP: ', sub_group_tag)
-            # if state is none skip the sub group
+            print(f'CHECKING FOR ALERTS IN SUB GROUP: {sub_group_tag}')
+
             if state is None:
                 print(f'NO ALERTS IN SUB GROUP: {sub_group_tag}')
                 continue
-            # check if sub_cache is COINC_MSG_STAGGERED
-            elif state == 'COINC_MSG_STAGGERED':
-                #  yet another pretty terminal output
-                click.secho(f'SUB GROUP {sub_group_tag}:{"COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green',
-                            fg='red')
-                click.secho(f'{"Publishing an Alert!!!".upper():^100}', bg='bright_green', fg='red')
-                click.secho(f'{"=" * 100}', fg='bright_red')
-                # publish coincidence alert
-                log.info(f"\t> {log_info} An alert was published: {state} !")
-                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, is_test=is_test)
-                continue
-            # publish a retraction alert for the sub group is its state is RETRACTION
-            elif state == 'RETRACTION' and len(cache_data.cache.query('sub_group==@sub_group_tag')) < _message_count[sub_group_tag]:
-                #  yet another pretty terminal output
-                click.secho(f'SUB GROUP {sub_group_tag}:{"RETRACTION HAS BEEN MADE".upper():^100}', bg='bright_green',
-                            fg='red')
-                click.secho(f'{"Publishing an updated  alert..".upper():^100}', bg='bright_green', fg='red')
-                click.secho(f'{"=" * 100}', fg='bright_red')
-                # publish retraction alert
-                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, is_test=is_test)
-                continue
-            # Don't publish alert for the sub group is its state is INITIAL
+
+            message_count = len(cache_data.cache.query('sub_group==@sub_group_tag'))
+
+            if state == 'COINC_MSG_STAGGERED':
+                publish_alert(sub_group_tag, state, 'COINCIDENT DETECTOR..')
+
+            elif state == 'RETRACTION' and message_count < _message_count[sub_group_tag]:
+                publish_alert(sub_group_tag, state, 'RETRACTION HAS BEEN MADE')
+
             elif state == 'INITIAL':
-                #  yet another pretty terminal output
                 log.debug(f'\t> {log_info} Initial message in sub group:{sub_group_tag}')
-                click.secho(f'SUB GROUP {sub_group_tag}:{"Initial message received".upper():^100}', bg='bright_green',
+                click.secho(f'SUB GROUP {sub_group_tag}: {"Initial message received".upper():^100}', bg='bright_green',
                             fg='red')
                 click.secho(f'{"=" * 100}', fg='bright_red')
-                continue
-            elif state == 'UPDATE' and len(cache_data.cache.query('sub_group==@sub_group_tag')) == _message_count[sub_group_tag]:
-                #  yet another pretty terminal output
-                click.secho(f'SUB GROUP {sub_group_tag}:{"A MESSAGE HAS BEEN UPDATED".upper():^100}', bg='bright_green',
-                            fg='red')
+
+            elif state == 'UPDATE' and message_count == _message_count[sub_group_tag]:
+                click.secho(f'SUB GROUP {sub_group_tag}: {"A MESSAGE HAS BEEN UPDATED".upper():^100}',
+                            bg='bright_green', fg='red')
                 log.debug(f'\t> {log_info} An UPDATE message is received')
-                # only publish an alert if the sub group has more than 1 message
-                if len(cache_data.cache.query('sub_group==@sub_group_tag')) > 1:
-                    click.secho(f'{"Publishing an updated  Alert!!!".upper():^100}', bg='bright_green', fg='red')
-                    click.secho(f'{"=" * 100}', fg='bright_red')
-                    # publish update alert
-                    self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, is_test=is_test)
+                if message_count > 1:
+                    publish_alert(sub_group_tag, state, 'Publishing an updated Alert!!!')
                     log.debug(f'\t> {log_info} An alert is updated!')
-                continue
-            elif state == 'COINC_MSG' and len(cache_data.cache.query('sub_group==@sub_group_tag')) > _message_count[sub_group_tag]:
-                #  yet another pretty terminal output
-                click.secho(f'SUB GROUP {sub_group_tag}:{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
-                click.secho(f'{"Published an Alert!!!".upper():^100}', bg='bright_green', fg='red')
-                click.secho(f'{"=" * 100}', fg='bright_red')
-                # publish coincidence alert
-                log.info(f"\t> {log_info} An alert was published: {state} !")
-                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, is_test=is_test)
-                continue
+
+            elif state == 'COINC_MSG' and message_count > _message_count[sub_group_tag]:
+                publish_alert(sub_group_tag, state, 'NEW COINCIDENT DETECTOR..')
 
     # ------------------------------------------------------------------------------------------------------------------
     def deal_with_the_cache(self, snews_message):
