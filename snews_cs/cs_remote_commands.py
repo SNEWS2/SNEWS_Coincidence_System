@@ -244,11 +244,10 @@ class CommandHandler:
         elif self.command_name in ["CoincidenceTier", "Retraction"]:
             log.info(f"\t> {self.command_name} message is received, coincidence check is GO!")
 
-
             #- Register heartbeat corresponding to this message.
             #  Idea is that when a message comes in, it automatically logs a HB here.
             #  Then we log it and get the correct coincidence probability.
-            self.heartbeat_handle(self.input_message, CoincDeciderInstance)
+            self.Command_Executer.heartbeat_handle(self.input_message, CoincDeciderInstance)
 
             return True
 
