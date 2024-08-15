@@ -60,7 +60,7 @@ jobs:
           tar -xzf hop-client-0.9.0.tar.gz
           cd hop-client-0.9.0
           python setup.py install
-          cd /home/runner/work/SNEWS_Publishing_Tools/SNEWS_Publishing_Tools
+          cd /home/runner/work/SNEWS_Coincidence_System/SNEWS_Coincidence_System
 
       - shell: bash
         env:
@@ -86,4 +86,4 @@ jobs:
       # Run the unit tests
       - name: Test with pytest
         run: |
-          python -m poetry run pytest
+          python -m poetry run pytest snews_cs
