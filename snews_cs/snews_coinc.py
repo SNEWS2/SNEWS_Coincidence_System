@@ -575,7 +575,25 @@ class CoincidenceDistributor:
                 continue
 
     # ------------------------------------------------------------------------------------------------------------------
-    def deal_with_the_cache(self, snews_message, is_test=False):
+    def deal_with_the_cache(self, snews_message):
+        """ Check if the message is a test or not, then add it to the cache and run the alert decider
+
+        Parameters
+        ----------
+        snews_message: dict read from the Kafka stream
+
+        Returns
+        -------
+            adds messages to cache and runs the coincidence decider
+        """
+        if "meta" in snews_message.keys():
+            is_test = snews_message['meta'].get('is_test', False)
+        else:
+            if "is_test" in snews_message.keys():
+                is_test = snews_message['is_test']
+            else:
+                is_test = False
+
         if not is_test:
             which_cache_to_use = 'main'
             self.coinc_data.add_to_cache(message=snews_message)
@@ -652,8 +670,7 @@ class CoincidenceDistributor:
                             click.secho(terminal_output)
                             # add to cache
                             ### if actual observation, use coincidence cache, else if testing use test cache
-
-
+                            self.deal_with_the_cache(snews_message)
 
                         # for each read message reduce the retriable err count
                         if self.retriable_error_count > 1:
