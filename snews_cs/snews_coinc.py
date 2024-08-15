@@ -461,7 +461,10 @@ class CoincidenceDistributor:
     def send_alert(self, sub_group_tag, alert_type, which_cache_to_use="main"):
         if which_cache_to_use == 'main':
             sub_df = self.coinc_data.cache.query('sub_group==@sub_group_tag')
-            false_alarm_prob = cache_false_alarm_rate(cache_sub_list=sub_df, hb_cache=self.heartbeat.cache_df)
+            try:
+                false_alarm_prob = cache_false_alarm_rate(cache_sub_list=sub_df, hb_cache=self.heartbeat.cache_df)
+            except:
+                false_alarm_prob = "(couldn't compute)"
             alert_publisher = self.alert
         else:
             sub_df = self.test_coinc_data.cache.query('sub_group==@sub_group_tag')
