@@ -51,10 +51,14 @@ class CoincidenceTierAlert:
         """
         id = self.id_format(len(data['detector_names']))
         alert_type = "TEST "+ data['alert_type'] if which_cache_to_use=='test' else data['alert_type']
+        try:
+            far = f"Would happen every {data['false_alarm_prob']:.2e} year"
+        except:
+            far = data['false_alarm_prob']
         return {"_id": id,
                 "alert_type":alert_type,
                 "server_tag": data['server_tag'],
-                "False Alarm Prob": f"Would happen every {data['false_alarm_prob']:.2e} year",
+                "False Alarm Prob": far,
                 "detector_names": data['detector_names'],
                 "sent_time": id.split(' ')[1],
                 "p_values": data['p_vals'],
