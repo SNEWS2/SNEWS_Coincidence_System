@@ -507,14 +507,11 @@ class CoincidenceDistributor:
         """
         # mkae a pretty terminal output
         click.secho(f'{"=" * 100}', fg='bright_red')
-        # loop through the sub group tag and state
-        # print(f'TEST {self.coinc_data.sub_group_state}')
 
         # decide which cache to use
         if which_cache_to_use == 'main':
             cache_data = self.coinc_data
             _message_count = self.message_count
-            # send_alert arg
         else:
             cache_data = self.test_coinc_data
             _message_count = self.test_message_count
