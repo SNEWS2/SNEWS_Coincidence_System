@@ -580,7 +580,7 @@ class CoincidenceDistributor:
 
         Parameters
         ----------
-        snews_message: dict read from the Kafka stream
+        snews_message: dict read from the Kafka stream.
 
         Returns
         -------
