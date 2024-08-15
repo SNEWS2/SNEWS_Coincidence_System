@@ -96,5 +96,8 @@ setup(
         'Operating System :: MacOS',
         'License :: OSI Approved :: BSD License',
     ],
+    
+    package_dir = {'' : ''},
+    test_suite='snews_cs.test.snews_cs_test_suite.snews_cs_test_suite',
 
 )

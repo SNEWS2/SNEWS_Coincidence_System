@@ -1,3 +1,3 @@
-from hop_comms import hop_mgs_schema
+# from hop_comms import hop_mgs_schema
 
 
