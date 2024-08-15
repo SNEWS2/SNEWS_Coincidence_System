@@ -483,7 +483,7 @@ class CoincidenceDistributor:
 
 
         with alert_publisher as pub:
-            alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
+            alert = self.alert_schema.get_cs_alert_schema(data=alert_data, which_cache_to_use=which_cache_to_use)
             pub.send(alert)
             # only check to see if email or slack should be sent if the alert is not a test alert
             if which_cache_to_use == 'main':
