@@ -516,9 +516,11 @@ class CoincidenceDistributor:
         if not is_test:
             cache_data = self.coinc_data
             _message_count = self.message_count
+            log_info = " [TEST] "
         else:
             cache_data = self.test_coinc_data
             _message_count = self.test_message_count
+            log_info = " "
 
         for sub_group_tag, state in cache_data.sub_group_state.items():
             print('CHECKING FOR ALERTS IN SUB GROUP: ', sub_group_tag)
@@ -534,7 +536,7 @@ class CoincidenceDistributor:
                 click.secho(f'{"Publishing an Alert!!!".upper():^100}', bg='bright_green', fg='red')
                 click.secho(f'{"=" * 100}', fg='bright_red')
                 # publish coincidence alert
-                log.info(f"\t> An alert was published: {state} !")
+                log.info(f"\t> {log_info} An alert was published: {state} !")
                 self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, is_test=is_test)
                 continue
             # publish a retraction alert for the sub group is its state is RETRACTION
@@ -550,7 +552,7 @@ class CoincidenceDistributor:
             # Don't publish alert for the sub group is its state is INITIAL
             elif state == 'INITIAL':
                 #  yet another pretty terminal output
-                log.debug(f'\t> Initial message in sub group:{sub_group_tag}')
+                log.debug(f'\t> {log_info} Initial message in sub group:{sub_group_tag}')
                 click.secho(f'SUB GROUP {sub_group_tag}:{"Initial message received".upper():^100}', bg='bright_green',
                             fg='red')
                 click.secho(f'{"=" * 100}', fg='bright_red')
@@ -559,14 +561,14 @@ class CoincidenceDistributor:
                 #  yet another pretty terminal output
                 click.secho(f'SUB GROUP {sub_group_tag}:{"A MESSAGE HAS BEEN UPDATED".upper():^100}', bg='bright_green',
                             fg='red')
-                log.debug('\t> An UPDATE message is received')
+                log.debug(f'\t> {log_info} An UPDATE message is received')
                 # only publish an alert if the sub group has more than 1 message
                 if len(cache_data.cache.query('sub_group==@sub_group_tag')) > 1:
                     click.secho(f'{"Publishing an updated  Alert!!!".upper():^100}', bg='bright_green', fg='red')
                     click.secho(f'{"=" * 100}', fg='bright_red')
                     # publish update alert
                     self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, is_test=is_test)
-                    log.debug('\t> An alert is updated!')
+                    log.debug(f'\t> {log_info} An alert is updated!')
                 continue
             elif state == 'COINC_MSG' and len(cache_data.cache.query('sub_group==@sub_group_tag')) > _message_count[sub_group_tag]:
                 #  yet another pretty terminal output
@@ -574,7 +576,7 @@ class CoincidenceDistributor:
                 click.secho(f'{"Published an Alert!!!".upper():^100}', bg='bright_green', fg='red')
                 click.secho(f'{"=" * 100}', fg='bright_red')
                 # publish coincidence alert
-                log.info(f"\t> An alert was published: {state} !")
+                log.info(f"\t> {log_info} An alert was published: {state} !")
                 self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, is_test=is_test)
                 continue
 
