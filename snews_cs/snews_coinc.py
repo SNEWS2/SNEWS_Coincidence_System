@@ -516,6 +516,7 @@ class CoincidenceDistributor:
             cache_data = self.test_coinc_data
             _message_count = self.test_message_count
 
+        print(f"[DEBUG] >>>> {which_cache_to_use}")
         for sub_group_tag, state in cache_data.sub_group_state.items():
             print('CHECKING FOR ALERTS IN SUB GROUP: ', sub_group_tag)
             # if state is none skip the sub group
@@ -598,10 +599,9 @@ class CoincidenceDistributor:
         print(snews_message)
 
         if not is_test:
-            which_cache_to_use = 'main'
             self.coinc_data.add_to_cache(message=snews_message)
             # run the search
-            self.alert_decider(which_cache_to_use)
+            self.alert_decider(which_cache_to_use= 'main')
             # update message count
             for sub_group_tag in self.coinc_data.cache['sub_group'].unique():
                 self.message_count[sub_group_tag] = len(
@@ -614,11 +614,12 @@ class CoincidenceDistributor:
                 self.storage.insert_coinc_cache(self.coinc_data.cache)
             sys.stdout.flush()
             self.coinc_data.updated = []
+            if self.show_table:
+                self.display_table('main')  ## don't display on the server
         else:
-            which_cache_to_use = 'test'
             self.test_coinc_data.add_to_cache(message=snews_message)
             # run the search
-            self.alert_decider(which_cache_to_use)
+            self.alert_decider(which_cache_to_use = 'test')
             # update message count
             for sub_group_tag in self.test_coinc_data.cache['sub_group'].unique():
                 self.test_message_count[sub_group_tag] = len(
@@ -628,9 +629,9 @@ class CoincidenceDistributor:
             # do not have a storage for the tests
             sys.stdout.flush()
             self.test_coinc_data.updated = []
+            if self.show_table:
+                self.display_table('test')  ## don't display on the server
 
-        if self.show_table:
-            self.display_table(which_cache_to_use)  ## don't display on the server
 
     #-------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
