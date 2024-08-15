@@ -15,7 +15,7 @@ class AlertPublisher:
     """ Class to publish SNEWS SuperNova Alerts based on coincidence
 
     """
-    def __init__(self, env_path=None, verbose=True, auth=True, firedrill_mode=True):
+    def __init__(self, env_path=None, verbose=True, auth=True, firedrill_mode=True, is_test=False):
         """
         Alert publisher constructor 
         Parameters
@@ -35,6 +35,11 @@ class AlertPublisher:
         else:
             self.alert_topic = os.getenv("ALERT_TOPIC")
         self.verbose = verbose
+
+        if is_test:
+            # use a test topic
+            self.alert_topic = os.getenv("CONNECTION_TEST_TOPIC")
+
 
     def __enter__(self):
         self.stream = Stream(until_eos=True, auth=self.auth).open(self.alert_topic, 'w')
