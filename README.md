@@ -2,7 +2,7 @@
 
 Coincidence system backend for [SNEWS](https://snews2.org/) alert trigger.
 
-![tests](https://github.com/SNEWS2/snewpy/actions/workflows/tests.yml/badge.svg)
+![tests](https://github.com/SNEWS2/SNEWS_Coincidence_System/actions/workflows/tests.yml/badge.svg)
 [![Documentation Status](https://readthedocs.org/projects/snews-coincidence-system/badge/?version=latest)](https://snews-coincidence-system.readthedocs.io/en/latest/?badge=latest&style=for-the-badge)
 [![arXiv](https://img.shields.io/badge/arXiv-2406.17743-b31b1b.svg)](https://arxiv.org/abs/2406.17743)
 
