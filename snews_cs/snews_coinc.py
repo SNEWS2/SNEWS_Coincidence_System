@@ -594,6 +594,9 @@ class CoincidenceDistributor:
             else:
                 is_test = False
 
+        print(is_test)
+        print(snews_message)
+
         if not is_test:
             which_cache_to_use = 'main'
             self.coinc_data.add_to_cache(message=snews_message)
