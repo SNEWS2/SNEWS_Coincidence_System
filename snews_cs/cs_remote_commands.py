@@ -95,9 +95,17 @@ class Commands:
         """ Authorized User (passing a correct password)
         """
         authorized = self._check_rights(message)
+        if "meta" in message.keys():
+            is_test = message['meta'].get('is_test', False)
+        else:
+            if "is_test" in message.keys():
+                is_test = message['is_test']
+            else:
+                is_test = False
+
         if authorized:
             log.info("\t> Cache wanted to be reset. User is authorized.")
-            CoincDeciderInstance.clear_cache()
+            CoincDeciderInstance.clear_cache(is_test)
             log.info("\t> Cache is reset.")
             return None
         else:

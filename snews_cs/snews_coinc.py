@@ -428,17 +428,21 @@ class CoincidenceDistributor:
         self.test_message_count = {}
         ## don't use a storage for the test cache
 
-    def clear_cache(self):
+    def clear_cache(self, is_test=False):
         """ When a reset cache is passed, recreate the
             CoincidenceDataHandler instance
 
         """
-        log.info("\t > [RESET] Resetting the cache.")
-        del self.coinc_data
-        self.coinc_data = CacheManager()
+        if not is_test:
+            log.info("\t > [RESET] Resetting the cache.")
+            del self.coinc_data
+            self.coinc_data = CacheManager()
+        else:
+            del self.test_coinc_data
+            self.test_coinc_data = CacheManager()
 
     # ----------------------------------------------------------------------------------------------------------------
-    def display_table(self, which_cache_to_use):
+    def display_table(self, is_test=False):
         """
         Display each sub list individually using a markdown table.
 
@@ -446,7 +450,7 @@ class CoincidenceDistributor:
         click.secho(
             f'Here is the current coincident table\n',
             fg='magenta', bold=True, )
-        if which_cache_to_use == 'main':
+        if not is_test:
             cache_data = self.coinc_data
         else:
             cache_data = self.test_coinc_data
@@ -458,8 +462,8 @@ class CoincidenceDistributor:
             print(sub_df.to_markdown())
             print('=' * 168)
 
-    def send_alert(self, sub_group_tag, alert_type, which_cache_to_use="main"):
-        if which_cache_to_use == 'main':
+    def send_alert(self, sub_group_tag, alert_type, is_test=False):
+        if not is_test:
             sub_df = self.coinc_data.cache.query('sub_group==@sub_group_tag')
             try:
                 false_alarm_prob = cache_false_alarm_rate(cache_sub_list=sub_df, hb_cache=self.heartbeat.cache_df)
@@ -486,10 +490,10 @@ class CoincidenceDistributor:
 
 
         with alert_publisher as pub:
-            alert = self.alert_schema.get_cs_alert_schema(data=alert_data, which_cache_to_use=which_cache_to_use)
+            alert = self.alert_schema.get_cs_alert_schema(data=alert_data, is_test=is_test)
             pub.send(alert)
             # only check to see if email or slack should be sent if the alert is not a test alert
-            if which_cache_to_use == 'main':
+            if not is_test:
                 if self.send_email:
                     send_email(alert)
                 if self.send_slack:
@@ -499,7 +503,7 @@ class CoincidenceDistributor:
                                          topic=self.observation_topic)
 
     # ------------------------------------------------------------------------------------------------------------------
-    def alert_decider(self, which_cache_to_use="main"):
+    def alert_decider(self, is_test=False):
         """
         This method will publish an alert every time a new detector
         submits an observation message
@@ -509,14 +513,13 @@ class CoincidenceDistributor:
         click.secho(f'{"=" * 100}', fg='bright_red')
 
         # decide which cache to use
-        if which_cache_to_use == 'main':
+        if not is_test:
             cache_data = self.coinc_data
             _message_count = self.message_count
         else:
             cache_data = self.test_coinc_data
             _message_count = self.test_message_count
 
-        print(f"[DEBUG] >>>> {which_cache_to_use}")
         for sub_group_tag, state in cache_data.sub_group_state.items():
             print('CHECKING FOR ALERTS IN SUB GROUP: ', sub_group_tag)
             # if state is none skip the sub group
@@ -532,7 +535,7 @@ class CoincidenceDistributor:
                 click.secho(f'{"=" * 100}', fg='bright_red')
                 # publish coincidence alert
                 log.info(f"\t> An alert was published: {state} !")
-                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, which_cache_to_use=which_cache_to_use)
+                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, is_test=is_test)
                 continue
             # publish a retraction alert for the sub group is its state is RETRACTION
             elif state == 'RETRACTION' and len(cache_data.cache.query('sub_group==@sub_group_tag')) < _message_count[sub_group_tag]:
@@ -542,7 +545,7 @@ class CoincidenceDistributor:
                 click.secho(f'{"Publishing an updated  alert..".upper():^100}', bg='bright_green', fg='red')
                 click.secho(f'{"=" * 100}', fg='bright_red')
                 # publish retraction alert
-                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, which_cache_to_use=which_cache_to_use)
+                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, is_test=is_test)
                 continue
             # Don't publish alert for the sub group is its state is INITIAL
             elif state == 'INITIAL':
@@ -562,7 +565,7 @@ class CoincidenceDistributor:
                     click.secho(f'{"Publishing an updated  Alert!!!".upper():^100}', bg='bright_green', fg='red')
                     click.secho(f'{"=" * 100}', fg='bright_red')
                     # publish update alert
-                    self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, which_cache_to_use=which_cache_to_use)
+                    self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, is_test=is_test)
                     log.debug('\t> An alert is updated!')
                 continue
             elif state == 'COINC_MSG' and len(cache_data.cache.query('sub_group==@sub_group_tag')) > _message_count[sub_group_tag]:
@@ -572,7 +575,7 @@ class CoincidenceDistributor:
                 click.secho(f'{"=" * 100}', fg='bright_red')
                 # publish coincidence alert
                 log.info(f"\t> An alert was published: {state} !")
-                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, which_cache_to_use=which_cache_to_use)
+                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, is_test=is_test)
                 continue
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -595,13 +598,10 @@ class CoincidenceDistributor:
             else:
                 is_test = False
 
-        print(is_test)
-        print(snews_message)
-
         if not is_test:
             self.coinc_data.add_to_cache(message=snews_message)
             # run the search
-            self.alert_decider(which_cache_to_use= 'main')
+            self.alert_decider(is_test=is_test)
             # update message count
             for sub_group_tag in self.coinc_data.cache['sub_group'].unique():
                 self.message_count[sub_group_tag] = len(
@@ -619,7 +619,7 @@ class CoincidenceDistributor:
         else:
             self.test_coinc_data.add_to_cache(message=snews_message)
             # run the search
-            self.alert_decider(which_cache_to_use = 'test')
+            self.alert_decider(is_test=is_test)
             # update message count
             for sub_group_tag in self.test_coinc_data.cache['sub_group'].unique():
                 self.test_message_count[sub_group_tag] = len(
