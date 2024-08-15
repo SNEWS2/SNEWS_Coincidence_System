@@ -86,4 +86,4 @@ jobs:
       # Run the unit tests
       - name: Test with pytest
         run: |
-          python -m poetry run pytest
+          python -m poetry run pytest snews_cs
