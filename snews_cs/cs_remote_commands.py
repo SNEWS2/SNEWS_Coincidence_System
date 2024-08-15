@@ -247,6 +247,7 @@ class CommandHandler:
             #- Register heartbeat corresponding to this message.
             #  Idea is that when a message comes in, it automatically logs a HB here.
             #  Then we log it and get the correct coincidence probability.
+            self.input_message['detector_status'] = 'ON'
             self.Command_Executer.heartbeat_handle(self.input_message, CoincDeciderInstance)
 
             return True
