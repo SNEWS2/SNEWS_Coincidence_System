@@ -409,10 +409,13 @@ class CoincidenceDistributor:
         self.exit_on_error = False  # True
         self.initial_set = False
         self.alert = AlertPublisher(env_path=env_path, firedrill_mode=firedrill_mode)
+        self.test_alert = AlertPublisher(env_path=env_path, is_test=True) # overwrites with connection test topic
         if firedrill_mode:
             self.observation_topic = os.getenv("FIREDRILL_OBSERVATION_TOPIC")
         else:
             self.observation_topic = os.getenv("OBSERVATION_TOPIC")
+        # for testing, the alerts will be sent to this topic
+        self.test_topic = os.getenv("CONNECTION_TEST_TOPIC")
         self.alert_schema = CoincidenceTierAlert(env_path)
         # handle heartbeat
         self.store_heartbeat = bool(os.getenv("STORE_HEARTBEAT", "True"))
@@ -420,7 +423,10 @@ class CoincidenceDistributor:
 
         self.stash_time = 86400
         self.coinc_data = CacheManager()
+        self.test_coinc_data = CacheManager() # a separate cache for testing
         self.message_count = {}
+        self.test_message_count = {}
+        ## don't use a storage for the test cache
 
     def clear_cache(self):
         """ When a reset cache is passed, recreate the
@@ -432,7 +438,7 @@ class CoincidenceDistributor:
         self.coinc_data = CacheManager()
 
     # ----------------------------------------------------------------------------------------------------------------
-    def display_table(self):
+    def display_table(self, which_cache_to_use):
         """
         Display each sub list individually using a markdown table.
 
@@ -440,21 +446,32 @@ class CoincidenceDistributor:
         click.secho(
             f'Here is the current coincident table\n',
             fg='magenta', bold=True, )
-        for sub_list in self.coinc_data.cache['sub_group'].unique():
-            sub_df = self.coinc_data.cache.query(f'sub_group=={sub_list}')
+        if which_cache_to_use == 'main':
+            cache_data = self.coinc_data
+        else:
+            cache_data = self.test_coinc_data
+        for sub_list in cache_data.cache['sub_group'].unique():
+            sub_df = cache_data.cache.query(f'sub_group=={sub_list}')
             sub_df = sub_df.drop(columns=['meta', 'machine_time', 'schema_version', 'neutrino_time_as_datetime'])
             sub_df = sub_df.sort_values(by=['neutrino_time'])
             # snews_bot.send_table(sub_df) # no need to print the table on the server. Logs have the full content
             print(sub_df.to_markdown())
             print('=' * 168)
 
-    def send_alert(self, sub_group_tag, alert_type):
-        sub_df = self.coinc_data.cache.query('sub_group==@sub_group_tag')
+    def send_alert(self, sub_group_tag, alert_type, which_cache_to_use="main"):
+        if which_cache_to_use == 'main':
+            sub_df = self.coinc_data.cache.query('sub_group==@sub_group_tag')
+            false_alarm_prob = cache_false_alarm_rate(cache_sub_list=sub_df, hb_cache=self.heartbeat.cache_df)
+            alert_publisher = self.alert
+        else:
+            sub_df = self.test_coinc_data.cache.query('sub_group==@sub_group_tag')
+            false_alarm_prob = "N/A"
+            alert_publisher = self.test_alert
+
         p_vals = sub_df['p_val'].to_list()
         p_vals_avg = np.round(sub_df['p_val'].mean(), decimals=5)
         nu_times = sub_df['neutrino_time'].to_list()
         detector_names = sub_df['detector_name'].to_list()
-        false_alarm_prob = cache_false_alarm_rate(cache_sub_list=sub_df, hb_cache=self.heartbeat.cache_df)
         alert_data = dict(p_vals=p_vals,
                           p_val_avg=p_vals_avg,
                           sub_list_num=int(sub_group_tag),
@@ -464,19 +481,22 @@ class CoincidenceDistributor:
                           server_tag=self.server_tag,
                           alert_type=alert_type)
 
-        with self.alert as pub:
+
+        with alert_publisher as pub:
             alert = self.alert_schema.get_cs_alert_schema(data=alert_data)
             pub.send(alert)
-            if self.send_email:
-                send_email(alert)
-            if self.send_slack:
-                snews_bot.send_table(alert_data,
-                                     alert,
-                                     is_test=True,
-                                     topic=self.observation_topic)
+            # only check to see if email or slack should be sent if the alert is not a test alert
+            if which_cache_to_use == 'main':
+                if self.send_email:
+                    send_email(alert)
+                if self.send_slack:
+                    snews_bot.send_table(alert_data,
+                                         alert,
+                                         is_test=True,
+                                         topic=self.observation_topic)
 
     # ------------------------------------------------------------------------------------------------------------------
-    def alert_decider(self):
+    def alert_decider(self, which_cache_to_use="main"):
         """
         This method will publish an alert every time a new detector
         submits an observation message
@@ -487,7 +507,16 @@ class CoincidenceDistributor:
         # loop through the sub group tag and state
         # print(f'TEST {self.coinc_data.sub_group_state}')
 
-        for sub_group_tag, state in self.coinc_data.sub_group_state.items():
+        # decide which cache to use
+        if which_cache_to_use == 'main':
+            cache_data = self.coinc_data
+            _message_count = self.message_count
+            # send_alert arg
+        else:
+            cache_data = self.test_coinc_data
+            _message_count = self.test_message_count
+
+        for sub_group_tag, state in cache_data.sub_group_state.items():
             print('CHECKING FOR ALERTS IN SUB GROUP: ', sub_group_tag)
             # if state is none skip the sub group
             if state is None:
@@ -505,7 +534,7 @@ class CoincidenceDistributor:
                 self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
                 continue
             # publish a retraction alert for the sub group is its state is RETRACTION
-            elif state == 'RETRACTION' and len(self.coinc_data.cache.query('sub_group==@sub_group_tag')) < self.message_count[sub_group_tag]:
+            elif state == 'RETRACTION' and len(cache_data.cache.query('sub_group==@sub_group_tag')) < _message_count[sub_group_tag]:
                 #  yet another pretty terminal output
                 click.secho(f'SUB GROUP {sub_group_tag}:{"RETRACTION HAS BEEN MADE".upper():^100}', bg='bright_green',
                             fg='red')
@@ -522,20 +551,20 @@ class CoincidenceDistributor:
                             fg='red')
                 click.secho(f'{"=" * 100}', fg='bright_red')
                 continue
-            elif state == 'UPDATE' and len(self.coinc_data.cache.query('sub_group==@sub_group_tag')) == self.message_count[sub_group_tag]:
+            elif state == 'UPDATE' and len(cache_data.cache.query('sub_group==@sub_group_tag')) == _message_count[sub_group_tag]:
                 #  yet another pretty terminal output
                 click.secho(f'SUB GROUP {sub_group_tag}:{"A MESSAGE HAS BEEN UPDATED".upper():^100}', bg='bright_green',
                             fg='red')
                 log.debug('\t> An UPDATE message is received')
                 # only publish an alert if the sub group has more than 1 message
-                if len(self.coinc_data.cache.query('sub_group==@sub_group_tag')) > 1:
+                if len(cache_data.cache.query('sub_group==@sub_group_tag')) > 1:
                     click.secho(f'{"Publishing an updated  Alert!!!".upper():^100}', bg='bright_green', fg='red')
                     click.secho(f'{"=" * 100}', fg='bright_red')
                     # publish update alert
                     self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
                     log.debug('\t> An alert is updated!')
                 continue
-            elif state == 'COINC_MSG' and len(self.coinc_data.cache.query('sub_group==@sub_group_tag')) > self.message_count[sub_group_tag]:
+            elif state == 'COINC_MSG' and len(cache_data.cache.query('sub_group==@sub_group_tag')) > _message_count[sub_group_tag]:
                 #  yet another pretty terminal output
                 click.secho(f'SUB GROUP {sub_group_tag}:{"NEW COINCIDENT DETECTOR.. ".upper():^100}', bg='bright_green', fg='red')
                 click.secho(f'{"Published an Alert!!!".upper():^100}', bg='bright_green', fg='red')
@@ -546,6 +575,42 @@ class CoincidenceDistributor:
                 continue
 
     # ------------------------------------------------------------------------------------------------------------------
+    def deal_with_the_cache(self, snews_message, is_test=False):
+        if not is_test:
+            which_cache_to_use = 'main'
+            self.coinc_data.add_to_cache(message=snews_message)
+            # run the search
+            self.alert_decider(which_cache_to_use)
+            # update message count
+            for sub_group_tag in self.coinc_data.cache['sub_group'].unique():
+                self.message_count[sub_group_tag] = len(
+                    self.coinc_data.cache.query('sub_group==@sub_group_tag'))
+                self.coinc_data.sub_group_state[sub_group_tag] = None
+
+            self.coinc_data.updated = []
+            # do not have a storage for the tests
+            if not is_test:
+                self.storage.insert_coinc_cache(self.coinc_data.cache)
+            sys.stdout.flush()
+            self.coinc_data.updated = []
+        else:
+            which_cache_to_use = 'test'
+            self.test_coinc_data.add_to_cache(message=snews_message)
+            # run the search
+            self.alert_decider(which_cache_to_use)
+            # update message count
+            for sub_group_tag in self.test_coinc_data.cache['sub_group'].unique():
+                self.test_message_count[sub_group_tag] = len(
+                    self.test_coinc_data.cache.query('sub_group==@sub_group_tag'))
+                self.test_coinc_data.sub_group_state[sub_group_tag] = None
+            self.test_coinc_data.updated = []
+            # do not have a storage for the tests
+            sys.stdout.flush()
+
+        if self.show_table:
+            self.display_table(which_cache_to_use)  ## don't display on the server
+
+    #-------------------------------------------------------------------------------------------------------------------
     def run_coincidence(self):
         """
         As the name states this method runs the coincidence system.
@@ -586,22 +651,9 @@ class CoincidenceDistributor:
                             terminal_output += click.style(f"\t>{snews_message['detector_name']}, {snews_message['received_time']}", fg='bright_blue')
                             click.secho(terminal_output)
                             # add to cache
-                            self.coinc_data.add_to_cache(message=snews_message)
-                            if self.show_table:
-                                self.display_table()  ## don't display on the server
-                            self.alert_decider()
-                            # update message count
-                            for sub_group_tag in self.coinc_data.cache['sub_group'].unique():
-                                self.message_count[sub_group_tag] = len(
-                                    self.coinc_data.cache.query('sub_group==@sub_group_tag'))
-                                self.coinc_data.sub_group_state[sub_group_tag] = None
+                            ### if actual observation, use coincidence cache, else if testing use test cache
 
-                            self.coinc_data.updated = []
 
-                            self.storage.insert_coinc_cache(self.coinc_data.cache)
-                            sys.stdout.flush()
-
-                            self.coinc_data.updated = []
 
                         # for each read message reduce the retriable err count
                         if self.retriable_error_count > 1:
