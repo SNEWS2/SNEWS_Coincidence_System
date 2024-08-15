@@ -531,7 +531,7 @@ class CoincidenceDistributor:
                 click.secho(f'{"=" * 100}', fg='bright_red')
                 # publish coincidence alert
                 log.info(f"\t> An alert was published: {state} !")
-                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
+                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, which_cache_to_use=which_cache_to_use)
                 continue
             # publish a retraction alert for the sub group is its state is RETRACTION
             elif state == 'RETRACTION' and len(cache_data.cache.query('sub_group==@sub_group_tag')) < _message_count[sub_group_tag]:
@@ -541,7 +541,7 @@ class CoincidenceDistributor:
                 click.secho(f'{"Publishing an updated  alert..".upper():^100}', bg='bright_green', fg='red')
                 click.secho(f'{"=" * 100}', fg='bright_red')
                 # publish retraction alert
-                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
+                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, which_cache_to_use=which_cache_to_use)
                 continue
             # Don't publish alert for the sub group is its state is INITIAL
             elif state == 'INITIAL':
@@ -561,7 +561,7 @@ class CoincidenceDistributor:
                     click.secho(f'{"Publishing an updated  Alert!!!".upper():^100}', bg='bright_green', fg='red')
                     click.secho(f'{"=" * 100}', fg='bright_red')
                     # publish update alert
-                    self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
+                    self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, which_cache_to_use=which_cache_to_use)
                     log.debug('\t> An alert is updated!')
                 continue
             elif state == 'COINC_MSG' and len(cache_data.cache.query('sub_group==@sub_group_tag')) > _message_count[sub_group_tag]:
@@ -571,7 +571,7 @@ class CoincidenceDistributor:
                 click.secho(f'{"=" * 100}', fg='bright_red')
                 # publish coincidence alert
                 log.info(f"\t> An alert was published: {state} !")
-                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state)
+                self.send_alert(sub_group_tag=sub_group_tag, alert_type=state, which_cache_to_use=which_cache_to_use)
                 continue
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -627,6 +627,7 @@ class CoincidenceDistributor:
             self.test_coinc_data.updated = []
             # do not have a storage for the tests
             sys.stdout.flush()
+            self.test_coinc_data.updated = []
 
         if self.show_table:
             self.display_table(which_cache_to_use)  ## don't display on the server
