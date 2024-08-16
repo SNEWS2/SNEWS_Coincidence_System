@@ -55,8 +55,8 @@ jobs:
 
       - name: Install hop-client
         run: |
-          pip install setuptools wheel
-          pip install hop==0.9.0
+          python -m pip install setuptools wheel
+          python -m pip install hop-client==0.9.0
           cd /home/runner/work/SNEWS_Coincidence_System/SNEWS_Coincidence_System
 
       - shell: bash
