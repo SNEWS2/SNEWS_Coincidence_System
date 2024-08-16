@@ -225,6 +225,7 @@ class CommandHandler:
                 self.is_test = self.input_message['meta'].get('is_test', False)
             else:
                 if "is_test" in self.input_message.keys():
+                    log.debug(f"[DEBUG] >>>>> is_test in the message keys: {self.input_message['is_test']}\n")
                     self.is_test = self.input_message['is_test']
                 else:
                     self.is_test = False
