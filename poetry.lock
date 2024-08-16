@@ -1836,19 +1836,6 @@ files = [
 optional = ["SQLAlchemy (>=1.4,<3)", "aiodns (>1.0)", "aiohttp (>=3.7.3,<4)", "boto3 (<=2)", "websocket-client (>=1,<2)", "websockets (>=9.1,<13)"]
 
 [[package]]
-name = "snews_pt"
-version = "1.3.5.dev46"
-description = "An alert application for observing supernovas."
-optional = false
-python-versions = "*"
-files = []
-develop = false
-
-[package.source]
-type = "directory"
-url = "../SNEWS_Publishing_Tools"
-
-[[package]]
 name = "snowballstemmer"
 version = "2.2.0"
 description = "This package provides 29 stemmers for 28 languages generated from Snowball algorithms."
@@ -2235,4 +2222,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9, <3.13"
-content-hash = "f020717d24df5a44694efb855e733524c043116e14b1adf93fea7c8e79b9e9d8"
+content-hash = "3c87c02c3c83eb98bb82f1fd2da2b6ef3fed11ae34294a820afe93b8dfa5473e"

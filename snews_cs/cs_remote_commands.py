@@ -1,7 +1,7 @@
 import os
 import json
 import click
-from snews_pt.snews_format_checker import SnewsFormat
+from .snews_format_checker import SnewsFormat
 import pandas as pd
 from .heartbeat_feedbacks import check_frequencies_and_send_mail, delete_old_figures
 from .core.logging import getLogger
