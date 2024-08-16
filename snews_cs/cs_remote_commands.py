@@ -230,6 +230,7 @@ class CommandHandler:
                 else:
                     self.is_test = False
             log.debug(f"[DEBUG] >>>>> is_test {self.is_test}, type: {type(self.is_test)}\n")
+            log.debug(f"[DEBUG] >>>>> is_test {self.input_message.keys()},\n {self.input_message}\n")
             log.info(f"\t> Received Message is {'NOT ' if not self.is_test else ''}a test message!")
 
         # check what the _id field specifies
