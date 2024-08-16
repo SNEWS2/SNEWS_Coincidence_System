@@ -221,14 +221,12 @@ class CommandHandler:
             # if passed, there has to be an _id field
             log.info(f"\t> Message is in SnewsFormat. '_id':{self.input_message['_id']} ")
             # temporary fix for the test messages
-            if "meta" in self.input_message.keys():
-                if "is_test" in self.input_message['meta'].keys():
-                    self.is_test = self.input_message['meta'].get('is_test', False)
+            if "is_test" in self.input_message.keys():
+                self.is_test = self.input_message['is_test']
+            elif "meta" in self.input_message.keys() and "is_test" in self.input_message['meta'].keys():
+                self.is_test = self.input_message['meta']['is_test']
             else:
-                if "is_test" in self.input_message.keys():
-                    self.is_test = self.input_message['is_test']
-                else:
-                    self.is_test = False
+                self.is_test = False
             log.info(f"\t> Received Message is {'NOT ' if not self.is_test else ''}a test message!")
 
         # check what the _id field specifies

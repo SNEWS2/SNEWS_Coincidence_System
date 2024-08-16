@@ -565,13 +565,12 @@ class CoincidenceDistributor:
         -------
             adds messages to cache and runs the coincidence decider
         """
-        if "meta" in snews_message.keys():
-            is_test = snews_message['meta'].get('is_test', False)
+        if "is_test" in snews_message.keys():
+            is_test = snews_message['is_test']
+        elif "meta" in snews_message.keys() and "is_test" in snews_message['meta'].keys():
+            is_test = snews_message['meta']['is_test']
         else:
-            if "is_test" in snews_message.keys():
-                is_test = snews_message['is_test']
-            else:
-                is_test = False
+            is_test = False
 
         if not is_test:
             self.coinc_data.add_to_cache(message=snews_message)
