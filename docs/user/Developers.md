@@ -149,3 +149,8 @@ detector3 = {'neutrino_time': "01/01/2022 12:30:11:000000"}
 In reality, Supernova time window is expected to be much smaller than 10 seconds, thus it is already a conservative time boundary. However, we wanted to have a stable and bullet proof logic that could also prove useful during stres tests and firedrills.
 
 All the observation messages are kept in cache for 24 hours after their `neutrino_time` and unless they are involved in any coincidence they are discarded. These messages together with the triggered alert messages are also locally stored in the Purdue servers through a Mongo Database connection.
+
+# 3) Notes
+
+The dependency to the snews_pt is fixed by setting the pyproject.toml file. It now points to the main branch of the snews_pt github repository.
+Therefore, the latest changes in the snews_pt repository will be automatically installed when the snews_cs is installed.
