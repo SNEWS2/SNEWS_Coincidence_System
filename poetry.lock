@@ -786,17 +786,17 @@ test = ["objgraph", "psutil"]
 
 [[package]]
 name = "hop-client"
-version = "0.9.0"
+version = "0.10.0"
 description = "A pub-sub client library for Multi-messenger Astrophysics"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "hop-client-0.9.0.tar.gz", hash = "sha256:88929f318e4205c649e806252d1d3fc9ad559e68b5cbea7755205d9590fcae55"},
-    {file = "hop_client-0.9.0-py3-none-any.whl", hash = "sha256:b172dcb4164f936c2f2b1b653e69332a321a9799e1e5cbcafdb44f75066f26c7"},
+    {file = "hop-client-0.10.0.tar.gz", hash = "sha256:683216a48f784d518bb91ab11cc57e024c22e71782f90ed371422af8333e1d29"},
+    {file = "hop_client-0.10.0-py3-none-any.whl", hash = "sha256:5e1ddd279b35e85c6083f6187260f29c88261d31d26a13bc13943701371b1440"},
 ]
 
 [package.dependencies]
-adc-streaming = ">=2.1.0"
+adc-streaming = ">=2.4.0"
 fastavro = ">=1.4.0"
 pluggy = ">=0.11"
 toml = ">=0.9.4"
@@ -2274,4 +2274,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11, <3.13"
-content-hash = "c1d8846ec6881e654de2f13ce4753f5abd2665dd27c1cd8f812f70ce0e746ca3"
+content-hash = "bff791f42e08390311d0267c0de4192e6ac1fb7ee5af84f2d8728c51542f0c00"
