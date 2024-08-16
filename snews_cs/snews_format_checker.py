@@ -48,7 +48,7 @@ def is_valid_iso_utc(text):
     return True
 
 # Check if detector name is in registered list.
-detector_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'auxiliary/detector_properties.json'))
+detector_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'etc/detector_properties.json'))
 with open(detector_file) as file:
     snews_detectors = json.load(file)
 snews_detectors = list(snews_detectors.keys())
