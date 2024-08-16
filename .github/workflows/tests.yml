@@ -22,8 +22,8 @@ jobs:
       matrix:
         # Test all supported Python versions under Ubuntu
         os: [ubuntu-latest]
-        python-version: ['3.9', '3.10', '3.11']
-#        python-version: ['3.9', '3.10', '3.11', '3.12']
+#        python-version: ['3.9', '3.10', '3.11']
+        python-version: ['3.11', '3.12']
 #        # Additionally, test one Python version under MacOS and Windows, to detect OS-specific issues
 #        include:
 #          - os: macos-latest
@@ -52,8 +52,35 @@ jobs:
       - name: Install SNEWS_Coincidence_System
         run: |
           python -m poetry install
-      
+
+      - name: Install hop-client
+        run: |
+          python -m pip install setuptools wheel
+          python -m pip install hop-client==0.9.0
+          cd /home/runner/work/SNEWS_Coincidence_System/SNEWS_Coincidence_System
+
+      - shell: bash
+        env:
+          USERNAME: ${{ secrets.hop_user_name }}
+          PASSWORD: ${{ secrets.hop_user_password }}
+        run: |
+          sudo apt-get install -y expect
+          which expect
+          /usr/bin/expect << HOP
+          spawn hop auth add
+          expect "Username:"
+          send "$USERNAME\n"
+          expect "Password:"
+          send "$PASSWORD\n"
+          expect "Hostname (may be empty):"
+          send "kafka.scimma.org\n"
+          expect "Token endpoint (empty if not applicable):"
+          send "\n"
+          expect eof
+          HOP
+          hop auth locate
+
       # Run the unit tests
       - name: Test with pytest
         run: |
-          python -m poetry run pytest
+          python -m poetry run pytest snews_cs
