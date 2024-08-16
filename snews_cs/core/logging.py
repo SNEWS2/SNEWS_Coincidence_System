@@ -25,6 +25,15 @@ log_date = date.today().strftime("%Y-%m-%d")
 log_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../logs"))
 
 log_file = f"{log_dir}/snews_cs.log"
+
+# Check if the directory exists, if not, create it
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
+# Check if the log file exists, if not, create it
+if not os.path.isfile(log_file):
+    open(log_file, 'w').close()
+
 fh = FileHandler(log_file)
 
 formatter = Formatter(

@@ -1,7 +1,7 @@
 import os
 import json
 import click
-from snews_pt.snews_format_checker import SnewsFormat
+from .snews_format_checker import SnewsFormat
 import pandas as pd
 from .heartbeat_feedbacks import check_frequencies_and_send_mail, delete_old_figures
 from .core.logging import getLogger
@@ -95,9 +95,17 @@ class Commands:
         """ Authorized User (passing a correct password)
         """
         authorized = self._check_rights(message)
+        if "meta" in message.keys():
+            is_test = message['meta'].get('is_test', False)
+        else:
+            if "is_test" in message.keys():
+                is_test = message['is_test']
+            else:
+                is_test = False
+
         if authorized:
             log.info("\t> Cache wanted to be reset. User is authorized.")
-            CoincDeciderInstance.clear_cache()
+            CoincDeciderInstance.clear_cache(is_test)
             log.info("\t> Cache is reset.")
             return None
         else:
@@ -213,13 +221,12 @@ class CommandHandler:
             # if passed, there has to be an _id field
             log.info(f"\t> Message is in SnewsFormat. '_id':{self.input_message['_id']} ")
             # temporary fix for the test messages
-            if "meta" in self.input_message.keys():
-                self.is_test = self.input_message['meta'].get('is_test', False)
+            if "is_test" in self.input_message.keys():
+                self.is_test = self.input_message['is_test']
+            elif "meta" in self.input_message.keys() and "is_test" in self.input_message['meta'].keys():
+                self.is_test = self.input_message['meta']['is_test']
             else:
-                if "is_test" in self.input_message.keys():
-                    self.is_test = self.input_message['is_test']
-                else:
-                    self.is_test = False
+                self.is_test = False
             log.info(f"\t> Received Message is {'NOT ' if not self.is_test else ''}a test message!")
 
         # check what the _id field specifies
@@ -243,6 +250,10 @@ class CommandHandler:
         # if it is a CoincidenceTier message or a Retraction Message, give a Go
         elif self.command_name in ["CoincidenceTier", "Retraction"]:
             log.info(f"\t> {self.command_name} message is received, coincidence check is GO!")
+
+            if self.is_test:
+                # do not register heartbeat, just return to coincidence search
+                return True
 
             #- Register heartbeat corresponding to this message.
             #  Idea is that when a message comes in, it automatically logs a HB here.
