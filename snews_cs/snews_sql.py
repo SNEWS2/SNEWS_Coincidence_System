@@ -163,31 +163,68 @@ class Storage:
         # expiration = np.datetime64(mgs['received_time'][0]) + np.timedelta64(48, 'h')
         # expiration = np.datetime_as_string(expiration, unit='ns')
 
-        if tier == 'SIG':
-            self.cursor.execute('''INSERT INTO all_mgs VALUES (?, ?, ?, ?, ?)''',
-                                (mgs['_id'], mgs['received_time'], 'SIG', str(mgs), expiration))
-            self.cursor.execute('''INSERT INTO sig_tier_archive VALUES (?, ?, ?,  ?, ?, ?, ?, ?, ?)''',
-                                (mgs['_id'], mgs['schema_version'], mgs['detector_name'], str(mgs['p_vals']),
-                                 mgs['t_bin_width'], mgs['sent_time'], mgs['machine_time'],
-                                 str(mgs['meta']), expiration))
+        if tier == "SIG":
+            self.cursor.execute(
+                """INSERT INTO all_mgs VALUES (?, ?, ?, ?, ?)""",
+                (mgs["id"], mgs["received_time"], "SIG", str(mgs), expiration),
+            )
+            self.cursor.execute(
+                """INSERT INTO sig_tier_archive VALUES (?, ?, ?,  ?, ?, ?, ?, ?, ?)""",
+                (
+                    mgs["id"],
+                    mgs["schema_version"],
+                    mgs["detector_name"],
+                    str(mgs["p_vals"]),
+                    mgs["t_bin_width_sec"],
+                    mgs["sent_time_utc"],
+                    mgs["machine_time_utc"],
+                    str(mgs["meta"]),
+                    expiration,
+                ),
+            )
             self.conn.commit()
 
-        elif tier == 'TIME':
-            self.cursor.execute('''INSERT INTO all_mgs VALUES (?, ?, ?, ?, ?)''',
-                                (mgs['_id'], mgs['received_time'], 'TIME', str(mgs), expiration))
-            self.cursor.execute('''INSERT INTO time_tier_archive VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                                (mgs['_id'], mgs['schema_version'], mgs['detector_name'], mgs['p_val'],
-                                 mgs['t_bin_width'], str(mgs['timing_series']), mgs['sent_time'],
-                                 mgs['machine_time'], str(mgs['meta']), expiration))
+        elif tier == "TIME":
+            self.cursor.execute(
+                """INSERT INTO all_mgs VALUES (?, ?, ?, ?, ?)""",
+                (mgs["id"], mgs["received_time"], "TIME", str(mgs), expiration),
+            )
+            self.cursor.execute(
+                """INSERT INTO time_tier_archive VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    mgs["id"],
+                    mgs["schema_version"],
+                    mgs["detector_name"],
+                    mgs["p_val"],
+                    mgs["t_bin_width_sec"],
+                    str(mgs["timing_series"]),
+                    mgs["sent_time_utc"],
+                    mgs["machine_time_utc"],
+                    str(mgs["meta"]),
+                    expiration,
+                ),
+            )
             self.conn.commit()
 
-        elif tier == 'COINC':
-            self.cursor.execute('''INSERT INTO all_mgs VALUES (?, ?, ?, ?, ?)''',
-                                (mgs['_id'], mgs['received_time'], 'COINC', str(mgs), expiration))
-            self.cursor.execute('''INSERT INTO coincidence_tier_archive VALUES (?,  ?, ?, ?, ?, ?, ?, ?, ?)''',
-                                (mgs['_id'], mgs['schema_version'], mgs['detector_name'], mgs['p_val'],
-                                 mgs['neutrino_time'], mgs['sent_time'], mgs['machine_time'],
-                                 str(mgs['meta']), expiration))
+        elif tier == "COINC":
+            self.cursor.execute(
+                """INSERT INTO all_mgs VALUES (?, ?, ?, ?, ?)""",
+                (mgs["id"], mgs["received_time"], "COINC", str(mgs), expiration),
+            )
+            self.cursor.execute(
+                """INSERT INTO coincidence_tier_archive VALUES (?,  ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    mgs["id"],
+                    mgs["schema_version"],
+                    mgs["detector_name"],
+                    mgs["p_val"],
+                    mgs["neutrino_time_utc"],
+                    mgs["sent_time_utc"],
+                    mgs["machine_time_utc"],
+                    str(mgs["meta"]),
+                    expiration,
+                ),
+            )
             self.conn.commit()
 
     def insert_alert(self, alert, tier):
@@ -293,21 +330,58 @@ class Storage:
         if tier == 'SIG':
             # update all columns except _id
             self.cursor.execute(
-                '''UPDATE sig_tier_archive SET schema_version = ?, detector_name = ?, p_vals = ?, t_bin_width = ?, sent_time = ?, machine_time = ?, meta = ? WHERE _id = ?''',
-                (message['schema_version'], message['detector_name'], str(message['p_vals']), message['t_bin_width'], message['sent_time'],
-                 message['machine_time'], str(message['meta']), message['_id']))
+                """UPDATE sig_tier_archive
+                SET schema_version = ?, detector_name = ?, p_vals = ?, t_bin_width = ?,
+                    sent_time = ?, machine_time = ?, meta = ?
+                WHERE _id = ?""",
+                (
+                    message["schema_version"],
+                    message["detector_name"],
+                    str(message["p_vals"]),
+                    message["t_bin_width_sec"],
+                    message["sent_time_utc"],
+                    message["machine_time_utc"],
+                    str(message["meta"]),
+                    message["id"],
+                ),
+            )
         elif tier == 'TIME':
             # update all columns except _id
             self.cursor.execute(
-                '''UPDATE time_tier_archive SET schema_version = ?, detector_name = ?, p_val = ?, t_bin_width = ?, timing_series = ?, sent_time = ?, machine_time = ?, meta = ? WHERE _id = ?''',
-                (message['schema_version'], message['detector_name'], message['p_val'], message['t_bin_width'], str(message['timing_series']),
-                 message['sent_time'], message['machine_time'], str(message['meta']), message['_id']))
+                """UPDATE time_tier_archive
+                SET schema_version = ?, detector_name = ?, p_val = ?, t_bin_width = ?,
+                    timing_series = ?, sent_time = ?, machine_time = ?, meta = ?
+                WHERE _id = ?""",
+                (
+                    message["schema_version"],
+                    message["detector_name"],
+                    message["p_val"],
+                    message["t_bin_width_sec"],
+                    str(message["timing_series"]),
+                    message["sent_time_utc"],
+                    message["machine_time_utc"],
+                    str(message["meta"]),
+                    message["id"],
+                ),
+            )
         elif tier == 'COINC':
             # update all columns except _id
             self.cursor.execute(
-                '''UPDATE coincidence_tier_archive SET schema_version = ?, detector_name = ?, p_val = ?, neutrino_time = ?, sent_time = ?, machine_time = ?, meta = ? WHERE _id = ?''',
-                (message['schema_version'], message['detector_name'], message['p_val'], message['neutrino_time'], message['sent_time'], message['machine_time'],
-                 str(message['meta']), message['_id']))
+                """UPDATE coincidence_tier_archive
+                SET schema_version = ?, detector_name = ?, p_val = ?, neutrino_time = ?,
+                    sent_time = ?, machine_time = ?, meta = ?
+                WHERE _id = ?""",
+                (
+                    message["schema_version"],
+                    message["detector_name"],
+                    message["p_val"],
+                    message["neutrino_time_utc"],
+                    message["sent_time_utc"],
+                    message["machine_time_utc"],
+                    str(message["meta"]),
+                    message["id"],
+                ),
+            )
         self.conn.commit()
 
     def show_tables(self):

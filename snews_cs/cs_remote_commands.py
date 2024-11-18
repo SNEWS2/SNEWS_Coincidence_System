@@ -113,7 +113,7 @@ class Commands:
 
     def change_broker(self, message, CoincDeciderInstance):
         try:
-            new_broker_name = message["_id"][2]
+            new_broker_name = message["id"][2]
         except Exception as e:
             new_broker_name = "NotImplemented"
 
@@ -145,14 +145,14 @@ class Commands:
                   # f"This requires a GO so that message can be added and compared in the cache!")
 
     def send_feedback(self, message, CoincDeciderInstance):
-        """ Check the user and pre-compiled email list
-            send an email with a feedback from past 24H
-            multiple mails are allowed by separating semicolon ";"
-            Expected message format
-            message = {'_id': '0_Get-Feedback',
-                       'email': email_address,
-                       'detector_name': detector_name,
-                       'meta': {}}
+        """Check the user and pre-compiled email list
+        send an email with a feedback from past 24H
+        multiple mails are allowed by separating semicolon ";"
+        Expected message format
+        message = {'id': '0_Get-Feedback',
+                   'email': email_address,
+                   'detector_name': detector_name,
+                   'meta': {}}
         """
         given_mail = message.get('email', None)
         if given_mail is None:
@@ -230,7 +230,7 @@ class CommandHandler:
             log.info(f"\t> Received Message is {'NOT ' if not self.is_test else ''}a test message!")
 
         # check what the _id field specifies
-        self.command_name = self.input_message['_id'].split('_')[1]
+        self.command_name = self.input_message["id"].split("_")[1]
         return self.check_command(CoincDeciderInstance)  # GO / NO-GO
 
     def check_command(self, CoincDeciderInstance):

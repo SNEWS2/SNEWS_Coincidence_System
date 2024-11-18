@@ -116,15 +116,18 @@ class SnewsFormat:
             snews_pt sends messages in mongodb format
             which has ti contain an _id field
         """
-        self.log.debug(f"\t> Checking _id ..")
-        if "_id" not in self.message_keys:
-            self.log.error(f"\t> Message without '_id' field")
+        self.log.debug("\t> Checking id ..")
+        if "id" not in self.message_keys:
+            self.log.error("\t> Message without 'id' field")
             return False
         else:
-            self.log.info(f"\t> Message has an '_id' field")
-            idsplit = self.message['_id'].split('_')
+            self.log.info("\t> Message has an 'id' field")
+            idsplit = self.message["id"].split("_")
             if len(idsplit) < 2:
-                self.log.error(f"\t> Message '_id' has different format. Expected '#_string' got {self.message['_id']}")
+                self.log.error(
+                    "\t> Message 'id' has different format. "
+                    "Expected '#_string' got {self.message['id']}"
+                )
                 return False
             return True
 
@@ -149,45 +152,45 @@ class SnewsFormat:
             Check what the message type is.
         """
         self.log.debug(f"\t> Checking message type..")
-        if "hard-reset" in self.message['_id']:
+        if "hard-reset" in self.message["id"]:
             self.log.debug("\t> Hard reset. Skipping format check.")
             self.bypass = True
 
-        elif "test-connection" in self.message['_id']:
+        elif "test-connection" in self.message["id"]:
             self.log.debug("\t> Test Connection. Skipping format check.")
             self.bypass = True
 
-        elif "Retraction" in self.message['_id']:
-            self.log.debug(f"\t> Retraction Passed. Skipping format check.")
+        elif "Retraction" in self.message["id"]:
+            self.log.debug("\t> Retraction Passed. Skipping format check.")
             self.bypass = True
 
-        elif "Get-Feedback" in self.message['_id']:
-            self.log.debug(f"\t> Get-Feedback Passed. Skipping format check.")
+        elif "Get-Feedback" in self.message["id"]:
+            self.log.debug("\t> Get-Feedback Passed. Skipping format check.")
             self.bypass = True
 
-        elif 'Heartbeat' in self.message['_id']:
+        elif "Heartbeat" in self.message["id"]:
             self.log.debug("\t> Heartbeat Passed. Checking time and status.")
             if not self.check_detector_status(): # if detector_status does not exist, return False
                 self.log.error("\t> Heartbeat not valid!")
                 return False
             self.bypass = True
 
-        elif "display-heartbeats" in self.message['_id']:
-            self.log.debug(f"\t> display-heartbeat is passed. Skipping format check.")
+        elif "display-heartbeats" in self.message["id"]:
+            self.log.debug("\t> display-heartbeat is passed. Skipping format check.")
             self.bypass = True
 
-        elif [i in self.message['_id'] for i in ['TimeTier', 'SigTier', 'CoincidenceTier']]:
-            self.log.debug(f"\t> Tier message Passed. Checking times.")
+        elif [self.message["tier"].value in ["TimeTier", "SigTier", "CoincidenceTier"]]:
+            self.log.debug("\t> Tier message Passed. Checking times.")
 
         else:
-            self.log.error(f"\t> Unknown id Passed : {self.message['_id']}.")
+            self.log.error(f"\t> Unknown id Passed : {self.message['id']}.")
             return False
-        self.log.info(f"\t> Message type : {self.message['_id']} valid.")
+        self.log.info(f"\t> Message type : {self.message['id']} valid.")
         return True
 
     def check_detector_status(self):
-        """ if _id is for heartbeat,
-            check detector status field and neutrino time
+        """if id is for heartbeat,
+        check detector status field and neutrino time
         """
         self.log.debug(f"\t> Checking detector status..")
         if "detector_status" not in self.message_keys:
@@ -210,17 +213,17 @@ class SnewsFormat:
             return True
 
         # check if neutrino times exists and in string format
-        if 'neutrino_time' not in self.message_keys:
+        if "neutrino_time_utc" not in self.message_keys:
             self.log.error(f"\t> neutrino_time does not exist!.")
             return False
-        if type(self.message['neutrino_time']) is not str:
+        if type(self.message["neutrino_time_utc"]) is not str:
             self.log.error(f"\t> neutrino_time is not a string!.")
             return False
         self.log.info(f"\t> neutrino_time exists and is string.")
 
         # it exists and string, check if ISO format, and reasonable
         try:
-            dateobj = np.datetime64(self.message['neutrino_time'])
+            dateobj = np.datetime64(self.message["neutrino_time_utc"])
             self.log.info(f"\t> neutrino_time is ISO formattable.")
         except Exception as e:
             self.log.error("\t> neutrino_time does not match "

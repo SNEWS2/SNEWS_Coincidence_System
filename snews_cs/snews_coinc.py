@@ -1,5 +1,6 @@
-from . import cs_utils
-from .snews_sql import Storage
+from . import json
+import os
+import pickle
 import os, click
 from datetime import datetime
 from .alert_pub import AlertPublisher
@@ -46,10 +47,20 @@ class CacheManager:
 
     def __init__(self):
         # define the col names of the cache df
-        self.cache = pd.DataFrame(columns=[
-            "_id", "detector_name", "received_time", "machine_time", "neutrino_time",
-            'neutrino_time_as_datetime',
-            "p_val", "meta", "sub_group", "neutrino_time_delta"])
+        self.cache = pd.DataFrame(
+            columns=[
+                "id",
+                "detector_name",
+                "received_time",
+                "machine_time",
+                "neutrino_time",
+                "neutrino_time_as_datetime",
+                "p_val",
+                "meta",
+                "sub_group",
+                "neutrino_time_delta",
+            ]
+        )
         # keep track of updated sub groups
         self.updated = []
         self.msg_state = None
@@ -71,7 +82,9 @@ class CacheManager:
             print('RETRACTING MESSAGE FROM')
             self.cache_retraction(retraction_message=message)
             return None  # break if message is meant for retraction
-        message['neutrino_time_as_datetime'] = np.datetime64(message['neutrino_time'])
+        message["neutrino_time_as_datetime"] = np.datetime64(
+            message["neutrino_time_utc"]
+        )
         # update
         if message['detector_name'] in self.cache['detector_name'].to_list():
             self._update_message(message)
@@ -164,7 +177,9 @@ class CacheManager:
             #  create a temp cache concat the message
             temp_cache = pd.concat([self.cache, message_as_cache], ignore_index=True)
             #  drop dublicates of detector name and nu time
-            temp_cache = temp_cache.drop_duplicates(subset=['detector_name', 'neutrino_time'])
+            temp_cache = temp_cache.drop_duplicates(
+                subset=["detector_name", "neutrino_time"]
+            )
             # create  a new time delta
             temp_cache['neutrino_time_delta'] = np_datetime_delta_sec(t_1=new_ini_t, t_2=temp_cache['neutrino_time_as_datetime'])
             # Make two subgroup one for early signal and post
@@ -205,10 +220,14 @@ class CacheManager:
 
         """
         # create a series of the ids in the sub group
-        ids = sub_cache['_id']
+        ids = sub_cache["id"]
 
-        # # if this sub group only contains a single message and the detector name is already present in the cache return True
-        if len(sub_cache) == 1 and sub_cache['_id'].to_list()[0] in self.cache['_id'].to_list():
+        # if this sub group only contains a single message and the detector name is already
+        # present in the cache return True
+        if (
+            len(sub_cache) == 1
+            and sub_cache["id"].to_list()[0] in self.cache["id"].to_list()
+        ):
             return True
         #  loop through the other sub group tags
         for sub_tag in self.cache['sub_group'].unique():
