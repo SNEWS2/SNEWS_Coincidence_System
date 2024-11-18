@@ -187,7 +187,7 @@ class CacheManager:
             temp_cache = pd.concat([self.cache, message_as_cache], ignore_index=True)
             #  drop dublicates of detector name and nu time
             temp_cache = temp_cache.drop_duplicates(
-                subset=["detector_name", "neutrino_time"]
+                subset=["detector_name", "neutrino_time_utc"]
             )
             # create  a new time delta
             temp_cache["neutrino_time_delta"] = np_datetime_delta_sec(
