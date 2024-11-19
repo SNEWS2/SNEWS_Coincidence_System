@@ -1,12 +1,13 @@
 import inspect
 import os
-import sqlite3
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from . import cs_utils
+from .database import Database
 
 # Get the directory of the script
 current_script_directory = os.path.dirname(
@@ -34,139 +35,22 @@ class Storage:
         cs_utils.set_env(env)
         self.mgs_expiration = int(os.getenv("MSG_EXPIRATION"))
         self.coinc_threshold = int(os.getenv("COINCIDENCE_THRESHOLD"))
-        # define the db path
-        self.db_path = os.path.join(parent_directory, "snews_db.sqlite")
-        self.conn = sqlite3.connect(self.db_path, timeout=10)
-        self.cursor = self.conn.cursor()
-        self.create_message_tables()
-        self.create_alert_tables()
+        self.db_path = os.path.join(parent_directory, "snews_cs.db")
+        self.db = Database(db_file_path=self.db_path)
+        self.conn = self.db.connection
+        self.cursor = self.db.cursor
+
         if drop_db:
-            self.drop_tables()
-            self.create_message_tables()
-            self.create_alert_tables()
-
-    def create_message_tables(self):
-        """
-        Creates the tables in the SQL database.
-        tables include: all_mgs, sig_tier_archive, time_tier_archive, coincidence_tier_archive,
-        Schema for all_mgs:
-        - id: unique id for each message
-        - received_time: time message was received
-        - message_type: message type
-        - message: message content this is a stringified json
-        - expiration: expiration time (received time + expiration threshold) of message as
-          datetime in ISO format string
-
-        Schema for sig_tier_archive:
-        - _id: unique id for each message string
-        - schema_version: version of the schema float
-        - detector_name: name of the detector string
-        - p_vals : p-values for each alert type should be an array of floats
-        - neutrino_time: time of initial neutrino in datetime in ISO format string
-        - t_bin_width: time bin width in seconds float
-        - sent_time: time message was sent datetime in ISO format string
-        - machine_time: time message was sent in machine time as datetime in ISO format string
-        - meta: meta data for the message this is a stringified json
-        - expiration: expiration time (received time + expiration threshold) of message as
-          datetime in ISO format string
-
-
-        Schema for time_tier_archive:
-        - _id: unique id for each message string
-        - schema_version: version of the schema float
-        - detector_name: name of the detector string
-        - p_val: p-value for the alert type float
-        - t_bin_width: time bin width in seconds float
-        - timing_series: neutrino times seen by detector in datetime in ISO format as array of
-          strings
-        - sent_time: time message was sent datatime in ISO format string
-        - machine_time: time message was sent in machine time as datetime in ISO format string
-        - meta: meta data for the message this is a stringified json
-        - expiration: expiration time (received time + expiration threshold) of message as
-          datetime in ISO format string
-
-
-        Schema for coincidence_tier_archive:
-        - _id: unique id for each message string
-        - schema_version: version of the schema float
-        - detector_name: name of the detector string
-        - p_val: p-value for the alert type float
-        - neutrino_time: time of initial neutrino in datetime in ISO format string
-        - sent_time: time message was sent datatime in ISO format string
-        - machine_time: time message was sent in machine time as datetime in ISO format string
-        - meta: meta data for the message this is a stringified json
-        - expiration: expiration time (received time + expiration threshold) of message as
-          datetime in ISO format string
-
-
-        """
-
-        self.cursor.execute(
-            """CREATE TABLE IF NOT EXISTS all_mgs
-                (id TEXT, received_time TEXT, message_type TEXT, message TEXT, expiration TEXT)"""
-        )
-        self.cursor.execute(
-            """CREATE TABLE IF NOT EXISTS sig_tier_archive
-                (_id TEXT, schema_version REAL, detector_name TEXT, p_vals TEXT, t_bin_width REAL,
-                is_test INTEGER, sent_time TEXT, machine_time TEXT, meta TEXT, expiration TEXT)"""
-        )
-        self.cursor.execute(
-            """CREATE TABLE IF NOT EXISTS time_tier_archive
-                (_id TEXT, schema_version REAL, detector_name TEXT, p_val REAL, t_bin_width REAL,
-                timing_series TEXT,  sent_time TEXT, machine_time TEXT, meta TEXT,
-                expiration TEXT)"""
-        )
-        self.cursor.execute(
-            """CREATE TABLE IF NOT EXISTS coincidence_tier_archive
-                (_id TEXT, schema_version REAL, detector_name TEXT, p_val REAL, neutrino_time TEXT,
-                sent_time TEXT, machine_time TEXT, meta TEXT, expiration TEXT)"""
-        )
-        self.conn.commit()
-
-    def create_alert_tables(self):
-        """
-        Creates the tables in the SQL database for alerts.
-
-        Schema for coincidence_tier_alerts:
-        - "_id": unique id for each message string
-        - "alert_type": alert type string
-        - "server_tag": server tag string
-        - "False Alarm Prob": false alarm probability float
-        - "detector_names": names of detectors in alert as array of strings
-        - "sent_time": time message was sent datetime in ISO format string
-        - "p_vals": p-values for each alert type should be an array of floats
-        - "neutrino_times": neutrino times for each alert type should be an array of strings
-        - "p_vals average": average p-value for alert type float
-        - "sub list number": sub list number integer
-
-        Schema for sig_tier_alerts:
-        TBD
-
-        Schema for time_tier_alerts:
-        TBD
-        """
-
-        self.cursor.execute(
-            """CREATE TABLE IF NOT EXISTS coincidence_tier_alerts
-            (_id TEXT, alert_type TEXT, server_tag TEXT, "False Alarm Prob" TEXT,
-            detector_names TEXT, sent_time TEXT, p_vals TEXT, neutrino_times TEXT,
-            "p_vals average" TEXT, "sub list number" INTEGER)"""
-        )
-        self.conn.commit()
-
-    def drop_tables(self):
-        """
-        Drops all tables in the SQL database.
-        """
-
-        self.cursor.execute("""DROP TABLE IF EXISTS all_mgs""")
-        self.cursor.execute("""DROP TABLE IF EXISTS sig_tier_archive""")
-        self.cursor.execute("""DROP TABLE IF EXISTS time_tier_archive""")
-        self.cursor.execute("""DROP TABLE IF EXISTS coincidence_tier_archive""")
-        self.cursor.execute("""DROP TABLE IF EXISTS coincidence_tier_alerts""")
-        # self.cursor.execute('''DROP TABLE IF EXISTS sig_tier_alerts''')
-        # self.cursor.execute('''DROP TABLE IF EXISTS time_tier_alerts''')
-        self.conn.commit()
+            self.db.drop_tables(
+                table_names=[
+                    "all_mgs",
+                    "sig_tier_archive",
+                    "time_tier_archive",
+                    "coincidence_tier_archive",
+                    "coincidence_tier_alerts",
+                ]
+            )
+            self.db.initialize_database(sql_schema_path=Path(__file__).parent / "db_schema.sql")
 
     def insert_mgs(self, mgs, tier):
         """
@@ -259,13 +143,13 @@ class Storage:
                     alert["id"],
                     alert["alert_type"],
                     alert["server_tag"],
-                    alert["False Alarm Prob"],
+                    alert["false_alarm_prob"],
                     str(alert["detector_names"]),
                     alert["sent_time_utc"],
                     str(alert["p_vals"]),
                     str(alert["neutrino_times"]),
-                    alert["p_vals average"],
-                    alert["sub list number"],
+                    alert["p_vals_average"],
+                    alert["sub_list_number"],
                 ),
             )
             self.conn.commit()
@@ -312,7 +196,7 @@ class Storage:
         Returns all messages in the all_mgs table.
         """
         self.cursor.execute(
-            """SELECT * FROM coincidence_tier_alerts ORDER BY sent_time {}""".format(
+            """SELECT * FROM coincidence_tier_alerts ORDER BY sent_time_utc {}""".format(
                 sort_order
             )
         )
@@ -330,7 +214,7 @@ class Storage:
         """
 
         self.cursor.execute(
-            """SELECT * FROM sig_tier_archive ORDER BY sent_time {}""".format(
+            """SELECT * FROM sig_tier_archive ORDER BY sent_time_utc {}""".format(
                 sort_order
             )
         )
@@ -343,7 +227,7 @@ class Storage:
         """
 
         self.cursor.execute(
-            """SELECT * FROM time_tier_archive ORDER BY sent_time {}""".format(
+            """SELECT * FROM time_tier_archive ORDER BY sent_time_utc {}""".format(
                 sort_order
             )
         )
@@ -356,7 +240,7 @@ class Storage:
         """
 
         self.cursor.execute(
-            """SELECT * FROM coincidence_tier_archive ORDER BY sent_time {}""".format(
+            """SELECT * FROM coincidence_tier_archive ORDER BY sent_time_utc {}""".format(
                 sort_order
             )
         )
@@ -375,18 +259,21 @@ class Storage:
 
         """
 
-        self.cursor.execute("""DELETE FROM all_mgs WHERE _id = ?""", (message_id,))
+        self.cursor.execute(
+            """DELETE FROM all_mgs WHERE message_id = ?""", (message_id,)
+        )
         if tier == "SIG":
             self.cursor.execute(
-                """DELETE FROM sig_tier_archive WHERE _id = ?""", (message_id,)
+                """DELETE FROM sig_tier_archive WHERE message_id = ?""", (message_id,)
             )
         elif tier == "TIME":
             self.cursor.execute(
-                """DELETE FROM time_tier_archive WHERE _id = ?""", (message_id,)
+                """DELETE FROM time_tier_archive WHERE message_id = ?""", (message_id,)
             )
         elif tier == "COINC":
             self.cursor.execute(
-                """DELETE FROM coincidence_tier_archive WHERE _id = ?""", (message_id,)
+                """DELETE FROM coincidence_tier_archive WHERE message_id = ?""",
+                (message_id,),
             )
         self.conn.commit()
 
@@ -396,16 +283,16 @@ class Storage:
         """
 
         self.cursor.execute(
-            """UPDATE all_mgs SET message = ? WHERE _id = ?""",
+            """UPDATE all_mgs SET message = ? WHERE message_id = ?""",
             (str(message), message["id"]),
         )
         if tier == "SIG":
             # update all columns except _id
             self.cursor.execute(
                 """UPDATE sig_tier_archive
-                SET schema_version = ?, detector_name = ?, p_vals = ?, t_bin_width = ?,
-                    sent_time = ?, machine_time = ?, meta = ?
-                WHERE _id = ?""",
+                SET schema_version = ?, detector_name = ?, p_vals = ?, t_bin_width_sec = ?,
+                    sent_time_utc = ?, machine_time_utc = ?, meta = ?
+                WHERE message_id = ?""",
                 (
                     message["schema_version"],
                     message["detector_name"],
@@ -421,9 +308,9 @@ class Storage:
             # update all columns except _id
             self.cursor.execute(
                 """UPDATE time_tier_archive
-                SET schema_version = ?, detector_name = ?, p_val = ?, t_bin_width = ?,
-                    timing_series = ?, sent_time = ?, machine_time = ?, meta = ?
-                WHERE _id = ?""",
+                SET schema_version = ?, detector_name = ?, p_val = ?, t_bin_width_sec = ?,
+                    timing_series = ?, sent_time_utc = ?, machine_time_utc = ?, meta = ?
+                WHERE message_id = ?""",
                 (
                     message["schema_version"],
                     message["detector_name"],
@@ -440,9 +327,9 @@ class Storage:
             # update all columns except _id
             self.cursor.execute(
                 """UPDATE coincidence_tier_archive
-                SET schema_version = ?, detector_name = ?, p_val = ?, neutrino_time = ?,
-                    sent_time = ?, machine_time = ?, meta = ?
-                WHERE _id = ?""",
+                SET schema_version = ?, detector_name = ?, p_val = ?, neutrino_time_utc = ?,
+                    sent_time_utc = ?, machine_time_utc = ?, meta = ?
+                WHERE message_id = ?""",
                 (
                     message["schema_version"],
                     message["detector_name"],
@@ -489,7 +376,7 @@ class Storage:
 
         """
         # to sent time datetime string and expiration datetime string
-        expiration = np.datetime64(cache["sent_time"][0]) + np.timedelta64(48, "h")
+        expiration = np.datetime64(cache["sent_time_utc"][0]) + np.timedelta64(48, "h")
         expiration = np.datetime_as_string(expiration, unit="ns")
 
         # expiration = datetime.fromisoformat(cache['sent_time'][0]) + timedelta(hours=48)
@@ -501,8 +388,8 @@ class Storage:
         # insert dataframe into table
         insert_query = """
                 INSERT INTO coincidence_tier_archive (
-                    _id, schema_version, detector_name, p_val,
-                    neutrino_time, sent_time, machine_time, meta, expiration
+                    message_id, schema_version, detector_name, p_val,
+                    neutrino_time_utc, sent_time_utc, machine_time_utc, meta, expiration
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
 
@@ -511,13 +398,13 @@ class Storage:
                 self.cursor.execute(
                     insert_query,
                     (
-                        row["_id"],
+                        row["id"],
                         row["schema_version"],
                         row["detector_name"],
                         row["p_val"],
-                        row["neutrino_time"],
-                        row["sent_time"],
-                        row["machine_time"],
+                        row["neutrino_time_utc"],
+                        row["sent_time_utc"],
+                        row["machine_time_utc"],
                         str(row["meta"]),
                         expiration,
                     ),
@@ -539,13 +426,13 @@ class Storage:
         return pd.DataFrame(
             table,
             columns=[
-                "_id",
+                "message_id",
                 "schema_version",
                 "detector_name",
                 "p_val",
-                "neutrino_time",
-                "sent_time",
-                "machine_time",
+                "neutrino_time_utc",
+                "sent_time_utc",
+                "machine_time_utc",
                 "meta",
                 "expiration",
             ],

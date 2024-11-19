@@ -12,8 +12,12 @@ import click, os
 from . import __version__
 from . import cs_utils
 from . import snews_coinc as snews_coinc
-from . heartbeat_feedbacks import FeedBack
-from socket import gethostname
+from .database import Database
+from .heartbeat_feedbacks import FeedBack
+
+# Database initialized before any command is called
+db = Database(db_file_path=Path(__file__).parent.parent / "snews_cs.db")
+db.initialize_database(sql_schema_path=Path(__file__).parent / "db_schema.sql")
 
 
 @click.group(invoke_without_command=True)
