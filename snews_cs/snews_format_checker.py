@@ -47,11 +47,11 @@ class SnewsFormat:
         try:
             assert self.check_id() is True, "id not valid"  # if id exists
             assert (
-                self.check_detector() is True
-            ), "detector_name not valid"  # if detector name is known
-            assert (
                 self.check_message_type() is True
             ), "types not valid"  # if valid type; check name and times
+            assert (
+                self.check_detector() is True
+            ), "detector_name not valid"  # if detector name is known
             assert (
                 self.check_times() is True
             ), "neutrino_time not valid"  # if times are ISO format and reasonable
@@ -97,8 +97,6 @@ class SnewsFormat:
 
     def check_id(self):
         """check if the id is correct
-        snews_pt sends messages in mongodb format
-        which has ti contain an id field
         """
         self.log.debug("\t> Checking id ..")
         if "id" not in self.message_keys:
