@@ -90,7 +90,7 @@ class Commands:
 
         stream = Stream(until_eos=True)
         msg = message.copy()
-        msg["status"] = "received"
+        msg["meta"]["status"] = "received"
         with stream.open(connection_broker, "w") as s:
             # insert back with a "received" status
             s.write(JSONBlob(msg))
