@@ -30,20 +30,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install flake8
       - name: Run flake8
-        uses: py-actions/flake8@v2
-        with:
-          max-line-length: "88"
-          path: "snews_cs"
-      - name: Process flake8 output
-        if: failure()
         run: |
-          flake8_output=$(flake8 snews_cs)
-          failing_files=$(echo "$flake8_output" | awk -F: '{print $1}' | sort -u)
-          error_message="Linting failed. Please run black on the following files:\n"
-          for file in $failing_files; do
-            error_message+="black $file\n"
-          done
-          echo "::error::$error_message"
+          if ! flake8 snews_cs --max-line-length=88; then
+            echo "::error::Linting failed. Please run 'black snews_cs' to format the code."
+            exit 1
+          fi
   # This workflow contains a single job called "build"
   build:
     needs: lint
