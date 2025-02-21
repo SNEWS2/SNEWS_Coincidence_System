@@ -52,9 +52,9 @@ class Database():
             # Drop all user-defined tables (excluding sqlite_sequence)
             tables = self.show_tables()
             for table_name in tables:
-                if table_name[0] != 'sqlite_sequence': #added this line to avoid error
+                if table_name[0] != 'sqlite_sequence':
                     self.cursor.execute(f"DROP TABLE IF EXISTS {table_name[0]}")
         else:
             for table_name in table_names:
                 self.cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
-        self.connection.commit() # Commit the changes
+        self.connection.commit()
