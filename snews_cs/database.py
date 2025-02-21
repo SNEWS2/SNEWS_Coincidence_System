@@ -47,17 +47,14 @@ class Database():
         return schema
 
     def drop_tables(self, table_names: list[str] | None = None) -> None:
-        """
-        Drops all tables in the SQL database.
-        """
+        """Drops specified tables or all tables if none given."""
         if table_names is None:
-            self.cursor.executescript("""
-            PRAGMA writable_schema = 1;
-            DELETE FROM sqlite_master WHERE type IN ('table', 'index', 'trigger');
-            PRAGMA writable_schema = 0;
-            VACUUM;""")
-            self.connection.commit()
+            # Drop all user-defined tables (excluding sqlite_sequence)
+            tables = self.show_tables()
+            for table_name in tables:
+                if table_name[0] != 'sqlite_sequence': #added this line to avoid error
+                    self.cursor.execute(f"DROP TABLE IF EXISTS {table_name[0]}")
         else:
             for table_name in table_names:
-                self.cursor.execute(f"DROP TABLE IF EXISTS {table_name};")
-            self.connection.commit()
+                self.cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+        self.connection.commit() # Commit the changes
