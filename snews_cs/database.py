@@ -9,14 +9,12 @@ log = getLogger(__name__)
 db_file_path = Path(__file__).parent.parent / "snews_cs.db"
 
 
-class Database():
+class Database:
     def __init__(self, db_file_path: Path | str) -> None:
         self.db_file_path = db_file_path
         self.engine = create_engine(f"sqlite:///{self.db_file_path}")
         self.connection = self.engine.raw_connection()
         self.cursor = self.connection.cursor()
-
-        pass
 
     def initialize_database(self, sql_schema_path: Path | str) -> None:
         """
@@ -52,7 +50,7 @@ class Database():
             # Drop all user-defined tables (excluding sqlite_sequence)
             tables = self.show_tables()
             for table_name in tables:
-                if table_name[0] != 'sqlite_sequence':
+                if table_name[0] != "sqlite_sequence":
                     self.cursor.execute(f"DROP TABLE IF EXISTS {table_name[0]}")
         else:
             for table_name in table_names:

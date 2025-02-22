@@ -50,7 +50,9 @@ class Storage:
                     "coincidence_tier_alerts",
                 ]
             )
-            self.db.initialize_database(sql_schema_path=Path(__file__).parent / "db_schema.sql")
+            self.db.initialize_database(
+                sql_schema_path=Path(__file__).parent / "db_schema.sql"
+            )
 
     def insert_mgs(self, mgs, tier):
         """

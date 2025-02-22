@@ -74,7 +74,8 @@ class Commands:
         # execute that function
         command(message, CoincDeciderInstance)
         # return default NO-GO, this is only changed if the message is Retraction!
-        # for retraction message we need to let it enter the cache. So updated alerts can be checked
+        # for retraction message we need to let it enter the cache.
+        # So updated alerts can be checked
 
     def test_connection(self, message, CoincDeciderInstance):
         """When received a test_connection key in observation topic

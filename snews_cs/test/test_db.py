@@ -1,15 +1,12 @@
 import pytest
-import sqlite3
 from pathlib import Path
 import json
 import numpy as np
-from datetime import datetime, UTC, timedelta
-from unittest.mock import patch, MagicMock
-import os
+from datetime import datetime, timedelta
 from sqlalchemy import text
 
 from snews_cs.database import Database
-from snews_cs.snews_hb import HeartBeat, sanity_checks, snews_detectors
+from snews_cs.snews_hb import HeartBeat, sanity_checks
 
 # Path to the test database (create a temporary one)
 TEST_DB_PATH = Path("./test_snews_cs.db")
