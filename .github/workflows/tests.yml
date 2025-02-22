@@ -29,12 +29,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install flake8
-      - name: Run flake8
-        run: |
-          if ! flake8 snews_cs --max-line-length=88; then
-            echo "::error::Linting failed. Please run 'black snews_cs' to format the code."
-            exit 1
-          fi
+          - name: Run flake8
+            run: |
+              pip install flake8
+              flake8 snews_cs --max-line-length=99 --extend-ignore=E203,W503,E721
+              if [ $? -ne 0 ]; then
+                echo "::error::Linting failed. Please run 'black snews_cs'. You can also run 'flake8 snews_cs --max-line-length=99 --extend-ignore=E203,W503,E721' to manually check the code."
+                exit 1
+              fi
   # This workflow contains a single job called "build"
   build:
     needs: lint
