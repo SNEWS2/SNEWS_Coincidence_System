@@ -426,7 +426,9 @@ class CacheManager:
                 # concat retracted sub group to the cache
                 self.cache = self.cache.query("sub_group!=@sub_tag")
                 self.cache = pd.concat([self.cache, other_sub], ignore_index=True)
-                self.cache = self.cache.sort_values(by="neutrino_time_utc").reset_index()
+                self.cache = self.cache.sort_values(
+                    by="neutrino_time_utc"
+                ).reset_index()
             # log retraction to log file
             log.info(f"\t> Retracted {logstr} from sub-group {sub_tag}")
 
@@ -656,9 +658,11 @@ class CoincidenceDistributor:
             elif state == "COINC_MSG" and message_count > _message_count[sub_group_tag]:
                 publish_alert(sub_group_tag, state, "NEW COINCIDENT DETECTOR..")
 
-    # ------------------------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------
     def deal_with_the_cache(self, snews_message):
-        """Check if the message is a test or not, then add it to the cache and run the alert decider
+        """
+        Check if the message is a test or not,
+        then add it to the cache and run the alert decider
 
         Parameters
         ----------

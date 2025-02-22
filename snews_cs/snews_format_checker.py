@@ -96,8 +96,7 @@ class SnewsFormat:
         return False
 
     def check_id(self):
-        """check if the id is correct
-        """
+        """check if the id is correct"""
         self.log.debug("\t> Checking id ..")
         if "id" not in self.message_keys:
             self.log.error("\t> Message without 'id' field")
