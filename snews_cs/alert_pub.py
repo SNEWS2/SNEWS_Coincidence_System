@@ -1,23 +1,27 @@
 """
 An interface for SNEWS alert publisher
 
-Created: 
+Created:
 August 2021
-Authors: 
+Authors:
 Melih Kara
 Sebastian Torres-Lara
 """
-import os, click
+
+import os
+import click
 from hop import Stream
 from . import cs_utils
 
-class AlertPublisher:
-    """ Class to publish SNEWS SuperNova Alerts based on coincidence
 
-    """
-    def __init__(self, env_path=None, verbose=True, auth=True, firedrill_mode=True, is_test=False):
+class AlertPublisher:
+    """Class to publish SNEWS SuperNova Alerts based on coincidence"""
+
+    def __init__(
+        self, env_path=None, verbose=True, auth=True, firedrill_mode=True, is_test=False
+    ):
         """
-        Alert publisher constructor 
+        Alert publisher constructor
         Parameters
         ----------
         env_path: str
@@ -40,9 +44,8 @@ class AlertPublisher:
             # use a test topic
             self.alert_topic = os.getenv("CONNECTION_TEST_TOPIC")
 
-
     def __enter__(self):
-        self.stream = Stream(until_eos=True, auth=self.auth).open(self.alert_topic, 'w')
+        self.stream = Stream(until_eos=True, auth=self.auth).open(self.alert_topic, "w")
         return self
 
     def __exit__(self, *args):
@@ -62,11 +65,12 @@ class AlertPublisher:
 
     def display_message(self, message):
         if self.verbose:
-            tier = 'TEST ALERT'
-            click.secho(f'{"-" * 64}', fg='bright_blue')
-            click.secho(f'Sending {tier}', fg='bright_red')
+            tier = "TEST ALERT"
+            click.secho(f'{"-" * 64}', fg="bright_blue")
+            click.secho(f"Sending {tier}", fg="bright_red")
             for k, v in message.items():
-                print(f'{k:<35s}:{v}')
+                print(f"{k:<35s}:{v}")
+
 
 # Display message prints out the following on the server logs
 #

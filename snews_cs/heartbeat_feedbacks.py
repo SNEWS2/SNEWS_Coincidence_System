@@ -72,7 +72,9 @@ class FeedBack:
             # The database is continuosly updated, read it every minute
             # it will wait until it finds a database
             df = self.dataframe_from_db_table()
-            self.control(df)  # check if a detector is taking longer than usual (mean+3*sigma>)
+            self.control(
+                df
+            )  # check if a detector is taking longer than usual (mean+3*sigma>)
             self.running_min += 1
             vprint(f"[DEBUG] >>>>> Running minute: {self.running_min}", self.verbose)
 
@@ -130,7 +132,9 @@ class FeedBack:
 
         last_hb_time_utc = df["received_time_utc"].values[-1]
 
-        seconds_since_lasthb = (np.datetime64("now") - last_hb_time_utc) / np.timedelta64(1, "s")
+        seconds_since_lasthb = (
+            np.datetime64("now") - last_hb_time_utc
+        ) / np.timedelta64(1, "s")
 
         vprint(
             f"[DEBUG] >>>>> mean:{mean:.2f}, std:{std:.2f}, trigger at {mean + 3 * std:.2f}",
@@ -169,7 +173,6 @@ class FeedBack:
         """Constantly check to make sure there is at least two
         detector taking data. If not, send a warning to everyone.
         """
-        pass
 
 
 def check_frequencies_and_send_mail(detector, given_contact=None):
@@ -188,7 +191,9 @@ def check_frequencies_and_send_mail(detector, given_contact=None):
     std = np.std(df["time_after_last"])
 
     try:
-        last_hb_time_utc = df["received_time_utc"].values[-1]  # this is a numpy.datetime
+        last_hb_time_utc = df["received_time_utc"].values[
+            -1
+        ]  # this is a numpy.datetime
     except Exception as e:
         log.debug(
             f"> Frequency check failed for {detector}, probably no beats within last 24h\n{e}"

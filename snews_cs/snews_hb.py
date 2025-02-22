@@ -10,10 +10,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import create_engine
 
 from .core.logging import getLogger
-from .cs_utils import make_beat_directory, set_env
+from .cs_utils import set_env
 from .database import Database
 
 log = getLogger(__name__)
@@ -117,9 +116,7 @@ class HeartBeat:
             # Fall-through if cache does not exist; create it
             self.cache_df = pd.DataFrame(columns=self.column_names)
 
-        self._last_row = pd.DataFrame(
-            columns=self.column_names
-        )
+        self._last_row = pd.DataFrame(columns=self.column_names)
 
     def make_entry(self, message):
         """Make an entry in the cache df using new message
@@ -133,8 +130,10 @@ class HeartBeat:
 
         msg["stamped_time_utc"] = np.datetime64(message["sent_time_utc"])
         msg["latency"] = (
-            msg["received_time_utc"] - msg["stamped_time_utc"]
-        ).astype("timedelta64[s]").astype(int)
+            (msg["received_time_utc"] - msg["stamped_time_utc"])
+            .astype("timedelta64[s]")
+            .astype(int)
+        )
 
         # check the last message of given detector
         detector_df = self.cache_df[self.cache_df["detector"] == msg["detector"]]
