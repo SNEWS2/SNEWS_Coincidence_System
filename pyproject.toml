@@ -49,10 +49,14 @@ autopep8 = "^2.0.4"
 flake8 = "^6.1.0"
 mongomock = "^4.1.2"
 pytest = "<6.3.0"  # Constrained by snews_pt
+black = "^25.1.0"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = "<5"  # Constrained by snews_pt
 sphinx-pdj-theme = "^0.4.0"
+
+[tool.black]
+line-length = 88
 
 [build-system]
 requires = ["poetry-core"]
