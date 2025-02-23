@@ -75,7 +75,6 @@ setup_keywords['entry_points'] = {
 #
 #- Classifiers list
 setup_keywords['classifiers'] = [
-    'Development Status :: 2 - Pre-Alpha',
     'Programming Language :: Python',
     'Programming Language :: Python :: 3',
     'Intended Audience :: Science/Research',

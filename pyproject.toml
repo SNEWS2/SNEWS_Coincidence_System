@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "snews-cs"
-version = "2.2.0"
+version = "3.0.0"
 description = "An alert application for observing supernovas."
-authors = ["Sebastian Torres-Lara <sebastiantorreslara17@gmail.com>", "Melih Kara <karamel.itu@gmail.com>"]
+authors = ["SNEWS Collaboration <snews2.0@lists.bnl.gov>"]
 license = "BSD 3-Clause"
 readme = "README.md"
 packages = [{include = "snews_cs"}]
@@ -10,7 +10,6 @@ homepage = "https://github.com/SNEWS2/SNEWS_Coincidence_System.git"
 repository = "https://github.com/SNEWS2/SNEWS_Coincidence_System.git"
 documentation = "https://snews-coincidence-system.readthedocs.io/"
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Intended Audience :: Science/Research",
