@@ -2,23 +2,24 @@
 """ Initialization unit tests for the snews_cs alert tests
 """
 
-import unittest
-from snews_cs.snews_coinc import CoincidenceDistributor
 import os
-from snews_pt.messages import SNEWSMessageBuilder
-from snews_pt.remote_commands import reset_cache
+import unittest
+
 from hop import Stream
 from hop.io import StartPosition
+from snews_pt.messages import SNEWSMessageBuilder
+from snews_pt.remote_commands import reset_cache
 
+from snews_cs.snews_coinc import CoincidenceDistributor
 
 
 class TestServer(unittest.TestCase):
     def test_alerts(self):
-        coin1 = SNEWSMessageBuilder(detector_name='KamLAND', machine_time='2012-06-09T15:30:00.000501',
+        coin1 = SNEWSMessageBuilder(detector_name='KamLAND', machine_time_utc='2012-06-09T15:30:00.000501',
                                     neutrino_time='2012-06-09T15:31:08.891011',
                                     firedrill_mode=False, p_val=0.98, is_test=True)
 
-        coin2 = SNEWSMessageBuilder(detector_name='XENONnT', machine_time='2012-06-09T15:30:00.000501',
+        coin2 = SNEWSMessageBuilder(detector_name='XENONnT', machine_time_utc='2012-06-09T15:30:00.000501',
                                     neutrino_time='2012-06-09T15:31:07.465011',
                                     firedrill_mode=False, p_val=0.98, is_test=True)
         # make sure the test cache is empty
@@ -44,7 +45,7 @@ class TestServer(unittest.TestCase):
         substream = Stream(until_eos=True, auth=True, start_at=_start_at)
 
         message_expected = {"False Alarm Prob": "N/A",
-                            "_id": "SNEWS_Coincidence_ALERT XXXXXXXXXXX",
+                            "id": "SNEWS_Coincidence_ALERT XXXXXXXXXXX",
                             "alert_type": "TEST COINC_MSG",
                             "detector_names": ["KamLAND", "XENONnT"],
                             "neutrino_times": ["2012-06-09T15:31:08.891011000", "2012-06-09T15:31:07.465011000"],

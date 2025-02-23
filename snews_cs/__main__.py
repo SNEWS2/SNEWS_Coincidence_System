@@ -7,13 +7,21 @@
 
 """
 
-# https://click.palletsprojects.com/en/8.0.x/utils/
-import click, os
-from . import __version__
-from . import cs_utils
-from . import snews_coinc as snews_coinc
-from . heartbeat_feedbacks import FeedBack
+import os
+from pathlib import Path
 from socket import gethostname
+
+# https://click.palletsprojects.com/en/8.0.x/utils/
+import click
+
+from . import __version__, cs_utils
+from . import snews_coinc as snews_coinc
+from .database import Database
+from .heartbeat_feedbacks import FeedBack
+
+# Database initialized before any command is called
+db = Database(db_file_path=Path(__file__).parent.parent / "snews_cs.db")
+db.initialize_database(sql_schema_path=Path(__file__).parent / "db_schema.sql")
 
 
 @click.group(invoke_without_command=True)
@@ -38,17 +46,18 @@ def main(ctx, env):
 @click.option('--email/--no-email', default=True, show_default='True', help='Whether to send emails along with the alert')
 @click.option('--slackbot/--no-slackbot', default=True, show_default='True', help='Whether to send the alert on slack')
 def run_coincidence(firedrill, dropdb, email, slackbot):
-    """ Initiate Coincidence Decider 
+    """ Initiate Coincidence Decider
     """
+
     HOST = gethostname()
     coinc = snews_coinc.CoincidenceDistributor(drop_db=dropdb,
                                                firedrill_mode=firedrill,
                                                server_tag=HOST,
                                                send_email=email,
                                                send_slack=slackbot)
-    try: 
+    try:
         coinc.run_coincidence()
-    except KeyboardInterrupt: 
+    except KeyboardInterrupt:
         pass
     except Exception as e:
         print(e)
