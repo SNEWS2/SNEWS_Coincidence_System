@@ -189,7 +189,7 @@ class HeartBeat:
             now_utc = datetime.now(UTC)
             # Convert to timezone-naive
             now_naive = now_utc.replace(tzinfo=None)
-            message["received_time_utc"] = np.datetime64(now_naive) 
+            message["received_time_utc"] = np.datetime64(now_naive)
             if sanity_checks(message):
                 self.make_entry(message)
                 self.update_cache()
