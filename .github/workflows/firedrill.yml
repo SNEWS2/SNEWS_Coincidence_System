@@ -1,0 +1,87 @@
+name: Firedrill Workflow
+
+on:
+  push:
+    branches:
+      - main
+      - release_*
+      - test-and-format # just checking if it works - should delete!
+  pull_request:
+    branches:
+      - main
+      - release_*
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build and run Docker Compose
+        env:
+          HOP_USERNAME: ${{ secrets.username }}
+          HOP_PASSWORD: ${{ secrets.password }}
+        run: |
+          docker compose build --build-arg HOP_USERNAME=${{ secrets.username }} --build-arg HOP_PASSWORD=${{ secrets.password }}
+          docker compose up -d --force-recreate
+          echo "Waiting for services to start..."
+          sleep 3
+
+      - name: Wait for coincidence_system to initialize
+        run: |
+          echo "Waiting for coincidence_system to initialize (confirming observation on snews.experiments-github) ..."
+          for i in {1..30}; do
+            if docker logs coincidence_system 2>&1 | grep -q "(re)Initializing Coincidence System for kafka://kafka.scimma.org/snews.experiments-github"; then
+              echo "Coincidence System is ready."
+              break
+            fi
+            echo "Still waiting for Coincidence System to initialize..."
+            sleep 2
+          done
+
+      - name: Publish messages
+        run: |
+          echo "Publishing messages..."
+          docker exec publishing_tools_publisher snews_pt publish /app/snews_pt/test/firedrill_combined_message.json --firedrill
+          docker exec publishing_tools_publisher snews_pt publish /app/snews_pt/test/firedrill_combined_message2.json --firedrill
+          sleep 10
+
+      - name: Verify alert publishing from coincidence_system
+        run: |
+          echo "Checking logs of coincidence_system..."
+          docker logs coincidence_system > coincidence_logs.txt
+          if ! grep -q "PUBLISHING AN ALERT!!!" coincidence_logs.txt; then
+            echo "Published messages did not run or produce the expected output."
+            cat coincidence_logs.txt
+            exit 1
+          fi
+          echo "Coincidence_system ran successfully and produced the expected output."
+          echo "current coincidence docker logs:"
+          docker logs coincidence_system
+
+      - name: Verify custom script output
+        run: |
+          echo "Waiting for to see the right broker (snews.alert-github) in publishing_tools_subscriber logs..."
+          for i in {1..30}; do
+            if docker logs publishing_tools_subscriber 2>&1 | grep -q "Broker:kafka://kafka.scimma.org/snews.alert-github"; then
+              echo "Subscribing to firedrill broker. Proceeding to check for alert log..."
+              break
+            fi
+            echo "Still waiting for broker log..."
+            sleep 2
+          done
+          echo "current docker logs:"
+          docker logs publishing_tools_subscriber
+          
+          echo "Checking logs of publishing_tools_subscriber for alert..."
+          for i in {1..30}; do
+            if docker logs publishing_tools_subscriber 2>&1 | grep -q "Here is the alert dictionary I received"; then
+              echo "Custom script ran successfully and produced the expected output."
+              exit 0
+            fi
+            echo "Still waiting to see the alert in the log..."
+            sleep 2
+          done
+          echo "Custom script did not run or produce the expected output."
+          docker logs publishing_tools_subscriber
+          exit 1
