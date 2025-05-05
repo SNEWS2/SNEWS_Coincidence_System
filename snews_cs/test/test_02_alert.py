@@ -57,9 +57,7 @@ class TestServer(unittest.TestCase):
         default_connection_topic = "kafka://kafka.scimma.org/snews.connection-testing"
         test_alert_topic = os.getenv("CONNECTION_TEST_TOPIC", default_connection_topic)
 
-        _start_at = (
-            StartPosition.LATEST
-        )  # if start_at=="LATEST" else StartPosition.EARLIEST
+        _start_at = StartPosition.LATEST  # if start_at=="LATEST" else StartPosition.EARLIEST
         substream = Stream(until_eos=True, auth=True, start_at=_start_at)
 
         message_expected = {

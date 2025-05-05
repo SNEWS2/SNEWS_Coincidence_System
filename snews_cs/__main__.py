@@ -90,15 +90,11 @@ def run_coincidence(firedrill, dropdb, email, slackbot):
 
 
 @main.command()
-@click.option(
-    "--verbose", "-v", default=False, show_default="False", help="Verbose print"
-)
+@click.option("--verbose", "-v", default=False, show_default="False", help="Verbose print")
 def run_feedback(verbose):
     """Start the feedback checks"""
     feedback = FeedBack(verbose=verbose)
-    click.secho(
-        f"\nInvoking Feedback search, verbose={verbose}\n", fg="white", bg="green"
-    )
+    click.secho(f"\nInvoking Feedback search, verbose={verbose}\n", fg="white", bg="green")
     feedback()
 
 

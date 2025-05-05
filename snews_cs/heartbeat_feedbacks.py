@@ -72,9 +72,7 @@ class FeedBack:
             # The database is continuosly updated, read it every minute
             # it will wait until it finds a database
             df = self.dataframe_from_db_table()
-            self.control(
-                df
-            )  # check if a detector is taking longer than usual (mean+3*sigma>)
+            self.control(df)  # check if a detector is taking longer than usual (mean+3*sigma>)
             self.running_min += 1
             vprint(f"[DEBUG] >>>>> Running minute: {self.running_min}", self.verbose)
 
@@ -116,9 +114,7 @@ class FeedBack:
             detector_df.sort_values("received_time_utc", inplace=True)
 
             if len(detector_df) < 5:
-                vprint(
-                    f"[DEBUG] >>>>> len {len(detector_df)} Not enough!", self.verbose
-                )
+                vprint(f"[DEBUG] >>>>> len {len(detector_df)} Not enough!", self.verbose)
                 continue
             # check if a heartbeat is skipped
             self.check_missed_beats(detector_df, detector)
@@ -132,17 +128,13 @@ class FeedBack:
 
         last_hb_time_utc = df["received_time_utc"].values[-1]
 
-        seconds_since_lasthb = (
-            np.datetime64("now") - last_hb_time_utc
-        ) / np.timedelta64(1, "s")
+        seconds_since_lasthb = (np.datetime64("now") - last_hb_time_utc) / np.timedelta64(1, "s")
 
         vprint(
             f"[DEBUG] >>>>> mean:{mean:.2f}, std:{std:.2f}, trigger at {mean + 3 * std:.2f}",
             self.verbose,
         )
-        vprint(
-            f"[DEBUG] >>>>> Delay since last: {seconds_since_lasthb:.2f}", self.verbose
-        )
+        vprint(f"[DEBUG] >>>>> Delay since last: {seconds_since_lasthb:.2f}", self.verbose)
 
         if seconds_since_lasthb > (mean + 3 * std):
             if last_hb_time_utc == self.last_feedback_time[detector]:
@@ -191,9 +183,7 @@ def check_frequencies_and_send_mail(detector, given_contact=None):
     std = np.std(df["time_after_last"])
 
     try:
-        last_hb_time_utc = df["received_time_utc"].values[
-            -1
-        ]  # this is a numpy.datetime
+        last_hb_time_utc = df["received_time_utc"].values[-1]  # this is a numpy.datetime
     except Exception as e:
         log.debug(
             f"> Frequency check failed for {detector}, probably no beats within last 24h\n{e}"
@@ -229,9 +219,7 @@ def plot_beats(df, detector, figname):
         unique_days_list = list(unique_days_np)
     except Exception as e:
         log.debug(f"> Received times might be datetime object \t{e}")
-        unique_days_list = list(
-            set([date.strftime("%Y-%m-%d") for date in received_times])
-        )
+        unique_days_list = list(set([date.strftime("%Y-%m-%d") for date in received_times]))
     if len(unique_days_list) > 1:
         date = "&".join([i for i in unique_days_list])
     else:
@@ -256,18 +244,12 @@ def plot_beats(df, detector, figname):
     plt.subplots_adjust(hspace=0.05)
 
     ax1.set_title(f"HeartBeat data for {detector}, {date}", fontsize=20)
-    ax1.fill_between(
-        received_times, mean - 3 * std, mean + 3 * std, alpha=0.5, color="aqua"
-    )
-    ax1.fill_between(
-        received_times, mean - std, mean + std, alpha=1, color="darkturquoise"
-    )
+    ax1.fill_between(received_times, mean - 3 * std, mean + 3 * std, alpha=0.5, color="aqua")
+    ax1.fill_between(received_times, mean - std, mean + std, alpha=1, color="darkturquoise")
     ax1.axhline(mean, label=f"mean freq:{mean:.2f} sec", color="0.5", ls="--")
     colors = ["yellowgreen" if i == "ON" else "crimson" for i in df["status"]]
     ax1.plot(received_times, time_after_last, color="k", zorder=1)
-    ax1.scatter(
-        received_times, time_after_last, marker="o", c=colors, ec="k", s=150, zorder=20
-    )
+    ax1.scatter(received_times, time_after_last, marker="o", c=colors, ec="k", s=150, zorder=20)
     ax1.set_ylabel("Frequency\nSeconds after last", fontsize=18)
 
     # Define the custom colormap with two colors
@@ -340,8 +322,7 @@ def delete_old_figures():
     existing_figures = np.array([x for x in existing_figures if x.endswith(".png")])
     # take only dates
     dates_str = [
-        "_".join(i.split("/")[-1].split("_")[1:]).split(".png")[0]
-        for i in existing_figures
+        "_".join(i.split("/")[-1].split("_")[1:]).split(".png")[0] for i in existing_figures
     ]
     dates, files = [], []
     for d_str, logfile in zip(dates_str, existing_figures):
@@ -349,9 +330,7 @@ def delete_old_figures():
             dates.append(datetime.strptime(d_str, "%Y-%m-%d_%HH%MM"))
             files.append(logfile)
         except Exception as e:
-            log.error(
-                f"\t> Something went wrong during deletion of old figures \n\t{e}"
-            )
+            log.error(f"\t> Something went wrong during deletion of old figures \n\t{e}")
             continue
 
     time_differences = np.array([date - now for date in dates])

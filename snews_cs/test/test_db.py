@@ -61,9 +61,7 @@ def test_database_initialization(test_db):
         "sqlite_sequence",
     ]
 
-    assert set(table_names) == set(
-        expected_tables
-    ), "Not all expected tables were created."
+    assert set(table_names) == set(expected_tables), "Not all expected tables were created."
 
     for table_name in expected_tables:
         schema = test_db.get_table_schema(table_name)
@@ -188,9 +186,7 @@ def test_heartbeat_make_entry(hb_instance):
     }
     hb_instance.make_entry(message2)
     assert len(hb_instance.cache_df) == 2
-    assert (
-        hb_instance.cache_df["time_after_last"].iloc[1] > 0
-    )  # Should be greater than zero.
+    assert hb_instance.cache_df["time_after_last"].iloc[1] > 0  # Should be greater than zero.
 
 
 def test_heartbeat_drop_old_messages(hb_instance):

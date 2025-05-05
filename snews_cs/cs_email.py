@@ -46,9 +46,7 @@ def send_email(alert_content):
     emails = "snews2-test-ahabig@d.umn.edu"
 
     _smtp_sender(pretty_alert, subject, emails)
-    log.info(
-        f"\t\t> SNEWS Alert mail was sent at {datetime.utcnow().isoformat()} to {emails}"
-    )
+    log.info(f"\t\t> SNEWS Alert mail was sent at {datetime.utcnow().isoformat()} to {emails}")
 
 
 # _smtp_sender service function.  All other functions in this file
@@ -77,9 +75,7 @@ def _smtp_sender(body, subject, addr, attachment=None):
         if attachment is not None:
             try:
                 fp = open(attachment, "rb")
-                att = email.mime.application.MIMEApplication(
-                    fp.read(), _subtype="octet-stream"
-                )
+                att = email.mime.application.MIMEApplication(fp.read(), _subtype="octet-stream")
                 fp.close()
                 att.add_header("Content-Disposition", "attachment", filename=attachment)
                 msg.attach(att)
@@ -118,9 +114,7 @@ def _smtp_sender(body, subject, addr, attachment=None):
 
 
 # FEEDBACK EMAIL
-def send_feedback_mail(
-    detector, attachment=None, message_content=None, given_contact=None
-):
+def send_feedback_mail(detector, attachment=None, message_content=None, given_contact=None):
     """Send feedback email to authorized, requested users"""
     # Accept a contact list (e-mail(s)) # mail addresses already checked
     if type(given_contact) != list:

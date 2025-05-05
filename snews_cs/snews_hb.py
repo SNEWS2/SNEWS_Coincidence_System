@@ -150,9 +150,7 @@ class HeartBeat:
         if len(self.cache_df) == 0:
             self.cache_df = self._last_row
         else:
-            self.cache_df = pd.concat(
-                [self.cache_df, self._last_row], ignore_index=True
-            )
+            self.cache_df = pd.concat([self.cache_df, self._last_row], ignore_index=True)
 
     def drop_old_messages(self):
         """Keep the heartbeats for a time period delta.
@@ -160,9 +158,7 @@ class HeartBeat:
         """
         delta = f"{self.delete_after} day"
 
-        curr_time = np.datetime64(
-            datetime.utcnow().isoformat()
-        )  # pd.to_datetime('now', utc=True)
+        curr_time = np.datetime64(datetime.utcnow().isoformat())  # pd.to_datetime('now', utc=True)
         delta_t = curr_time - pd.to_datetime(self.cache_df["received_time_utc"])
         select = delta_t < pd.Timedelta(delta)
 
@@ -180,9 +176,7 @@ class HeartBeat:
         -only- by admins.
 
         """
-        print(
-            f"\nCurrent cache \n{'=' * 133}\n{self.cache_df.to_markdown()}\n{'=' * 133}\n"
-        )
+        print(f"\nCurrent cache \n{'=' * 133}\n{self.cache_df.to_markdown()}\n{'=' * 133}\n")
 
     def electrocardiogram(self, message):
         try:

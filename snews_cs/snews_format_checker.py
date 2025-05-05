@@ -33,9 +33,7 @@ class SnewsFormat:
         self.message = message
         self.message_keys = message.keys()
         self.log = log or log_default
-        self.bypass = (
-            False  # bypass if retraction, or remote command (bypasses all time checks!)
-        )
+        self.bypass = False  # bypass if retraction, or remote command (bypasses all time checks!)
         self.is_test = (
             self.check_if_test()
         )  # if True, don't check if times are reasonable (still checks format!)
@@ -150,9 +148,7 @@ class SnewsFormat:
 
         elif "Heartbeat" in self.message["id"]:
             self.log.debug("\t> Heartbeat Passed. Checking time and status.")
-            if (
-                not self.check_detector_status()
-            ):  # if detector_status does not exist, return False
+            if not self.check_detector_status():  # if detector_status does not exist, return False
                 self.log.error("\t> Heartbeat not valid!")
                 return False
             self.bypass = True
@@ -251,9 +247,7 @@ class SnewsFormat:
             pval_type = type(pval)
 
             if pval_type is not float:
-                self.log.error(
-                    f"\t> p value needs to be a float type, type given: {pval_type}."
-                )
+                self.log.error(f"\t> p value needs to be a float type, type given: {pval_type}.")
                 return False
             if pval >= 1.0 or pval <= 0:
                 self.log.error(f"\t> {pval} is not a valid p value !")

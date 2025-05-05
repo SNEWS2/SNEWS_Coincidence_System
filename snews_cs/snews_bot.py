@@ -52,8 +52,7 @@ def get_image(is_test, alert_data, topic):
         "SNEWS_Coincidence_System/main/snews_cs/etc/snalert.gif"
     )
     retractlink = (
-        "https://www.shutterstock.com/image-vector/"
-        "ooops-word-bubble-pop-art-600w-408777070.jpg"
+        "https://www.shutterstock.com/image-vector/" "ooops-word-bubble-pop-art-600w-408777070.jpg"
     )
     updatelink = (
         "https://www.shutterstock.com/image-vector/"

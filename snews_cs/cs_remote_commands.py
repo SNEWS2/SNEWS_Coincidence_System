@@ -142,16 +142,12 @@ class Commands:
     def display_heartbeats(self, message, CoincDeciderInstance):
         authorized = self._check_rights(message)
         if authorized:
-            log.info(
-                "\t> User wants to display the Heartbeat table. User is authorized."
-            )
+            log.info("\t> User wants to display the Heartbeat table. User is authorized.")
             click.secho("\nCurrent heartbeats table as requested by the user\n")
             print(CoincDeciderInstance.heartbeat.cache_df.to_markdown(), "\n\n")
             log.debug("\t> Logs printed as stdout, user should check the remote logs.")
         else:
-            log.error(
-                "\t> User wants to display the Heartbeat table. User is NOT authorized."
-            )
+            log.error("\t> User wants to display the Heartbeat table. User is NOT authorized.")
 
     def retract_message(self, message, CoincDeciderInstance):
         log.info("\t> Retracting message in the snews_coinc.")
@@ -176,17 +172,13 @@ class Commands:
         detector = message["detector_name"]
         none_valid = True
         # avoid empty lines, and allow multiple emails
-        given_mail = [
-            mail.strip() for mail in given_mail.split(";") if len(mail.strip())
-        ]
+        given_mail = [mail.strip() for mail in given_mail.split(";") if len(mail.strip())]
         log.debug(
             f"> [DEBUG] These mails are passed {'; '.join(given_mail)} for detector: {detector}"
         )
         for email in given_mail:
             if email not in contact_list[detector]["emails"]:
-                log.error(
-                    f"\t> The given email: {email} is not registered for {detector}!"
-                )
+                log.error(f"\t> The given email: {email} is not registered for {detector}!")
             else:
                 none_valid = False
         if none_valid:
@@ -285,16 +277,12 @@ class CommandHandler:
                 # it is a retraction message, requires to return a GO
                 return True
             else:
-                log.info(
-                    f"\t> {self.command_name} command executed coincidence check is a NO-GO!"
-                )
+                log.info(f"\t> {self.command_name} command executed coincidence check is a NO-GO!")
                 return False
 
         # if it is a CoincidenceTier message or a Retraction Message, give a Go
         elif self.command_name in ["CoincidenceTier", "Retraction"]:
-            log.info(
-                f"\t> {self.command_name} message is received, coincidence check is GO!"
-            )
+            log.info(f"\t> {self.command_name} message is received, coincidence check is GO!")
 
             if self.is_test:
                 # do not register heartbeat, just return to coincidence search
@@ -304,9 +292,7 @@ class CommandHandler:
             #  Idea is that when a message comes in, it automatically logs a HB here.
             #  Then we log it and get the correct coincidence probability.
             self.input_message["detector_status"] = "ON"
-            self.Command_Executer.heartbeat_handle(
-                self.input_message, CoincDeciderInstance
-            )
+            self.Command_Executer.heartbeat_handle(self.input_message, CoincDeciderInstance)
 
             return True
 
