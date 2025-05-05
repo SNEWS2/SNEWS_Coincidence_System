@@ -52,7 +52,7 @@ class SnewsFormat:
             ), "detector_name not valid"  # if detector name is known
             assert (
                 self.check_times() is True
-            ), f"neutrino_time not valid in {self.message}"  # if times are ISO format and reasonable
+            ), f"neutrino_time not valid in {self.message}"  # if times are reasonable ISO format
             assert (
                 self.check_pvals() is True
             ), "p_val not valid"  # if exists, pvals are float and reasonable
