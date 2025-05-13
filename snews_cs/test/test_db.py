@@ -21,7 +21,8 @@ def test_db():
     db = Database(TEST_DB_PATH)
     db.initialize_database(TEST_SCHEMA_PATH)  # Initialize before the test
     yield db  # Provide the database object to the test
-    db.drop_tables()  # this is to get rid of tables in the database
+    db.drop_tables()  # Clean up after the test
+    db.connection.close()  # Ensure the connection is closed
 
 
 # Mock detector properties file
@@ -43,6 +44,7 @@ def hb_instance(test_db, mock_detector_file, monkeypatch):
         store=True, firedrill_mode=False
     )  # Use firedrill mode False to avoid env var issues
     hb.cache_engine = test_db.engine
+    hb.cache_df = hb.cache_df.iloc[0:0]  # Clear the DataFrame before each test
     return hb
 
 
@@ -66,7 +68,6 @@ def test_database_initialization(test_db):
     for table_name in expected_tables:
         schema = test_db.get_table_schema(table_name)
         assert len(schema) > 0, f"Schema for table '{table_name}' is empty."
-        # Add (e.g., column names, types, etc.?)
 
 
 def test_show_tables(test_db):
@@ -91,7 +92,6 @@ def test_get_table_schema(test_db):
 
 def test_drop_tables_all(test_db):
     """Test dropping all tables."""
-
     test_db.drop_tables()
 
     tables = test_db.show_tables()
@@ -122,7 +122,6 @@ def test_database_connection(test_db):
     """Test if the database connection and cursor are properly initialized."""
     assert test_db.connection is not None
     assert test_db.cursor is not None
-    # Add more specific connection tests if required.
 
 
 def test_database_path(test_db):
@@ -130,7 +129,6 @@ def test_database_path(test_db):
     assert test_db.db_file_path == TEST_DB_PATH
 
 
-# moving into heartbeat stuff
 def test_sanity_checks_valid():
     message = {
         "detector_name": "Baksan",
@@ -158,7 +156,6 @@ def test_sanity_checks_invalid():
         "received_time_utc": np.datetime64(datetime.utcnow().isoformat()),
     }
     assert sanity_checks(message) is False
-    # ... Add more invalid cases. find more about
 
 
 def test_heartbeat_make_entry(hb_instance):
@@ -170,7 +167,6 @@ def test_heartbeat_make_entry(hb_instance):
     }
     hb_instance.make_entry(message)
     assert len(hb_instance.cache_df) == 1
-
     assert hb_instance.cache_df["detector"].iloc[0] == "Baksan"
 
     # Add another entry to test time_after_last
@@ -179,35 +175,34 @@ def test_heartbeat_make_entry(hb_instance):
         "detector_status": "ON",
         "sent_time_utc": (
             datetime.utcnow() + timedelta(seconds=10)
-        ).isoformat(),  # 10 seconds later
+        ).isoformat(),
         "received_time_utc": np.datetime64(
             (datetime.utcnow() + timedelta(seconds=10)).isoformat()
         ),
     }
     hb_instance.make_entry(message2)
     assert len(hb_instance.cache_df) == 2
-    assert hb_instance.cache_df["time_after_last"].iloc[1] > 0  # Should be greater than zero.
+    assert hb_instance.cache_df["time_after_last"].iloc[1] > 0
 
 
 def test_heartbeat_drop_old_messages(hb_instance):
-    # Create some old entries
     now = datetime.utcnow()
     old_message = {
         "detector_name": "Baksan",
         "detector_status": "ON",
-        "sent_time_utc": (now - timedelta(days=8)).isoformat(),  # 8 days ago
+        "sent_time_utc": (now - timedelta(days=8)).isoformat(),
         "received_time_utc": np.datetime64((now - timedelta(days=8)).isoformat()),
     }
     hb_instance.make_entry(old_message)
     new_message = {
         "detector_name": "Baksan",
         "detector_status": "ON",
-        "sent_time_utc": (now - timedelta(days=2)).isoformat(),  # 2 days ago
+        "sent_time_utc": (now - timedelta(days=2)).isoformat(),
         "received_time_utc": np.datetime64((now - timedelta(days=2)).isoformat()),
     }
     hb_instance.make_entry(new_message)
     hb_instance.drop_old_messages()
-    assert len(hb_instance.cache_df) == 1  # Only the new message should remain.
+    assert len(hb_instance.cache_df) == 1
 
 
 def test_heartbeat_update_cache(hb_instance):
@@ -220,10 +215,8 @@ def test_heartbeat_update_cache(hb_instance):
     hb_instance.make_entry(message)
     hb_instance.update_cache()
 
-    # Query the database directly to check if the data is there
     with hb_instance.cache_engine.connect() as conn:
         result = conn.execute(text("SELECT * FROM cached_heartbeats"))
-        # rows = result.fetchall()
         rows = result.mappings().all()
         assert len(rows) == 1
         assert rows[-1]["detector"] == "Baksan"
@@ -241,6 +234,6 @@ def test_electrocardiogram_valid(hb_instance):
 def test_electrocardiogram_invalid(hb_instance):
     message = {
         "detector_name": "Baksan",
-        "sent_time_utc": datetime.utcnow().isoformat(),  # Missing status
+        "sent_time_utc": datetime.utcnow().isoformat(),
     }
     assert hb_instance.electrocardiogram(message) is False
