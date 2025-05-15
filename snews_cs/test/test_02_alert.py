@@ -3,96 +3,92 @@
 
 import os
 import unittest
+from datetime import datetime, timedelta
+from unittest.mock import patch, MagicMock
 
 from hop import Stream
 from hop.io import StartPosition
-from snews_pt.messages import SNEWSMessageBuilder
-from snews_pt.remote_commands import reset_cache
+from snews_cs.snews_coinc import CoincidenceDistributor
+from snews_cs.cs_utils import set_env
 
 
 class TestServer(unittest.TestCase):
-    def test_alerts(self):
-        coin1 = SNEWSMessageBuilder(
-            detector_name="KamLAND",
-            machine_time_utc="2012-06-09T15:30:00.000501",
-            neutrino_time="2012-06-09T15:31:08.891011",
+    def setUp(self):
+        """Set up test environment"""
+        # Set up test environment variables
+        os.environ["COINCIDENCE_THRESHOLD"] = "10"  # 10 second threshold
+        os.environ["CONNECTION_TEST_TOPIC"] = "kafka://kafka.scimma.org/snews.connection-testing"
+
+    @patch('snews_cs.snews_coinc.AlertPublisher')
+    def test_alerts(self, mock_alert_publisher):
+        """Test the alert generation and coincidence detection"""
+        # Mock the alert publisher
+        mock_publisher = MagicMock()
+        mock_alert_publisher.return_value.__enter__.return_value = mock_publisher
+        
+        # Initialize coincidence distributor for testing
+        self.coinc = CoincidenceDistributor(
+            env_path=None,  # Use default test config
             firedrill_mode=False,
-            p_val=0.98,
-            is_test=True,
+            server_tag="test",
+            send_email=False,
+            send_slack=False
         )
-
-        coin2 = SNEWSMessageBuilder(
-            detector_name="XENONnT",
-            machine_time_utc="2012-06-09T15:30:00.000501",
-            neutrino_time="2012-06-09T15:31:07.465011",
-            firedrill_mode=False,
-            p_val=0.98,
-            is_test=True,
-        )
-        # make sure the test cache is empty
-        reset_cache(is_test=True)
-
-        # First, send two coinciding messages
-        for coin in [coin1, coin2]:
-            try:
-                coin.send_messages()
-            except Exception as exc:
-                print(
-                    (
-                        "test_alert test failed trying to send messages with "
-                        "SNEWSMessageBuilder.send_messages() !\n"
-                    )
-                )
-                assert False, f"Exception raised:\n {exc}"
-
-        # we need to think of a way for github actions to run the server
-        # coincidence_searcher = CoincidenceDistributor(
-        # env_path='/etc/test-config.env',
-        # firedrill_mode=False,
-        # server_tag='test'
-        # )
-
-        # Next, manually open the stream and search for coincidences
-        # this tests the coincidence logic ALREADY RUNNING on the server
-        default_connection_topic = "kafka://kafka.scimma.org/snews.connection-testing"
-        test_alert_topic = os.getenv("CONNECTION_TEST_TOPIC", default_connection_topic)
-
-        _start_at = StartPosition.LATEST  # if start_at=="LATEST" else StartPosition.EARLIEST
-        substream = Stream(until_eos=True, auth=True, start_at=_start_at)
-
-        message_expected = {
-            "False Alarm Prob": "N/A",
-            "id": "SNEWS_Coincidence_ALERT XXXXXXXXXXX",
-            "alert_type": "TEST COINC_MSG",
-            "detector_names": ["KamLAND", "XENONnT"],
-            "neutrino_times": [
-                "2012-06-09T15:31:08.891011000",
-                "2012-06-09T15:31:07.465011000",
-            ],
-            "p_values": [0.98, 0.98],
-            "p_values average": 0.98,
-            "sent_time": "XXXXXXX",
-            "server_tag": "XXXXXXXX",
-            "sub list number": 0,
+        
+        # Clear any existing test cache
+        self.coinc.clear_cache(is_test=True)
+        
+        # Create test messages with coinciding neutrino times
+        base_time = datetime.utcnow()
+        
+        # First message
+        message1 = {
+            "_id": "test1_CoincidenceTier_" + base_time.isoformat(),
+            "detector_name": "KamLAND",
+            "machine_time_utc": base_time.isoformat(),
+            "neutrino_time_utc": base_time.isoformat(),
+            "p_val": 0.98,
+            "meta": {"is_test": True},
+            "schema_version": "1.2.0"
+        }
+        
+        # Second message within coincidence window
+        message2 = {
+            "_id": "test2_CoincidenceTier_" + base_time.isoformat(),
+            "detector_name": "XENONnT",
+            "machine_time_utc": base_time.isoformat(),
+            "neutrino_time_utc": (base_time + timedelta(seconds=5)).isoformat(),
+            "p_val": 0.98,
+            "meta": {"is_test": True},
+            "schema_version": "1.2.0"
         }
 
-        fields_must_match = [
-            "False Alarm Prob",
-            "alert_type",
-            "detector_names",
-            "neutrino_times",
-            "p_values",
-            "p_values average",
-        ]
+        # Process messages through coincidence system
+        self.coinc.deal_with_the_cache(message1)
+        self.coinc.deal_with_the_cache(message2)
 
-        with substream.open(test_alert_topic, "r") as ss:
-            for read in ss:
-                read = read.content
-                for field in fields_must_match:
-                    self.assertTrue(
-                        read[field] == message_expected[field],
-                        f"Field {field} does not match!",
-                    )
+        # Verify that the alert was published with correct content
+        self.assertTrue(mock_publisher.send.called, "Alert was not published")
+        
+        # Get the alert message that was published
+        alert_message = mock_publisher.send.call_args[0][0]
+        
+        # Verify alert message content
+        self.assertEqual(alert_message["alert_type"], "TEST COINC_MSG")
+        self.assertEqual(alert_message["detector_names"], ["KamLAND", "XENONnT"])
+        self.assertEqual(alert_message["p_values"], [0.98, 0.98])
+        self.assertEqual(alert_message["p_values average"], 0.98)
+        self.assertEqual(alert_message["sub list number"], 0)
+        self.assertEqual(alert_message["False Alarm Prob"], "N/A")
+        
+        # Verify neutrino times are within coincidence window
+        nu_times = [datetime.fromisoformat(t) for t in alert_message["neutrino_times"]]
+        self.assertTrue(
+            abs(nu_times[0] - nu_times[1]) <= timedelta(seconds=10),
+            "Neutrino times are not within coincidence window!"
+        )
 
-        # clear the cache again afterwards
-        reset_cache(is_test=True)
+    def tearDown(self):
+        """Clean up after tests"""
+        if hasattr(self, 'coinc'):
+            self.coinc.clear_cache(is_test=True)
