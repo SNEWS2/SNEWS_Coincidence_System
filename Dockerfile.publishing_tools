@@ -23,7 +23,7 @@ ENV HOP_PASSWORD=${HOP_PASSWORD}
 
 ARG REPO_URL
 ARG BRANCH
-RUN git clone --branch ${BRANCH} ${REPO_URL} .
+RUN git clone --branch ${BRANCH} ${REPO_URL} . && git pull
 
 
 # Set observation and alert topics for github CI firedrill
@@ -36,9 +36,9 @@ RUN pip install --upgrade pip
 # Install Python dependencies
 RUN pip install -r requirements.txt
 
-#COPY generate_firedrill_creds.sh /app/generate_firedrill_creds.sh
-#RUN chmod +x /app/generate_firedrill_creds.sh
-#RUN /app/generate_firedrill_creds.sh
+COPY generate_firedrill_creds.sh /app/generate_firedrill_creds.sh
+RUN chmod +x /app/generate_firedrill_creds.sh
+RUN /app/generate_firedrill_creds.sh
 
 # Install the project
 RUN pip install .
