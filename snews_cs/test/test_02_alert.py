@@ -6,10 +6,7 @@ import unittest
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
-from hop import Stream
-from hop.io import StartPosition
 from snews_cs.snews_coinc import CoincidenceDistributor
-from snews_cs.cs_utils import set_env
 
 
 class TestServer(unittest.TestCase):
