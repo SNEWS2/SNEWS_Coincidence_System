@@ -173,9 +173,7 @@ def test_heartbeat_make_entry(hb_instance):
     message2 = {
         "detector_name": "Baksan",
         "detector_status": "ON",
-        "sent_time_utc": (
-            datetime.utcnow() + timedelta(seconds=10)
-        ).isoformat(),
+        "sent_time_utc": (datetime.utcnow() + timedelta(seconds=10)).isoformat(),
         "received_time_utc": np.datetime64(
             (datetime.utcnow() + timedelta(seconds=10)).isoformat()
         ),
