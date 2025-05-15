@@ -19,7 +19,7 @@ services:
       dockerfile: Dockerfile.publishing_tools
       args:
         REPO_URL: https://github.com/SNEWS2/SNEWS_Publishing_Tools.git
-        BRANCH: test-framework #main
+        BRANCH: main
         HOP_USERNAME: ${HOP_USERNAME}
         HOP_PASSWORD: ${HOP_PASSWORD}
     container_name: publishing_tools_subscriber
