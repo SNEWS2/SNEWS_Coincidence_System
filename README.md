@@ -21,17 +21,17 @@ cd SNEWS_Coincidence_System
 `snews_cs` is the main software running on the servers to initiate coincidence seraches, and trigger alerts.
  Basic usage is starting the coincidence search with the following command:
 ```python
-snews_pt run-coincidence --no-firedrill
+snews_cs run-coincidence --no-firedrill
 ```
 
 The command line tool provides information about the available commands and options:
 ```python
-snews_pt --help
+snews_cs --help
 ```
 
 The heartbeat feedbacks can be tracked via the following command:
 ```python
-snews_pt run-feedback
+snews_cs run-feedback
 ```
 For more details and advanced usage, see the [documentation](https://snews-coincidence-system.readthedocs.io/en/latest/).
 
