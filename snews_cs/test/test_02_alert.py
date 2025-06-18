@@ -16,18 +16,21 @@ from snews_cs.snews_coinc import CoincidenceDistributor
 class TestServer(unittest.TestCase):
     def test_alerts(self):
         coin1 = messages.create_messages(detector_name='KamLAND',
-                    machine_time_utc='2012-06-09T15:30:00.000501',
-                    neutrino_time='2012-06-09T15:31:08.891011',
-                    firedrill_mode=False,
-                    p_val=0.98,
-                    is_test=True)
+                   tier='CoincidenceTier',
+                   machine_time='2012-06-09T15:30:00.000501',
+                   neutrino_time_utc='2012-06-09T15:31:07.465011',
+                   p_val=0.98,
+                   is_test=True,
+                   is_firedrill=False)
 
         coin2 = messages.create_messages(detector_name='XENONnT',
-                    machine_time_utc='2012-06-09T15:30:00.000501',
-                    neutrino_time='2012-06-09T15:31:07.465011',
-                    firedrill_mode=False,
-                    p_val=0.98,
-                    is_test=True)
+                   tier='CoincidenceTier',
+                   machine_time='2012-06-09T15:30:00.000501',
+                   neutrino_time_utc='2012-06-09T15:31:07.465011',
+                   p_val=0.98,
+                   is_test=True,
+                   is_firedrill=False)
+
         # make sure the test cache is empty
         reset_cache(is_test=True)
 
