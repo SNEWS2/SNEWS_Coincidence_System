@@ -34,7 +34,7 @@ hop-client = "^0.10.0"
 ipython = "<7.33.0"  # Constrained by snews_pt
 numpy = "^1.26.0"
 pandas = "^2.1.1"
-python-dotenv = "^0.19"  # Constrained by snews_pt
+python-dotenv = ">=0.21.1,<0.22.0"  # Constrained by snews_pt
 pymongo = "^4.5.0"
 slack-sdk = "^3.26.2"
 matplotlib = "^3.8.0"
@@ -42,17 +42,22 @@ scipy = "^1.11.3"
 sqlalchemy = "^2.0.32"
 tabulate = "^0.9.0"
 snews-data-formats = "^1.0.0"
+snews-pt = "^2.0.1"
 
 [tool.poetry.group.dev.dependencies]
-snews-pt = "^1.0.0"
+snews-pt = "^2.0.1"
 autopep8 = "^2.0.4"
 flake8 = "^6.1.0"
 mongomock = "^4.1.2"
 pytest = "<6.3.0"  # Constrained by snews_pt
+black = "^25.1.0"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = "<5"  # Constrained by snews_pt
 sphinx-pdj-theme = "^0.4.0"
+
+[tool.black]
+line-length = 99
 
 [build-system]
 requires = ["poetry-core"]

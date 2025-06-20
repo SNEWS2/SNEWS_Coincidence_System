@@ -10,10 +10,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import create_engine
 
 from .core.logging import getLogger
-from .cs_utils import make_beat_directory, set_env
+from .cs_utils import set_env
 from .database import Database
 
 log = getLogger(__name__)
@@ -117,9 +116,7 @@ class HeartBeat:
             # Fall-through if cache does not exist; create it
             self.cache_df = pd.DataFrame(columns=self.column_names)
 
-        self._last_row = pd.DataFrame(
-            columns=self.column_names
-        )
+        self._last_row = pd.DataFrame(columns=self.column_names)
 
     def make_entry(self, message):
         """Make an entry in the cache df using new message
@@ -133,8 +130,10 @@ class HeartBeat:
 
         msg["stamped_time_utc"] = np.datetime64(message["sent_time_utc"])
         msg["latency"] = (
-            msg["received_time_utc"] - msg["stamped_time_utc"]
-        ).astype("timedelta64[s]").astype(int)
+            (msg["received_time_utc"] - msg["stamped_time_utc"])
+            .astype("timedelta64[s]")
+            .astype(int)
+        )
 
         # check the last message of given detector
         detector_df = self.cache_df[self.cache_df["detector"] == msg["detector"]]
@@ -151,9 +150,7 @@ class HeartBeat:
         if len(self.cache_df) == 0:
             self.cache_df = self._last_row
         else:
-            self.cache_df = pd.concat(
-                [self.cache_df, self._last_row], ignore_index=True
-            )
+            self.cache_df = pd.concat([self.cache_df, self._last_row], ignore_index=True)
 
     def drop_old_messages(self):
         """Keep the heartbeats for a time period delta.
@@ -161,9 +158,7 @@ class HeartBeat:
         """
         delta = f"{self.delete_after} day"
 
-        curr_time = np.datetime64(
-            datetime.utcnow().isoformat()
-        )  # pd.to_datetime('now', utc=True)
+        curr_time = np.datetime64(datetime.utcnow().isoformat())  # pd.to_datetime('now', utc=True)
         delta_t = curr_time - pd.to_datetime(self.cache_df["received_time_utc"])
         select = delta_t < pd.Timedelta(delta)
 
@@ -181,15 +176,14 @@ class HeartBeat:
         -only- by admins.
 
         """
-        print(
-            f"\nCurrent cache \n{'=' * 133}\n{self.cache_df.to_markdown()}\n{'=' * 133}\n"
-        )
+        print(f"\nCurrent cache \n{'=' * 133}\n{self.cache_df.to_markdown()}\n{'=' * 133}\n")
 
     def electrocardiogram(self, message):
         try:
-            message["received_time_utc"] = np.datetime64(
-                datetime.now(UTC).isoformat()
-            )  # pd.to_datetime('now', utc=True)
+            now_utc = datetime.now(UTC)
+            # Convert to timezone-naive
+            now_naive = now_utc.replace(tzinfo=None)
+            message["received_time_utc"] = np.datetime64(now_naive)
             if sanity_checks(message):
                 self.make_entry(message)
                 self.update_cache()

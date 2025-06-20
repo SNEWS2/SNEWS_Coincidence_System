@@ -19,3 +19,4 @@ firedrill.ipynb
 server_run_me.py
 *.db
 *.sqlite
+.idea/

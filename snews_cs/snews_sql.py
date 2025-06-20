@@ -214,9 +214,7 @@ class Storage:
         """
 
         self.cursor.execute(
-            """SELECT * FROM sig_tier_archive ORDER BY sent_time_utc {}""".format(
-                sort_order
-            )
+            """SELECT * FROM sig_tier_archive ORDER BY sent_time_utc {}""".format(sort_order)
         )
         table = self.cursor.fetchall()
         return table
@@ -227,9 +225,7 @@ class Storage:
         """
 
         self.cursor.execute(
-            """SELECT * FROM time_tier_archive ORDER BY sent_time_utc {}""".format(
-                sort_order
-            )
+            """SELECT * FROM time_tier_archive ORDER BY sent_time_utc {}""".format(sort_order)
         )
         table = self.cursor.fetchall()
         return table
@@ -259,9 +255,7 @@ class Storage:
 
         """
 
-        self.cursor.execute(
-            """DELETE FROM all_mgs WHERE message_id = ?""", (message_id,)
-        )
+        self.cursor.execute("""DELETE FROM all_mgs WHERE message_id = ?""", (message_id,))
         if tier == "SIG":
             self.cursor.execute(
                 """DELETE FROM sig_tier_archive WHERE message_id = ?""", (message_id,)
@@ -348,9 +342,7 @@ class Storage:
         Returns all tables in the SQL database.
         """
 
-        self.cursor.execute(
-            """SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"""
-        )
+        self.cursor.execute("""SELECT name FROM sqlite_master WHERE type='table' ORDER BY name""")
         table = self.cursor.fetchall()
 
         return table
