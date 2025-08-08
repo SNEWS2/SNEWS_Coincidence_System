@@ -33,9 +33,7 @@ class SnewsFormat:
         self.message = message
         self.message_keys = message.keys()
         self.log = log or log_default
-        self.bypass = (
-            False  # bypass if retraction, or remote command (bypasses all time checks!)
-        )
+        self.bypass = False  # bypass if retraction, or remote command (bypasses all time checks!)
         self.is_test = (
             self.check_if_test()
         )  # if True, don't check if times are reasonable (still checks format!)
@@ -54,7 +52,7 @@ class SnewsFormat:
             ), "detector_name not valid"  # if detector name is known
             assert (
                 self.check_times() is True
-            ), "neutrino_time not valid"  # if times are ISO format and reasonable
+            ), f"neutrino_time not valid in {self.message}"  # if times are reasonable ISO format
             assert (
                 self.check_pvals() is True
             ), "p_val not valid"  # if exists, pvals are float and reasonable
@@ -96,8 +94,7 @@ class SnewsFormat:
         return False
 
     def check_id(self):
-        """check if the id is correct
-        """
+        """check if the id is correct"""
         self.log.debug("\t> Checking id ..")
         if "id" not in self.message_keys:
             self.log.error("\t> Message without 'id' field")
@@ -151,9 +148,7 @@ class SnewsFormat:
 
         elif "Heartbeat" in self.message["id"]:
             self.log.debug("\t> Heartbeat Passed. Checking time and status.")
-            if (
-                not self.check_detector_status()
-            ):  # if detector_status does not exist, return False
+            if not self.check_detector_status():  # if detector_status does not exist, return False
                 self.log.error("\t> Heartbeat not valid!")
                 return False
             self.bypass = True
@@ -252,9 +247,7 @@ class SnewsFormat:
             pval_type = type(pval)
 
             if pval_type is not float:
-                self.log.error(
-                    f"\t> p value needs to be a float type, type given: {pval_type}."
-                )
+                self.log.error(f"\t> p value needs to be a float type, type given: {pval_type}.")
                 return False
             if pval >= 1.0 or pval <= 0:
                 self.log.error(f"\t> {pval} is not a valid p value !")
