@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "snews-cs"
-version = "3.0.1"
+version = "3.0.2"
 description = "An alert application for observing supernovas."
 authors = ["SNEWS Collaboration <snews2.0@lists.bnl.gov>"]
 license = "BSD 3-Clause"
