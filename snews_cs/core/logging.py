@@ -3,6 +3,7 @@ Modified version of Geoffrey Lentner's python 201 logger.
 
 Ref: https://python-tutorial.dev/201/tutorial/logging.html
 """
+
 import os
 import time
 from datetime import date
@@ -30,10 +31,12 @@ logtopic = os.getenv("SNEWPLOG_TOPIC")
 
 HOST = gethostname()
 log_date = date.today().strftime("%Y-%m-%d")
-log_dir = os.getenv('SNEWSLOG_DIR')
+log_dir = os.getenv("SNEWSLOG_DIR")
 
 if not log_dir:
-    log_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../logs"))
+    log_dir = os.path.abspath(
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../logs")
+    )
 
 log_file = f"{log_dir}/snews_cs.log"
 
@@ -49,26 +52,28 @@ if not os.path.isfile(log_file):
 log_file = f"{log_dir}/snews_cs.log"
 fh = FileHandler(log_file)
 
-class SNEWPlog(Handler):
-    """ Implement logging over kafka topic
-    """
 
-    def __init__(self, topic: str, auth: str=None):
+class SNEWPlog(Handler):
+    """Implement logging over kafka topic"""
+
+    def __init__(self, topic: str, auth: str = None):
         Handler.__init__(self)
         self.auth = auth
         self.uri = topic
-        if 'kafka://' not in topic:
+        if "kafka://" not in topic:
             self.uri = f"kafka://{topic}"
 
         try:
-            self.producer = Stream(until_eos=True, auth=self.auth).open(self.uri, "w")
+            self.producer = Stream(until_eos=True, auth=self.auth).open(
+                self.uri, "w"
+            )
         except ValueError as e:
             print(f"Problem establishing Kafka log connection: {e}")
         except Exception as e:
             print(f"Problem establishing Kafka log connection: {e}")
 
     def emit(self, record):
-        if 'kafka.' in record.name:
+        if "kafka." in record.name:
             return
 
         msg = self.format(record)
@@ -81,6 +86,7 @@ class SNEWPlog(Handler):
         if self.producer:
             self.producer.close()
         Handler.close(self)
+
 
 print(f"Initializing SNEWPlog with uri {logtopic}")
 klh = SNEWPlog(logtopic, auth=True)
@@ -109,7 +115,7 @@ levels = {
 def initialize_logging(level):
     """Initialize top-level logger with the file handler and a `level`."""
     if fh not in logger.handlers:
-        logger.addHandler(fh)   # file
+        logger.addHandler(fh)  # file
         logger.setLevel(levels.get(level))
         logger.propagate = False
 
