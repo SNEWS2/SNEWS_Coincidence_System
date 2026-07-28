@@ -1,14 +1,17 @@
-[tool.poetry]
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
 name = "snews-cs"
 version = "3.0.2"
-description = "An alert application for observing supernovas."
-authors = ["SNEWS Collaboration <snews2.0@lists.bnl.gov>"]
-license = "BSD 3-Clause"
+description = "An coincidence server application for raising supernova alerts."
 readme = "README.md"
-packages = [{include = "snews_cs"}]
-homepage = "https://github.com/SNEWS2/SNEWS_Coincidence_System.git"
-repository = "https://github.com/SNEWS2/SNEWS_Coincidence_System.git"
-documentation = "https://snews-coincidence-system.readthedocs.io/"
+requires-python = ">=3.11,<3.13"
+license = "BSD-3-Clause"
+authors = [
+    { name = "SNEWS Collaboration", email = "snews2.0@lists.bnl.gov" },
+]
 classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -21,45 +24,49 @@ classifiers = [
     "Operating System :: POSIX",
     "Operating System :: Unix",
     "Operating System :: MacOS",
-    "License :: OSI Approved :: BSD License",
+]
+dependencies = [
+    "click>=8.1.7,<9.0.0",
+    "hop-client>=0.10.0,<0.11.0",
+    "ipython<7.33.0",
+    "numpy>=1.26.0,<2.0.0",
+    "pandas>=2.1.1,<3.0.0",
+    "python-dotenv>=0.21.1,<0.22.0",
+    "pymongo>=4.5.0,<5.0.0",
+    "slack-sdk>=3.26.2,<4.0.0",
+    "matplotlib>=3.8.0,<4.0.0",
+    "scipy>=1.11.3,<2.0.0",
+    "sqlalchemy>=2.0.32,<3.0.0",
+    "tabulate>=0.9.0,<1.0.0",
+    "snews-data-formats>=1.0.0,<2.0.0",
+    "snews-pt>=2.0.1,<3.0.0",
 ]
 
-[tool.poetry.scripts]
+[project.optional-dependencies]
+dev = [
+    "snews-pt>=2.0.1,<3.0.0",
+    "autopep8>=2.0.4,<3.0.0",
+    "flake8>=6.1.0,<7.0.0",
+    "mongomock>=4.1.2,<5.0.0",
+    "pytest<6.3.0",
+    "black>=25.1.0,<26.0.0",
+]
+docs = [
+    "sphinx<5",
+    "sphinx-pdj-theme>=0.4.0,<0.5.0",
+]
+
+[project.scripts]
 snews_cs = "snews_cs.__main__:main"
 
-[tool.poetry.dependencies]
-python = ">=3.11, <3.13"
-click = "^8.1.7"
-hop-client = "^0.10.0"
-ipython = "<7.33.0"  # Constrained by snews_pt
-numpy = "^1.26.0"
-pandas = "^2.1.1"
-python-dotenv = ">=0.21.1,<0.22.0"  # Constrained by snews_pt
-pymongo = "^4.5.0"
-slack-sdk = "^3.26.2"
-matplotlib = "^3.8.0"
-scipy = "^1.11.3"
-sqlalchemy = "^2.0.32"
-tabulate = "^0.9.0"
-snews-data-formats = "^1.0.0"
-snews-pt = "^2.0.1"
+[project.urls]
+homepage = "https://snews2.org"
+repository = "https://github.com/SNEWS2/SNEWS_Coincidence_System.git"
+documentation = "https://snews-coincidence-system.readthedocs.io/"
 
-[tool.poetry.group.dev.dependencies]
-snews-pt = "^2.0.1"
-autopep8 = "^2.0.4"
-flake8 = "^6.1.0"
-mongomock = "^4.1.2"
-pytest = "<6.3.0"  # Constrained by snews_pt
-black = "^25.1.0"
+[tool.setuptools]
+include-package-data = true
 
-[tool.poetry.group.docs.dependencies]
-sphinx = "<5"  # Constrained by snews_pt
-sphinx-pdj-theme = "^0.4.0"
-
-[tool.black]
-line-length = 99
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["snews_cs*"]
