@@ -23,12 +23,14 @@ RUN /app/generate_firedrill_creds.sh
 RUN sed -i 's/^FIREDRILL_OBSERVATION_TOPIC=.*/FIREDRILL_OBSERVATION_TOPIC=kafka:\/\/$\{HOP_BROKER\}\/snews\.experiments-github/' /app/snews_cs/etc/test-config.env
 RUN sed -i 's/^FIREDRILL_ALERT_TOPIC=.*/FIREDRILL_ALERT_TOPIC=kafka:\/\/$\{HOP_BROKER\}\/snews\.alert-github/' /app/snews_cs/etc/test-config.env
 
-# Install Poetry
-RUN pip install --no-cache-dir poetry
+# Install the project
+RUN pip install .
 
 ## Install dependencies using Poetry
-RUN poetry lock
-RUN poetry install
-RUN poetry run hop auth add hop_creds.csv
+# RUN poetry lock
+# RUN poetry install
+# RUN poetry run hop auth add hop_creds.csv
 
-CMD ["poetry", "run", "snews_cs", "run-coincidence", "--firedrill"]
+# CMD ["poetry", "run", "snews_cs", "run-coincidence", "--firedrill"]
+RUN hop auth add hop_creds.csv
+CMD ["snews_cs", "run-coincidence", "--firedrill"]

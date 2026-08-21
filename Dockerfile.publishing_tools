@@ -33,9 +33,6 @@ RUN sed -i 's/^FIREDRILL_ALERT_TOPIC=.*/FIREDRILL_ALERT_TOPIC=kafka:\/\/$\{HOP_B
 # Upgrade pip
 RUN pip install --upgrade pip
 
-# Install Python dependencies
-RUN pip install -r requirements.txt
-
 COPY generate_firedrill_creds.sh /app/generate_firedrill_creds.sh
 RUN chmod +x /app/generate_firedrill_creds.sh
 RUN /app/generate_firedrill_creds.sh
