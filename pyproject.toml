@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "snews-cs"
-version = "3.0.2"
+version = "3.0.1"
 description = "An coincidence server application for raising supernova alerts."
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
