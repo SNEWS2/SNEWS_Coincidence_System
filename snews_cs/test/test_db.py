@@ -63,7 +63,9 @@ def test_database_initialization(test_db):
         "sqlite_sequence",
     ]
 
-    assert set(table_names) == set(expected_tables), "Not all expected tables were created."
+    assert set(table_names) == set(
+        expected_tables
+    ), "Not all expected tables were created."
 
     for table_name in expected_tables:
         schema = test_db.get_table_schema(table_name)

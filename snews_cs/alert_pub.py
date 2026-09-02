@@ -17,7 +17,9 @@ from . import cs_utils
 class AlertPublisher:
     """Class to publish SNEWS SuperNova Alerts based on coincidence"""
 
-    def __init__(self, env_path=None, verbose=True, auth=True, firedrill_mode=True, is_test=False):
+    def __init__(
+        self, env_path=None, verbose=True, auth=True, firedrill_mode=True, is_test=False
+    ):
         """
         Alert publisher constructor
         Parameters

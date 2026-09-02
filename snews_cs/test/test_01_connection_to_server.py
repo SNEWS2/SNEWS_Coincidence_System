@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Initialization unit tests for the snews_cs module."""
+
 import unittest
 
 import snews_pt.remote_commands as sptrc
