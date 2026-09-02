@@ -64,3 +64,6 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["snews_cs*"]
+
+[tool.setuptools.package-data]
+snews_cs = ["etc/*", "db_schema.sql"]
