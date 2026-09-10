@@ -27,7 +27,7 @@ def get_image(is_test, alert_data, topic):
     # parse input
     tag = "<!here>\n" if not is_test else "\n"
     test = "TEST" if is_test else ""
-    topic_str = f"\n> Broker: {topic.center(50,'-')}"
+    topic_str = f"\n> Broker: {topic.center(50, '-')}"
 
     alert_data = alert_data or dict(
         server_tag="Unknown Server",
@@ -52,7 +52,8 @@ def get_image(is_test, alert_data, topic):
         "SNEWS_Coincidence_System/main/snews_cs/etc/snalert.gif"
     )
     retractlink = (
-        "https://www.shutterstock.com/image-vector/" "ooops-word-bubble-pop-art-600w-408777070.jpg"
+        "https://www.shutterstock.com/image-vector/"
+        "ooops-word-bubble-pop-art-600w-408777070.jpg"
     )
     updatelink = (
         "https://www.shutterstock.com/image-vector/"

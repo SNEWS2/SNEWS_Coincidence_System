@@ -14,7 +14,7 @@ from socket import gethostname
 # https://click.palletsprojects.com/en/8.0.x/utils/
 import click
 
-from . import __version__, cs_utils
+from . import cs_utils
 from . import snews_coinc as snews_coinc
 from .database import Database
 from .heartbeat_feedbacks import FeedBack
@@ -25,7 +25,7 @@ db.initialize_database(sql_schema_path=Path(__file__).parent / "db_schema.sql")
 
 
 @click.group(invoke_without_command=True)
-@click.version_option(__version__)
+@click.version_option()
 @click.option(
     "--env",
     type=str,
@@ -90,11 +90,15 @@ def run_coincidence(firedrill, dropdb, email, slackbot):
 
 
 @main.command()
-@click.option("--verbose", "-v", default=False, show_default="False", help="Verbose print")
+@click.option(
+    "--verbose", "-v", default=False, show_default="False", help="Verbose print"
+)
 def run_feedback(verbose):
     """Start the feedback checks"""
     feedback = FeedBack(verbose=verbose)
-    click.secho(f"\nInvoking Feedback search, verbose={verbose}\n", fg="white", bg="green")
+    click.secho(
+        f"\nInvoking Feedback search, verbose={verbose}\n", fg="white", bg="green"
+    )
     feedback()
 
 

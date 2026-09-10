@@ -30,7 +30,9 @@ class Database:
         """
         Returns all tables in the SQL database.
         """
-        self.cursor.execute("""SELECT name FROM sqlite_master WHERE type='table' ORDER BY name""")
+        self.cursor.execute(
+            """SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"""
+        )
         table = self.cursor.fetchall()
         return table
 

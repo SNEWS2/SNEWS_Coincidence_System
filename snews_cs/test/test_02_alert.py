@@ -14,7 +14,9 @@ class TestServer(unittest.TestCase):
         """Set up test environment"""
         # Set up test environment variables
         os.environ["COINCIDENCE_THRESHOLD"] = "10"  # 10 second threshold
-        os.environ["CONNECTION_TEST_TOPIC"] = "kafka://kafka.scimma.org/snews.connection-testing"
+        os.environ["CONNECTION_TEST_TOPIC"] = (
+            "kafka://kafka.scimma.org/snews.connection-testing"
+        )
 
     @patch("snews_cs.snews_coinc.AlertPublisher")
     def test_alerts(self, mock_alert_publisher):
