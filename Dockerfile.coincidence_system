@@ -1,5 +1,5 @@
 # Dockerfile for SNEWS_Coincidence_System
-FROM python:3.11-bullseye
+FROM python:3.11-bookworm
 
 WORKDIR /app
 
